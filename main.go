@@ -61,7 +61,7 @@ func main() {
 	must(err)
 	defer sdl.Quit()
 	window, err := sdl.CreateWindow("Polyfauna", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
-		windowWidth, windowHeight, sdl.WINDOW_SHOWN)
+		windowWidth, windowHeight, sdl.WINDOW_SHOWN|sdl.WINDOW_RESIZABLE|sdl.WINDOW_ALLOW_HIGHDPI)
 	must(err)
 	defer window.Destroy()
 	renderer, err := sdl.CreateRenderer(window, -1,
@@ -75,12 +75,11 @@ func main() {
 	font, err := ttf.OpenFont(fontPath, fontSize)
 	must(err)
 	defer font.Close()
-	surface, err := font.RenderUTF8Blended("Hello, Polyfauna user.", colorFg)
+	pr, err := newPrinter(font)
 	must(err)
-	defer surface.Free()
-	texture, err := renderer.CreateTextureFromSurface(surface)
-	must(err)
-	defer texture.Destroy()
+	defer pr.destroy()
+
+	running := true
 
 	mb := menuBar([]*menu{
 		{
@@ -89,7 +88,7 @@ func main() {
 				{label: "Open"},
 				{label: "Save"},
 				{label: "Export"},
-				{label: "Quit", action: func() { log.Print("quit") }},
+				{label: "Quit", action: func() { running = false }},
 			},
 		},
 		{
@@ -100,11 +99,8 @@ func main() {
 			},
 		},
 	})
-	err = mb.init(font, renderer)
-	must(err)
-	defer mb.destroy()
+	mb.init(pr)
 
-	running := true
 	for running {
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 			switch event := event.(type) {
@@ -133,9 +129,8 @@ func main() {
 		renderer.SetDrawColorArray(colorBgArray...)
 		renderer.Clear()
 		renderer.SetDrawColorArray(colorFgArray...)
-		renderer.Copy(texture, &sdl.Rect{0, 0, surface.W, surface.H},
-			&sdl.Rect{100, 100, surface.W, surface.H})
-		mb.draw(renderer)
+		pr.draw(renderer, "Hello, Polyfauna user.", 100, 100)
+		mb.draw(pr, renderer)
 		renderer.Present()
 		sdl.Delay(1000 / fps)
 	}
