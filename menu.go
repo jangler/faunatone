@@ -1,46 +1,113 @@
 package main
 
 import (
+	"log"
+	"path/filepath"
 	"strings"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
 
+var shortcutsPath = filepath.Join(configPath, "shortcuts.tsv")
+
 // top-level drop-down menu bar
-type menuBar []*menu
+type menuBar struct {
+	menus     []*menu
+	shortcuts map[string]*menuItem
+}
 
 // initialize the menu bar's properties and layout and those of its children
-func (mb menuBar) init(p *printer) {
+func (mb *menuBar) init(p *printer) {
+	// connect shortcuts
+	if mb.shortcuts == nil {
+		mb.shortcuts = make(map[string]*menuItem)
+	}
+	if records, err := readTSV(shortcutsPath); err == nil {
+		for _, rec := range records {
+			ok := false
+			if len(rec) == 3 {
+				key, menuLabel, itemLabel := rec[0], rec[1], rec[2]
+			outer:
+				for _, m := range mb.menus {
+					if m.label == menuLabel {
+						for _, mi := range m.items {
+							if mi.label == itemLabel {
+								ok = true
+								mi.shortcuts = append(mi.shortcuts, key)
+								mb.shortcuts[key] = mi
+								break outer
+							}
+						}
+					}
+				}
+			}
+			if !ok {
+				log.Printf("bad shortcut config record: %q", rec)
+			}
+		}
+	} else {
+		log.Print(err)
+	}
+
+	// init menu layouts
 	x := int32(0)
-	for _, m := range mb {
+	for _, m := range mb.menus {
 		x = m.init(p, x)
 	}
 }
 
 // draw the menu bar and its children
-func (mb menuBar) draw(p *printer, r *sdl.Renderer) {
-	if len(mb) > 0 {
+func (mb *menuBar) draw(p *printer, r *sdl.Renderer) {
+	if len(mb.menus) > 0 {
 		r.SetDrawColorArray(colorHighlightArray...)
-		r.FillRect(&sdl.Rect{0, 0, r.GetViewport().W, mb[0].rect.H})
-		for _, m := range mb {
+		r.FillRect(&sdl.Rect{0, 0, r.GetViewport().W, mb.menus[0].rect.H})
+		for _, m := range mb.menus {
 			m.draw(p, r)
 		}
 	}
 }
 
+// respond to keyboard events, returning true if an action was triggered
+func (mb *menuBar) keyboardEvent(e *sdl.KeyboardEvent) bool {
+	if e.Repeat != 0 || e.State != sdl.PRESSED {
+		return false
+	}
+	if item, ok := mb.shortcuts[formatKeyEvent(e)]; ok && item.action != nil {
+		item.action()
+		return true
+	}
+	return false
+}
+
+// convert a keyboard event into a shortcut string
+func formatKeyEvent(e *sdl.KeyboardEvent) string {
+	keys := []string{}
+	if e.Keysym.Mod&sdl.KMOD_CTRL != 0 {
+		keys = append(keys, "Ctrl")
+	}
+	if e.Keysym.Mod&sdl.KMOD_ALT != 0 {
+		keys = append(keys, "Alt")
+	}
+	if e.Keysym.Mod&sdl.KMOD_SHIFT != 0 {
+		keys = append(keys, "Shift")
+	}
+	keys = append(keys, sdl.GetKeyName(e.Keysym.Sym))
+	return strings.Join(keys, "+")
+}
+
 // respond to mouse motion events
-func (mb menuBar) mouseMotion(e *sdl.MouseMotionEvent) {
+func (mb *menuBar) mouseMotion(e *sdl.MouseMotionEvent) {
 	// if a menu is being shown and we mouse over a new menu root, show that
 	// menu and hide all others
 	shown := false
-	for _, m := range mb {
+	for _, m := range mb.menus {
 		shown = shown || m.shown
 	}
 	if shown {
 		p := sdl.Point{e.X, e.Y}
-		for _, m := range mb {
+		for _, m := range mb.menus {
 			if p.InRect(m.rect) {
-				for _, m := range mb {
+				for _, m := range mb.menus {
 					m.shown = false
 				}
 				m.shown = true
@@ -51,7 +118,7 @@ func (mb menuBar) mouseMotion(e *sdl.MouseMotionEvent) {
 }
 
 // respond to mouse button events
-func (mb menuBar) mouseButton(e *sdl.MouseButtonEvent) {
+func (mb *menuBar) mouseButton(e *sdl.MouseButtonEvent) {
 	// only respond to mouse down
 	if e.Type != sdl.MOUSEBUTTONDOWN {
 		return
@@ -59,7 +126,7 @@ func (mb menuBar) mouseButton(e *sdl.MouseButtonEvent) {
 
 	// if we clicked on a menu root, toggle display of that menu
 	p := sdl.Point{e.X, e.Y}
-	for _, m := range mb {
+	for _, m := range mb.menus {
 		if p.InRect(m.rect) {
 			m.shown = !m.shown
 			return
@@ -67,7 +134,7 @@ func (mb menuBar) mouseButton(e *sdl.MouseButtonEvent) {
 	}
 
 	// if we clicked on a menu item, run its action
-	for _, m := range mb {
+	for _, m := range mb.menus {
 		if m.shown {
 			for _, mi := range m.items {
 				if p.InRect(mi.rect) && mi.action != nil {
@@ -78,7 +145,7 @@ func (mb menuBar) mouseButton(e *sdl.MouseButtonEvent) {
 	}
 
 	// finally, hide all menus
-	for _, m := range mb {
+	for _, m := range mb.menus {
 		m.shown = false
 	}
 }

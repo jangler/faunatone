@@ -1,11 +1,13 @@
 package main
 
 import (
+	"encoding/csv"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/veandco/go-sdl2/sdl"
 	"github.com/veandco/go-sdl2/ttf"
@@ -27,6 +29,8 @@ var (
 	colorHighlightArray = []uint8{0xe0, 0xe0, 0xe0, 0xff}
 	colorFg             = sdl.Color{0x10, 0x10, 0x10, 0xff}
 	colorFgArray        = []uint8{0x10, 0x10, 0x10, 0xff}
+
+	configPath = "config"
 
 	// TODO load font from RW instead of file
 	fontPath = filepath.Join("assets", "RobotoMono-Regular-BasicLatin.ttf")
@@ -101,30 +105,28 @@ func main() {
 
 	running := true
 
-	mb := menuBar([]*menu{
-		{
-			label: "File",
-			items: []*menuItem{
-				{label: "Open"},
-				{label: "Save"},
-				{label: "Export"},
-				{label: "Quit", action: func() { running = false }},
+	mb := &menuBar{
+		menus: []*menu{
+			{
+				label: "File",
+				items: []*menuItem{
+					{label: "Quit", action: func() { running = false }},
+				},
+			},
+			{
+				label: "Cursor",
+				items: []*menuItem{
+					{label: "Go to beat...", action: func() { dialogGoToBeat(dia, patedit) }},
+				},
+			},
+			{
+				label: "MIDI",
+				items: []*menuItem{
+					{label: "Play note...", action: func() { dialogPlayNote(dia, wr) }},
+				},
 			},
 		},
-		{
-			label: "Cursor",
-			items: []*menuItem{
-				{label: "Go to beat...", action: func() { dialogGoToBeat(dia, patedit) }},
-			},
-		},
-		{
-			label: "MIDI",
-			items: []*menuItem{
-				{label: "Reset all controllers"},
-				{label: "All notes off"},
-			},
-		},
-	})
+	}
 	mb.init(pr)
 
 	for running {
@@ -148,21 +150,12 @@ func main() {
 				if dia.shown {
 					dia.keyboardEvent(event)
 				} else {
-					if event.Repeat == 0 {
-						switch event.Keysym.Sym {
-						case sdl.K_z:
-							if event.State == sdl.PRESSED {
-								if err := writer.NoteOn(wr, 60, 100); err != nil {
-									log.Print(err)
+					if !mb.keyboardEvent(event) {
+						if event.Repeat == 0 {
+							switch event.Keysym.Sym {
+							case sdl.K_z:
+								if event.State == sdl.PRESSED {
 								}
-							} else {
-								if err := writer.NoteOff(wr, 60); err != nil {
-									log.Print(err)
-								}
-							}
-						case sdl.K_g:
-							if event.Keysym.Mod == sdl.KMOD_LCTRL {
-								dialogGoToBeat(dia, patedit)
 							}
 						}
 					}
@@ -185,7 +178,7 @@ func main() {
 		renderer.Clear()
 		renderer.SetDrawColorArray(colorFgArray...)
 		viewport := renderer.GetViewport()
-		y := mb[0].rect.H
+		y := mb.menus[0].rect.H
 		patedit.draw(renderer, &sdl.Rect{0, y, viewport.W, viewport.H - y})
 		mb.draw(pr, renderer)
 		dia.draw(pr, renderer)
@@ -194,6 +187,7 @@ func main() {
 	}
 }
 
+// set d to an input dialog
 func dialogGoToBeat(d *dialog, pe *patternEditor) {
 	*d = dialog{
 		prompt: "Go to beat:",
@@ -202,17 +196,56 @@ func dialogGoToBeat(d *dialog, pe *patternEditor) {
 			if f, err := strconv.ParseFloat(s, 64); err == nil {
 				pe.goToBeat(f)
 			} else {
-				dialogMsg(d, "Invalid float syntax.")
+				dialogMsg(d, "Invalid input.")
 			}
 		},
 		shown: true,
 	}
 }
 
+// set d to a message dialog
 func dialogMsg(d *dialog, s string) {
 	*d = dialog{
 		prompt: s,
 		size:   0,
 		shown:  true,
 	}
+}
+
+// set d to an input dialog
+func dialogPlayNote(d *dialog, wr *writer.Writer) {
+	*d = dialog{
+		prompt: "Play note:",
+		size:   3,
+		action: func(s string) {
+			if i, err := strconv.ParseUint(s, 10, 8); err == nil {
+				go func() {
+					if err := writer.NoteOn(wr, uint8(i), 100); err == nil {
+						time.Sleep(1)
+						if err := writer.NoteOff(wr, uint8(i)); err != nil {
+							log.Print(err)
+						}
+					} else {
+						log.Print(err)
+					}
+				}()
+			} else {
+				dialogMsg(d, "Invalid input.")
+			}
+		},
+		shown: true,
+	}
+}
+
+// read records from a TSV file
+func readTSV(path string) ([][]string, error) {
+	f, err := os.Open(shortcutsPath)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	r := csv.NewReader(f)
+	r.Comma = '\t'
+	r.Comment = '#'
+	return r.ReadAll()
 }
