@@ -149,6 +149,10 @@ func main() {
 					{label: "Set channel...", action: func() {
 						dialogTrackSetChannel(dia, sng, patedit)
 					}},
+					{label: "Insert", action: func() { patedit.insertTrack() }},
+					{label: "Delete", action: func() { patedit.deleteTrack() }},
+					{label: "Move left", action: func() { patedit.shiftTracks(-1) }},
+					{label: "Move right", action: func() { patedit.shiftTracks(1) }},
 				},
 			},
 		},

@@ -13,3 +13,7 @@ Ctrl+C	Edit	Copy
 Ctrl+V	Edit	Paste
 Ctrl+M	Edit	Mix paste
 Ctrl+L	Track	Set channel...
+Ctrl+Insert	Track	Insert
+Ctrl+Delete	Track	Delete
+Ctrl+Shift+Tab	Track	Move left
+Ctrl+Tab	Track	Move right

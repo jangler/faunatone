@@ -282,3 +282,51 @@ func (pe *patternEditor) setTrackChannel(channel uint8) {
 		pe.song.Tracks[i].Channel = channel
 	}
 }
+
+// add a track to the right of the selection
+func (pe *patternEditor) insertTrack() {
+	_, trackMax, _, _ := pe.getSelection()
+	pe.song.Tracks = append(pe.song.Tracks[:trackMax+1], pe.song.Tracks[trackMax:]...)
+	pe.song.Tracks[trackMax+1] = &track{
+		Channel: pe.song.Tracks[trackMax].Channel,
+	}
+}
+
+// delete selected tracks
+func (pe *patternEditor) deleteTrack() {
+	trackMin, trackMax, _, _ := pe.getSelection()
+	for i := trackMax; i >= trackMin && len(pe.song.Tracks) > 1; i-- {
+		pe.song.Tracks = append(pe.song.Tracks[:i], pe.song.Tracks[i+1:]...)
+	}
+	pe.fixCursor()
+}
+
+// keep the cursor in bounds
+func (pe *patternEditor) fixCursor() {
+	if pe.cursorTrackClick >= len(pe.song.Tracks) {
+		pe.cursorTrackClick = len(pe.song.Tracks) - 1
+	}
+	if pe.cursorTrackDrag >= len(pe.song.Tracks) {
+		pe.cursorTrackDrag = len(pe.song.Tracks) - 1
+	}
+}
+
+// move selected tracks left or right
+func (pe *patternEditor) shiftTracks(offset int) {
+	trackMin, trackMax, _, _ := pe.getSelection()
+	if offset < 0 && trackMin > 0 {
+		for i := trackMin - 1; i < trackMax; i++ {
+			pe.song.Tracks[i], pe.song.Tracks[i+1] = pe.song.Tracks[i+1], pe.song.Tracks[i]
+		}
+		pe.cursorTrackClick -= 1
+		pe.cursorTrackDrag -= 1
+		pe.shiftTracks(offset + 1)
+	} else if offset > 0 && trackMax < len(pe.song.Tracks)-1 {
+		for i := trackMax + 1; i > trackMin; i-- {
+			pe.song.Tracks[i], pe.song.Tracks[i-1] = pe.song.Tracks[i-1], pe.song.Tracks[i]
+		}
+		pe.cursorTrackClick += 1
+		pe.cursorTrackDrag += 1
+		pe.shiftTracks(offset - 1)
+	}
+}
