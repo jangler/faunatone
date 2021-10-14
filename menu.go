@@ -6,9 +6,6 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-// pixels of space left around menu labels
-const menuPadding = int32(7)
-
 // top-level drop-down menu bar
 type menuBar []*menu
 
@@ -99,10 +96,10 @@ type menu struct {
 // returns x+w
 func (m *menu) init(p *printer, x int32) int32 {
 	w, h := p.size(m.label)
-	m.rect = &sdl.Rect{x, 0, w + menuPadding*2, h + menuPadding*2}
+	m.rect = &sdl.Rect{x, 0, w + padding*2, h + padding*2}
 	m.itemsRect = &sdl.Rect{x, m.rect.H, 0, 0}
 	x2 := int32(0)
-	y := m.rect.Y + m.rect.H + menuPadding
+	y := m.rect.Y + m.rect.H + padding
 	for _, mi := range m.items {
 		x2, y = mi.init(p, x, y)
 		if x2-x > m.itemsRect.W {
@@ -115,7 +112,7 @@ func (m *menu) init(p *printer, x int32) int32 {
 
 // draw the menu and its children
 func (m *menu) draw(p *printer, r *sdl.Renderer) {
-	p.draw(r, m.label, m.rect.X+menuPadding, m.rect.Y+menuPadding)
+	p.draw(r, m.label, m.rect.X+padding, m.rect.Y+padding)
 	if m.shown {
 		r.FillRect(m.itemsRect)
 		for _, mi := range m.items {
@@ -140,11 +137,11 @@ func (mi *menuItem) init(p *printer, x, y int32) (int32, int32) {
 		mi.text += " (" + strings.Join(mi.shortcuts, ", ") + ")"
 	}
 	w, h := p.size(mi.text)
-	mi.rect = &sdl.Rect{x, y, w + menuPadding*2, h + menuPadding}
+	mi.rect = &sdl.Rect{x, y, w + padding*2, h + padding}
 	return mi.rect.X + mi.rect.W, mi.rect.Y + mi.rect.H
 }
 
 // draw the menu item
 func (mi *menuItem) draw(p *printer, r *sdl.Renderer) {
-	p.draw(r, mi.text, mi.rect.X+menuPadding, mi.rect.Y)
+	p.draw(r, mi.text, mi.rect.X+padding, mi.rect.Y)
 }

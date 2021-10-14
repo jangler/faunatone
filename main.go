@@ -16,6 +16,7 @@ const (
 	windowWidth  = 1280
 	windowHeight = 720
 	fontSize     = 14
+	padding      = fontSize / 2
 	fps          = 30
 )
 
@@ -101,13 +102,31 @@ func main() {
 	})
 	mb.init(pr)
 
+	sng := &song{
+		tracks: []*track{
+			&track{events: []*trackEvent{
+				newTrackEvent(&trackEvent{}),
+			}},
+			&track{},
+			&track{},
+			&track{},
+		},
+	}
+	patedit := &patternEditor{
+		printer:  pr,
+		song:     sng,
+		division: 4,
+	}
+
 	for running {
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 			switch event := event.(type) {
 			case *sdl.MouseMotionEvent:
 				mb.mouseMotion(event)
+				patedit.mouseMotion(event)
 			case *sdl.MouseButtonEvent:
 				mb.mouseButton(event)
+				patedit.mouseButton(event)
 			case *sdl.KeyboardEvent:
 				if event.Repeat == 0 && event.Keysym.Sym == sdl.K_z {
 					if event.State == sdl.PRESSED {
@@ -120,6 +139,8 @@ func main() {
 						}
 					}
 				}
+			case *sdl.MouseWheelEvent:
+				patedit.mouseWheel(event)
 			case *sdl.QuitEvent:
 				running = false
 				break
@@ -129,7 +150,9 @@ func main() {
 		renderer.SetDrawColorArray(colorBgArray...)
 		renderer.Clear()
 		renderer.SetDrawColorArray(colorFgArray...)
-		pr.draw(renderer, "Hello, Polyfauna user.", 100, 100)
+		viewport := renderer.GetViewport()
+		y := mb[0].rect.H
+		patedit.draw(renderer, &sdl.Rect{0, y, viewport.W, viewport.H - y})
 		mb.draw(pr, renderer)
 		renderer.Present()
 		sdl.Delay(1000 / fps)
