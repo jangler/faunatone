@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
+	"math"
 	"sort"
 
 	"gitlab.com/gomidi/midi/writer"
@@ -18,6 +20,11 @@ const (
 	controllerEvent
 	programEvent
 	tempoEvent
+)
+
+const (
+	numMIDIChannels        = 16
+	percussionChannelIndex = 9
 )
 
 // fields in these types are exported to expose them to the JSON encoder
@@ -62,43 +69,99 @@ func (s *song) write(w io.Writer) error {
 
 // export to MIDI
 func (s *song) exportSMF(path string) error {
-	return writer.WriteSMF(path, uint16(len(s.Tracks)), func(wr *writer.SMF) error {
+	// first collate all events and sort
+	events := []*trackEvent{}
+	for i, t := range s.Tracks {
+		for _, te := range t.Events {
+			te.track = i
+			events = append(events, te)
+		}
+	}
+	sort.Slice(events, func(i, j int) bool {
+		if events[i].Tick < events[j].Tick {
+			return true
+		} else if events[i].Tick == events[j].Tick {
+			return events[i].track < events[j].track
+		}
+		return false
+	})
+
+	// set up data structures for tracking channels
+	channelStates := make([]*channelState, 16)
+	for i := range channelStates {
+		channelStates[i] = &channelState{}
+	}
+	channelMapping := make(map[int]int)
+
+	// then write file
+	return writer.WriteSMF(path, 1, func(wr *writer.SMF) error {
 		if s.Title != "" {
 			writer.TrackSequenceName(wr, s.Title)
 		}
-		for i, t := range s.Tracks {
-			wr.SetChannel(uint8(i))
-			sort.Slice(t.Events, func(i, j int) bool {
-				return t.Events[i].Tick < t.Events[j].Tick
-			})
-			activeNote := -1
-			prevTick := int64(0)
-			for _, te := range t.Events {
-				wr.SetDelta(uint32(te.Tick - prevTick))
-				prevTick = te.Tick
-				switch te.Type {
-				case noteOnEvent:
-					if activeNote != -1 {
-						writer.NoteOff(wr, uint8(activeNote))
-						activeNote = -1
+		prevTick := int64(0)
+		for _, te := range events {
+			wr.SetDelta(uint32(te.Tick - prevTick))
+			prevTick = te.Tick
+			switch te.Type {
+			case noteOnEvent:
+				if i, ok := channelMapping[te.track]; ok {
+					cs := channelStates[i]
+					if cs.lastNoteOff == -1 {
+						wr.SetChannel(uint8(i))
+						writer.NoteOff(wr, cs.activeNote)
+						cs.lastNoteOff = prevTick
 					}
-					note, bend := pitchToMIDI(te.FloatData)
-					writer.Pitchbend(wr, bend)
-					writer.NoteOn(wr, note, te.ByteData1)
-					activeNote = int(note)
-				case noteOffEvent:
-					if activeNote != -1 {
-						writer.NoteOff(wr, uint8(activeNote))
-						activeNote = -1
-					}
-				default:
-					println("unhandled event type")
 				}
+				i := pickInactiveChannel(channelStates)
+				channelMapping[te.track] = i
+				cs := channelStates[i]
+				wr.SetChannel(uint8(i))
+				note, bend := pitchToMIDI(te.FloatData)
+				writer.Pitchbend(wr, bend)
+				writer.NoteOn(wr, note, te.ByteData1)
+				cs.lastNoteOff = -1
+				cs.activeNote = note
+				cs.bend = bend
+			case noteOffEvent:
+				if i, ok := channelMapping[te.track]; ok {
+					cs := channelStates[i]
+					if cs.lastNoteOff == -1 {
+						wr.SetChannel(uint8(i))
+						writer.NoteOff(wr, cs.activeNote)
+						cs.lastNoteOff = prevTick
+					}
+				} else {
+				}
+			default:
+				println("unhandled event type in song.exportSMF")
 			}
-			writer.EndOfTrack(wr)
 		}
+		writer.EndOfTrack(wr)
 		return nil
 	})
+}
+
+type channelState struct {
+	eventIndex  int
+	activeNote  uint8
+	lastNoteOff int64
+	program     uint8
+	controllers [128]uint8
+	bend        int16
+}
+
+// returns the index of the channel which has had no active notes for the
+// longest time
+func pickInactiveChannel(a []*channelState) int {
+	bestScore, bestIndex := int64(math.MaxInt64), 0
+	for i, cs := range a {
+		if cs.lastNoteOff == 0 {
+			return i
+		} else if cs.lastNoteOff < bestScore {
+			bestScore, bestIndex = cs.lastNoteOff, i
+		}
+	}
+	return bestIndex
 }
 
 type track struct {
@@ -124,6 +187,7 @@ type trackEvent struct {
 	ByteData1 byte    `json:",omitempty"`
 	ByteData2 byte    `json:",omitempty"`
 	uiString  string
+	track     int // used by export
 }
 
 func newTrackEvent(te *trackEvent) *trackEvent {

@@ -67,9 +67,9 @@ func (pe *patternEditor) draw(r *sdl.Renderer, dst *sdl.Rect) {
 	x = dst.X + pe.beatWidth - pe.scrollX
 	r.SetDrawColorArray(colorBgArray...)
 	r.FillRect(&sdl.Rect{x, dst.Y, dst.W, pe.headerHeight})
-	for _ = range pe.song.Tracks {
+	for i := range pe.song.Tracks {
 		if x+pe.trackWidth > dst.X && x < dst.X+dst.W {
-			pe.printer.draw(r, "ch $ffff", x, dst.Y+padding)
+			pe.printer.draw(r, "track "+strconv.Itoa(i), x, dst.Y+padding)
 		}
 		x += pe.trackWidth
 	}
