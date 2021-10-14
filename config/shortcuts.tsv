@@ -8,6 +8,10 @@ Left	Cursor	Previous track
 Right	Cursor	Next track
 Shift+Tab	Cursor	Previous track
 Tab	Cursor	Next track
+Ctrl+-	Cursor	Decrement division
+Ctrl+=	Cursor	Increment division
+Ctrl+Keypad /	Cursor	Halve division
+Ctrl+Keypad *	Cursor	Double division
 Ctrl+G	Cursor	Go to beat...
 Ctrl+N	Edit	Insert note...
 Ctrl+D	Edit	Insert drum note...

@@ -120,6 +120,10 @@ func main() {
 					{label: "Next division", action: func() { patedit.moveCursor(0, 1) }},
 					{label: "Previous track", action: func() { patedit.moveCursor(-1, 0) }},
 					{label: "Next track", action: func() { patedit.moveCursor(1, 0) }},
+					{label: "Decrement division", action: func() { patedit.addDivision(-1) }},
+					{label: "Increment division", action: func() { patedit.addDivision(1) }},
+					{label: "Halve division", action: func() { patedit.multiplyDivision(0.5) }},
+					{label: "Double division", action: func() { patedit.multiplyDivision(2) }},
 					{label: "Go to beat...", action: func() { dialogGoToBeat(dia, patedit) }},
 				},
 			},
@@ -162,6 +166,13 @@ func main() {
 		},
 	}
 	mb.init(pr)
+
+	sb := statusBar{
+		rect: &sdl.Rect{},
+		funcs: []func() string{
+			func() string { return fmt.Sprintf("Division: %d", patedit.division) },
+		},
+	}
 
 	for running {
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
@@ -213,7 +224,8 @@ func main() {
 		renderer.SetDrawColorArray(colorFgArray...)
 		viewport := renderer.GetViewport()
 		y := mb.menus[0].rect.H
-		patedit.draw(renderer, &sdl.Rect{0, y, viewport.W, viewport.H - y})
+		patedit.draw(renderer, &sdl.Rect{0, y, viewport.W, viewport.H - y - sb.rect.H})
+		sb.draw(pr, renderer)
 		mb.draw(pr, renderer)
 		dia.draw(pr, renderer)
 		renderer.Present()

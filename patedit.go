@@ -189,10 +189,12 @@ func (pe *patternEditor) goToBeat(beat float64) {
 
 // if the cursor is outside the viewport, center it in the viewport
 func (pe *patternEditor) scrollToCursorIfOffscreen() {
-	pe.scrollY = int32(pe.cursorTickDrag*int64(pe.beatHeight)/ticksPerBeat) -
-		(pe.viewport.H-pe.headerHeight)/2 - pe.beatHeight/rowsPerBeat/2
-	if pe.scrollY < 0 {
-		pe.scrollY = 0
+	y := int32(pe.cursorTickDrag*int64(pe.beatHeight)/ticksPerBeat) - pe.scrollY
+	if y < 0 || y+pe.beatHeight/rowsPerBeat > pe.viewport.H-pe.headerHeight {
+		pe.scrollY += y - (pe.viewport.H-pe.headerHeight)/2 + pe.beatHeight/rowsPerBeat/2
+		if pe.scrollY < 0 {
+			pe.scrollY = 0
+		}
 	}
 }
 
@@ -353,4 +355,22 @@ func (pe *patternEditor) moveCursor(tracks, divisions int) {
 	pe.cursorTickDrag += int64(divisions) * ticksPerBeat / int64(pe.division)
 	pe.fixCursor()
 	pe.scrollToCursorIfOffscreen()
+}
+
+// change beat division via addition
+func (pe *patternEditor) addDivision(delta int) {
+	pe.division += delta
+	if pe.division < 1 {
+		pe.division = 1
+	}
+	pe.fixCursor()
+}
+
+// change beat division via multiplication
+func (pe *patternEditor) multiplyDivision(factor float64) {
+	pe.division = int(math.Round(float64(pe.division) * factor))
+	if pe.division < 1 {
+		pe.division = 1
+	}
+	pe.fixCursor()
 }
