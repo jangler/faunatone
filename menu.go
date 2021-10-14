@@ -99,11 +99,7 @@ func formatKeyEvent(e *sdl.KeyboardEvent) string {
 func (mb *menuBar) mouseMotion(e *sdl.MouseMotionEvent) {
 	// if a menu is being shown and we mouse over a new menu root, show that
 	// menu and hide all others
-	shown := false
-	for _, m := range mb.menus {
-		shown = shown || m.shown
-	}
-	if shown {
+	if mb.shown() {
 		p := sdl.Point{e.X, e.Y}
 		for _, m := range mb.menus {
 			if p.InRect(m.rect) {
@@ -115,6 +111,16 @@ func (mb *menuBar) mouseMotion(e *sdl.MouseMotionEvent) {
 			}
 		}
 	}
+}
+
+// return true if any menu is shown
+func (mb *menuBar) shown() bool {
+	for _, m := range mb.menus {
+		if m.shown {
+			return true
+		}
+	}
+	return false
 }
 
 // respond to mouse button events

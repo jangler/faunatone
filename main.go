@@ -3,11 +3,10 @@ package main
 import (
 	"encoding/csv"
 	"fmt"
-	"log"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
-	"time"
 
 	"github.com/veandco/go-sdl2/sdl"
 	"github.com/veandco/go-sdl2/ttf"
@@ -120,9 +119,17 @@ func main() {
 				},
 			},
 			{
-				label: "MIDI",
+				label: "Edit",
 				items: []*menuItem{
-					{label: "Play note...", action: func() { dialogPlayNote(dia, wr) }},
+					{label: "Insert note...", action: func() {
+						dialogInsertNote(dia, patedit, wr)
+					}},
+					{label: "Insert note off", action: func() {
+						patedit.writeEvent(newTrackEvent(&trackEvent{typ: noteOffEvent}))
+					}},
+					{label: "Delete events", action: func() {
+						patedit.deleteSelectedEvents()
+					}},
 				},
 			},
 		},
@@ -143,19 +150,19 @@ func main() {
 						dia.shown = false
 					}
 				} else {
+					if !mb.shown() {
+						patedit.mouseButton(event)
+					}
 					mb.mouseButton(event)
-					patedit.mouseButton(event)
 				}
 			case *sdl.KeyboardEvent:
 				if dia.shown {
 					dia.keyboardEvent(event)
-				} else {
-					if !mb.keyboardEvent(event) {
-						if event.Repeat == 0 {
-							switch event.Keysym.Sym {
-							case sdl.K_z:
-								if event.State == sdl.PRESSED {
-								}
+				} else if !mb.keyboardEvent(event) {
+					if event.Repeat == 0 {
+						switch event.Keysym.Sym {
+						case sdl.K_z:
+							if event.State == sdl.PRESSED {
 							}
 						}
 					}
@@ -213,28 +220,40 @@ func dialogMsg(d *dialog, s string) {
 }
 
 // set d to an input dialog
-func dialogPlayNote(d *dialog, wr *writer.Writer) {
+func dialogInsertNote(d *dialog, pe *patternEditor, wr *writer.Writer) {
 	*d = dialog{
-		prompt: "Play note:",
-		size:   3,
+		prompt: "Insert note:",
+		size:   7,
 		action: func(s string) {
-			if i, err := strconv.ParseUint(s, 10, 8); err == nil {
-				go func() {
-					if err := writer.NoteOn(wr, uint8(i), 100); err == nil {
-						time.Sleep(1)
-						if err := writer.NoteOff(wr, uint8(i)); err != nil {
-							log.Print(err)
-						}
-					} else {
-						log.Print(err)
-					}
-				}()
+			if f, err := strconv.ParseFloat(s, 64); err == nil {
+				if f >= -2 && f <= 129 {
+					note, bend := pitchToMIDI(f)
+					velocity := uint8(100)
+					pe.writeEvent(newTrackEvent(&trackEvent{
+						typ:       noteOnEvent,
+						floatData: f,
+						byteData1: velocity,
+					}))
+					writer.Pitchbend(wr, bend)
+					writer.NoteOn(wr, note, velocity)
+					writer.NoteOff(wr, note)
+				} else {
+					dialogMsg(d, "Note must be in the range [-2, 129].")
+				}
 			} else {
-				dialogMsg(d, "Invalid input.")
+				dialogMsg(d, "Invalid syntax.")
 			}
 		},
 		shown: true,
 	}
+}
+
+// return note and pitch wheel values required to play a pitch in MIDI,
+// assuming a 2-semitone pitch bend range
+func pitchToMIDI(p float64) (uint8, int16) {
+	note := uint8(math.Max(0, math.Min(127, p)))
+	bend := int16((p - float64(note)) * 8192)
+	return note, bend
 }
 
 // read records from a TSV file

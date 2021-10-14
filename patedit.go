@@ -39,21 +39,14 @@ func (pe *patternEditor) draw(r *sdl.Renderer, dst *sdl.Rect) {
 	pe.headerHeight = pe.printer.rect.H + padding*2
 	pe.beatWidth = pe.printer.rect.W*beatDigits + padding*2
 	pe.beatHeight = (pe.printer.rect.H + padding) * rowsPerBeat
-	pe.trackWidth = pe.printer.rect.W*int32(len("ch $ffff")) + padding
+	pe.trackWidth = pe.printer.rect.W*int32(len("on 123.86 100")) + padding
 
 	// draw selection
 	dst.X += pe.beatWidth
 	dst.W -= pe.beatWidth
 	dst.Y += pe.headerHeight
 	dst.H -= pe.headerHeight
-	trackMin, trackMax := pe.cursorTrackClick, pe.cursorTrackDrag
-	if trackMin > trackMax {
-		trackMin, trackMax = trackMax, trackMin
-	}
-	tickMin, tickMax := pe.cursorTickClick, pe.cursorTickDrag
-	if tickMin > tickMax {
-		tickMin, tickMax = tickMax, tickMin
-	}
+	trackMin, trackMax, tickMin, tickMax := pe.getSelection()
 	x := dst.X + int32(trackMin)*pe.trackWidth - pe.scrollX
 	y := dst.Y + int32(tickMin*int64(pe.beatHeight)/ticksPerBeat) - pe.scrollY
 	w := int32(trackMax-trackMin+1) * pe.trackWidth
@@ -110,10 +103,26 @@ func (pe *patternEditor) draw(r *sdl.Renderer, dst *sdl.Rect) {
 	}
 }
 
+// return ranges of selected tracks and ticks
+func (pe *patternEditor) getSelection() (int, int, int64, int64) {
+	trackMin, trackMax := pe.cursorTrackClick, pe.cursorTrackDrag
+	if trackMin > trackMax {
+		trackMin, trackMax = trackMax, trackMin
+	}
+	tickMin, tickMax := pe.cursorTickClick, pe.cursorTickDrag
+	if tickMin > tickMax {
+		tickMin, tickMax = tickMax, tickMin
+	}
+	return trackMin, trackMax, tickMin, tickMax
+}
+
 // respond to mouse motion events
 func (pe *patternEditor) mouseMotion(e *sdl.MouseMotionEvent) {
 	// only respond to drag
 	if e.State&sdl.BUTTON_LEFT == 0 {
+		return
+	}
+	if !(&sdl.Point{e.X, e.Y}).InRect(pe.viewport) {
 		return
 	}
 	pe.cursorTrackDrag, pe.cursorTickDrag = pe.convertMouseCoords(e.X, e.Y)
@@ -123,6 +132,9 @@ func (pe *patternEditor) mouseMotion(e *sdl.MouseMotionEvent) {
 func (pe *patternEditor) mouseButton(e *sdl.MouseButtonEvent) {
 	// only respond to mouse down
 	if e.Type != sdl.MOUSEBUTTONDOWN {
+		return
+	}
+	if !(&sdl.Point{e.X, e.Y}).InRect(pe.viewport) {
 		return
 	}
 	pe.cursorTrackClick, pe.cursorTickClick = pe.convertMouseCoords(e.X, e.Y)
@@ -179,5 +191,30 @@ func (pe *patternEditor) scrollToCursorIfOffscreen() {
 		(pe.viewport.H-pe.headerHeight)/2 - pe.beatHeight/rowsPerBeat/2
 	if pe.scrollY < 0 {
 		pe.scrollY = 0
+	}
+}
+
+// write an event to the cursor click position
+func (pe *patternEditor) writeEvent(te *trackEvent) {
+	trackMin, trackMax, _, _ := pe.getSelection()
+	te.tick = pe.cursorTickClick
+	for i := trackMin; i <= trackMax; i++ {
+		pe.song.tracks[i].writeEvent(te)
+	}
+}
+
+// delete selected track events
+func (pe *patternEditor) deleteSelectedEvents() {
+	trackMin, trackMax, tickMin, tickMax := pe.getSelection()
+	for i, t := range pe.song.tracks {
+		if i >= trackMin && i <= trackMax {
+			for j := 0; j < len(t.events); j++ {
+				te := t.events[j]
+				if te.tick >= tickMin && te.tick <= tickMax {
+					t.events = append(t.events[:j], t.events[j+1:]...)
+					j--
+				}
+			}
+		}
 	}
 }
