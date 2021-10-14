@@ -15,19 +15,21 @@ import (
 const (
 	windowWidth  = 1280
 	windowHeight = 720
-	fontSize     = 16
-	padding      = 8
+	fontSize     = 14
 	fps          = 30
 )
 
 var (
-	colorBg      = sdl.Color{0xf0, 0xf0, 0xf0, 0xff}
-	colorBgArray = []uint8{0xf0, 0xf0, 0xf0, 0xff}
-	colorFg      = sdl.Color{0x10, 0x10, 0x10, 0xff}
-	colorFgArray = []uint8{0x10, 0x10, 0x10, 0xff}
+	colorBg             = sdl.Color{0xf0, 0xf0, 0xf0, 0xff}
+	colorBgArray        = []uint8{0xf0, 0xf0, 0xf0, 0xff}
+	colorHighlightArray = []uint8{0xe0, 0xe0, 0xe0, 0xff}
+	colorFg             = sdl.Color{0x10, 0x10, 0x10, 0xff}
+	colorFgArray        = []uint8{0x10, 0x10, 0x10, 0xff}
 
 	// TODO load font from RW instead of file
 	fontPath = filepath.Join("assets", "RobotoMono-Regular-BasicLatin.ttf")
+
+	uiScale = 1
 )
 
 func must(err error) {
@@ -80,13 +82,36 @@ func main() {
 	must(err)
 	defer texture.Destroy()
 
+	mb := menuBar([]*menu{
+		{
+			label: "File",
+			items: []*menuItem{
+				{label: "Open"},
+				{label: "Save"},
+				{label: "Export"},
+				{label: "Quit", action: func() { log.Print("quit") }},
+			},
+		},
+		{
+			label: "MIDI",
+			items: []*menuItem{
+				{label: "Reset all controllers"},
+				{label: "All notes off"},
+			},
+		},
+	})
+	err = mb.init(font, renderer)
+	must(err)
+	defer mb.destroy()
+
 	running := true
 	for running {
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 			switch event := event.(type) {
-			case *sdl.QuitEvent:
-				running = false
-				break
+			case *sdl.MouseMotionEvent:
+				mb.mouseMotion(event)
+			case *sdl.MouseButtonEvent:
+				mb.mouseButton(event)
 			case *sdl.KeyboardEvent:
 				if event.Repeat == 0 && event.Keysym.Sym == sdl.K_z {
 					if event.State == sdl.PRESSED {
@@ -99,6 +124,9 @@ func main() {
 						}
 					}
 				}
+			case *sdl.QuitEvent:
+				running = false
+				break
 			}
 		}
 
@@ -106,7 +134,8 @@ func main() {
 		renderer.Clear()
 		renderer.SetDrawColorArray(colorFgArray...)
 		renderer.Copy(texture, &sdl.Rect{0, 0, surface.W, surface.H},
-			&sdl.Rect{padding, padding, surface.W, surface.H})
+			&sdl.Rect{100, 100, surface.W, surface.H})
+		mb.draw(renderer)
 		renderer.Present()
 		sdl.Delay(1000 / fps)
 	}
