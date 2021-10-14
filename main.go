@@ -85,10 +85,8 @@ func main() {
 	defer pr.destroy()
 
 	sng := &song{
-		tracks: []*track{
-			&track{events: []*trackEvent{
-				newTrackEvent(&trackEvent{}),
-			}},
+		Tracks: []*track{
+			&track{},
 			&track{},
 			&track{},
 			&track{},
@@ -109,6 +107,8 @@ func main() {
 			{
 				label: "File",
 				items: []*menuItem{
+					{label: "Open...", action: func() { dialogFileOpen(dia, sng, patedit) }},
+					{label: "Save as...", action: func() { dialogFileSaveAs(dia, sng) }},
 					{label: "Quit", action: func() { running = false }},
 				},
 			},
@@ -125,7 +125,7 @@ func main() {
 						dialogInsertNote(dia, patedit, wr)
 					}},
 					{label: "Insert note off", action: func() {
-						patedit.writeEvent(newTrackEvent(&trackEvent{typ: noteOffEvent}))
+						patedit.writeEvent(newTrackEvent(&trackEvent{Type: noteOffEvent}))
 					}},
 					{label: "Delete events", action: func() {
 						patedit.deleteSelectedEvents()
@@ -230,9 +230,9 @@ func dialogInsertNote(d *dialog, pe *patternEditor, wr *writer.Writer) {
 					note, bend := pitchToMIDI(f)
 					velocity := uint8(100)
 					pe.writeEvent(newTrackEvent(&trackEvent{
-						typ:       noteOnEvent,
-						floatData: f,
-						byteData1: velocity,
+						Type:      noteOnEvent,
+						FloatData: f,
+						ByteData1: velocity,
 					}))
 					writer.Pitchbend(wr, bend)
 					writer.NoteOn(wr, note, velocity)
@@ -254,6 +254,36 @@ func pitchToMIDI(p float64) (uint8, int16) {
 	note := uint8(math.Max(0, math.Min(127, p)))
 	bend := int16((p - float64(note)) * 8192)
 	return note, bend
+}
+
+// set d to an input dialog
+func dialogFileOpen(d *dialog, sng *song, pe *patternEditor) {
+	*d = *newDialog("Open:", 50, func(s string) {
+		if f, err := os.Open(s); err == nil {
+			defer f.Close()
+			if err := sng.read(f); err == nil {
+				pe.reset()
+			} else {
+				dialogMsg(d, err.Error())
+			}
+		} else {
+			dialogMsg(d, err.Error())
+		}
+	})
+}
+
+// set d to an input dialog
+func dialogFileSaveAs(d *dialog, sng *song) {
+	*d = *newDialog("Save as:", 50, func(s string) {
+		if f, err := os.Create(s); err == nil {
+			defer f.Close()
+			if err := sng.write(f); err != nil {
+				dialogMsg(d, err.Error())
+			}
+		} else {
+			dialogMsg(d, err.Error())
+		}
+	})
 }
 
 // read records from a TSV file

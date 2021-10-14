@@ -20,6 +20,11 @@ type dialog struct {
 	shown  bool
 }
 
+// create a new dialog
+func newDialog(prompt string, size int, action func(string)) *dialog {
+	return &dialog{prompt: prompt, size: size, action: action, shown: true}
+}
+
 // draw the dialog
 func (d *dialog) draw(p *printer, r *sdl.Renderer) {
 	if !d.shown {

@@ -65,7 +65,7 @@ func (pe *patternEditor) draw(r *sdl.Renderer, dst *sdl.Rect) {
 	x = dst.X + pe.beatWidth - pe.scrollX
 	r.SetDrawColorArray(colorBgArray...)
 	r.FillRect(&sdl.Rect{x, dst.Y, dst.W, pe.headerHeight})
-	for _ = range pe.song.tracks {
+	for _ = range pe.song.Tracks {
 		if x+pe.trackWidth > dst.X && x < dst.X+dst.W {
 			pe.printer.draw(r, "ch $ffff", x, dst.Y+padding)
 		}
@@ -90,10 +90,10 @@ func (pe *patternEditor) draw(r *sdl.Renderer, dst *sdl.Rect) {
 	dst.Y += pe.headerHeight
 	dst.H -= pe.headerHeight
 	x = dst.X - pe.scrollX
-	for _, t := range pe.song.tracks {
+	for _, t := range pe.song.Tracks {
 		if x+pe.trackWidth > dst.X && x < dst.X+dst.W {
-			for _, e := range t.events {
-				y := dst.Y + int32(e.tick*int64(pe.beatHeight)/ticksPerBeat) - pe.scrollY
+			for _, e := range t.Events {
+				y := dst.Y + int32(e.Tick*int64(pe.beatHeight)/ticksPerBeat) - pe.scrollY
 				if y+pe.beatHeight > dst.Y && y < dst.Y+dst.H {
 					pe.printer.draw(r, e.uiString, x+padding/2, y+padding/2)
 				}
@@ -147,8 +147,8 @@ func (pe *patternEditor) convertMouseCoords(x, y int32) (int, int64) {
 	track := int((x - pe.viewport.X - pe.beatWidth + pe.scrollX) / pe.trackWidth)
 	if track < 0 {
 		track = 0
-	} else if track >= len(pe.song.tracks) {
-		track = len(pe.song.tracks) - 1
+	} else if track >= len(pe.song.Tracks) {
+		track = len(pe.song.Tracks) - 1
 	}
 
 	// y -> tick
@@ -197,24 +197,31 @@ func (pe *patternEditor) scrollToCursorIfOffscreen() {
 // write an event to the cursor click position
 func (pe *patternEditor) writeEvent(te *trackEvent) {
 	trackMin, trackMax, _, _ := pe.getSelection()
-	te.tick = pe.cursorTickClick
+	te.Tick = pe.cursorTickClick
 	for i := trackMin; i <= trackMax; i++ {
-		pe.song.tracks[i].writeEvent(te)
+		pe.song.Tracks[i].writeEvent(te)
 	}
 }
 
 // delete selected track events
 func (pe *patternEditor) deleteSelectedEvents() {
 	trackMin, trackMax, tickMin, tickMax := pe.getSelection()
-	for i, t := range pe.song.tracks {
+	for i, t := range pe.song.Tracks {
 		if i >= trackMin && i <= trackMax {
-			for j := 0; j < len(t.events); j++ {
-				te := t.events[j]
-				if te.tick >= tickMin && te.tick <= tickMax {
-					t.events = append(t.events[:j], t.events[j+1:]...)
+			for j := 0; j < len(t.Events); j++ {
+				te := t.Events[j]
+				if te.Tick >= tickMin && te.Tick <= tickMax {
+					t.Events = append(t.Events[:j], t.Events[j+1:]...)
 					j--
 				}
 			}
 		}
 	}
+}
+
+// reset scroll and cursor state
+func (pe *patternEditor) reset() {
+	pe.cursorTrackClick, pe.cursorTrackDrag = 0, 0
+	pe.cursorTickClick, pe.cursorTickDrag = 0, 0
+	pe.scrollX, pe.scrollY = 0, 0
 }
