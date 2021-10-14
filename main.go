@@ -86,10 +86,10 @@ func main() {
 
 	sng := &song{
 		Tracks: []*track{
-			&track{},
-			&track{},
-			&track{},
-			&track{},
+			&track{Channel: 1},
+			&track{Channel: 1},
+			&track{Channel: 1},
+			&track{Channel: 1},
 		},
 	}
 	patedit := &patternEditor{
@@ -138,6 +138,14 @@ func main() {
 					{label: "Copy", action: func() { patedit.copy() }},
 					{label: "Paste", action: func() { patedit.paste(false) }},
 					{label: "Mix paste", action: func() { patedit.paste(true) }},
+				},
+			},
+			{
+				label: "Track",
+				items: []*menuItem{
+					{label: "Set channel...", action: func() {
+						dialogTrackSetChannel(dia, sng, patedit)
+					}},
 				},
 			},
 		},
@@ -317,6 +325,17 @@ func dialogSaveAs(d *dialog, sng *song) {
 func dialogExportMIDI(d *dialog, sng *song) {
 	*d = *newDialog("Export as:", 50, func(s string) {
 		if err := sng.exportSMF(s); err != nil {
+			dialogMsg(d, err.Error())
+		}
+	})
+}
+
+// set d to an input dialog
+func dialogTrackSetChannel(d *dialog, sng *song, pe *patternEditor) {
+	*d = *newDialog("Set channel:", 3, func(s string) {
+		if i, err := strconv.ParseUint(s, 10, 8); err == nil {
+			pe.setTrackChannel(uint8(i))
+		} else {
 			dialogMsg(d, err.Error())
 		}
 	})

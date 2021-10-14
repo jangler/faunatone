@@ -67,9 +67,9 @@ func (pe *patternEditor) draw(r *sdl.Renderer, dst *sdl.Rect) {
 	x = dst.X + pe.beatWidth - pe.scrollX
 	r.SetDrawColorArray(colorBgArray...)
 	r.FillRect(&sdl.Rect{x, dst.Y, dst.W, pe.headerHeight})
-	for i := range pe.song.Tracks {
+	for _, t := range pe.song.Tracks {
 		if x+pe.trackWidth > dst.X && x < dst.X+dst.W {
-			pe.printer.draw(r, "track "+strconv.Itoa(i), x, dst.Y+padding)
+			pe.printer.draw(r, "track "+strconv.Itoa(int(t.Channel)), x, dst.Y+padding)
 		}
 		x += pe.trackWidth
 	}
@@ -272,5 +272,13 @@ func (pe *patternEditor) paste(mix bool) {
 			te2.Tick += tickMin
 			pe.song.Tracks[i+trackMin].writeEvent(te2)
 		}
+	}
+}
+
+// set the channels of selected tracks
+func (pe *patternEditor) setTrackChannel(channel uint8) {
+	trackMin, trackMax, _, _ := pe.getSelection()
+	for i := trackMin; i <= trackMax; i++ {
+		pe.song.Tracks[i].Channel = channel
 	}
 }

@@ -91,6 +91,7 @@ func (s *song) exportSMF(path string) error {
 		channelStates[i] = &channelState{}
 	}
 	channelMapping := make(map[int]int)
+	programs := make(map[uint8]uint8)
 
 	// then write file
 	return writer.WriteSMF(path, 1, func(wr *writer.SMF) error {
@@ -115,8 +116,9 @@ func (s *song) exportSMF(path string) error {
 				channelMapping[te.track] = i
 				cs := channelStates[i]
 				wr.SetChannel(uint8(i))
-				if cs.program != s.Tracks[te.track].program {
-					writer.ProgramChange(wr, s.Tracks[te.track].program)
+				pseudoChannel := s.Tracks[te.track].Channel
+				if cs.program != programs[pseudoChannel] {
+					writer.ProgramChange(wr, programs[pseudoChannel])
 				}
 				note, bend := pitchToMIDI(te.FloatData)
 				if cs.bend != bend {
@@ -136,7 +138,7 @@ func (s *song) exportSMF(path string) error {
 					}
 				}
 			case programEvent:
-				s.Tracks[te.track].program = te.ByteData1
+				programs[s.Tracks[te.track].Channel] = te.ByteData1
 			default:
 				println("unhandled event type in song.exportSMF")
 			}
@@ -170,9 +172,8 @@ func pickInactiveChannel(a []*channelState) int {
 }
 
 type track struct {
-	ChannelMask uint16
-	Events      []*trackEvent
-	program     uint8
+	Channel uint8
+	Events  []*trackEvent
 }
 
 // write an event to the track, overwriting any event at the same tick
