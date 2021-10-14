@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sort"
+
+	"gitlab.com/gomidi/midi/writer"
 )
 
 type trackEventType byte
@@ -55,6 +58,47 @@ func (s *song) write(w io.Writer) error {
 		return err
 	}
 	return comp.Close()
+}
+
+// export to MIDI
+func (s *song) exportSMF(path string) error {
+	return writer.WriteSMF(path, uint16(len(s.Tracks)), func(wr *writer.SMF) error {
+		if s.Title != "" {
+			writer.TrackSequenceName(wr, s.Title)
+		}
+		for i, t := range s.Tracks {
+			wr.SetChannel(uint8(i))
+			sort.Slice(t.Events, func(i, j int) bool {
+				return t.Events[i].Tick < t.Events[j].Tick
+			})
+			activeNote := -1
+			prevTick := int64(0)
+			for _, te := range t.Events {
+				wr.SetDelta(uint32(te.Tick - prevTick))
+				prevTick = te.Tick
+				switch te.Type {
+				case noteOnEvent:
+					if activeNote != -1 {
+						writer.NoteOff(wr, uint8(activeNote))
+						activeNote = -1
+					}
+					note, bend := pitchToMIDI(te.FloatData)
+					writer.Pitchbend(wr, bend)
+					writer.NoteOn(wr, note, te.ByteData1)
+					activeNote = int(note)
+				case noteOffEvent:
+					if activeNote != -1 {
+						writer.NoteOff(wr, uint8(activeNote))
+						activeNote = -1
+					}
+				default:
+					println("unhandled event type")
+				}
+			}
+			writer.EndOfTrack(wr)
+		}
+		return nil
+	})
 }
 
 type track struct {

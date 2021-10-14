@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	ticksPerBeat = 120
+	ticksPerBeat = 960
 	scrollTicks  = ticksPerBeat / 2
 	rowsPerBeat  = 4 // used for graphical purposes only
 	beatDigits   = 4

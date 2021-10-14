@@ -107,8 +107,9 @@ func main() {
 			{
 				label: "File",
 				items: []*menuItem{
-					{label: "Open...", action: func() { dialogFileOpen(dia, sng, patedit) }},
-					{label: "Save as...", action: func() { dialogFileSaveAs(dia, sng) }},
+					{label: "Open...", action: func() { dialogOpen(dia, sng, patedit) }},
+					{label: "Save as...", action: func() { dialogSaveAs(dia, sng) }},
+					{label: "Export MIDI...", action: func() { dialogExportMIDI(dia, sng) }},
 					{label: "Quit", action: func() { running = false }},
 				},
 			},
@@ -261,7 +262,7 @@ func pitchToMIDI(p float64) (uint8, int16) {
 }
 
 // set d to an input dialog
-func dialogFileOpen(d *dialog, sng *song, pe *patternEditor) {
+func dialogOpen(d *dialog, sng *song, pe *patternEditor) {
 	*d = *newDialog("Open:", 50, func(s string) {
 		if f, err := os.Open(s); err == nil {
 			defer f.Close()
@@ -277,7 +278,7 @@ func dialogFileOpen(d *dialog, sng *song, pe *patternEditor) {
 }
 
 // set d to an input dialog
-func dialogFileSaveAs(d *dialog, sng *song) {
+func dialogSaveAs(d *dialog, sng *song) {
 	*d = *newDialog("Save as:", 50, func(s string) {
 		if f, err := os.Create(s); err == nil {
 			defer f.Close()
@@ -285,6 +286,15 @@ func dialogFileSaveAs(d *dialog, sng *song) {
 				dialogMsg(d, err.Error())
 			}
 		} else {
+			dialogMsg(d, err.Error())
+		}
+	})
+}
+
+// set d to an input dialog
+func dialogExportMIDI(d *dialog, sng *song) {
+	*d = *newDialog("Export as:", 50, func(s string) {
+		if err := sng.exportSMF(s); err != nil {
 			dialogMsg(d, err.Error())
 		}
 	})
