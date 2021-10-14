@@ -130,6 +130,10 @@ func main() {
 					{label: "Delete events", action: func() {
 						patedit.deleteSelectedEvents()
 					}},
+					{label: "Cut", action: func() { patedit.cut() }},
+					{label: "Copy", action: func() { patedit.copy() }},
+					{label: "Paste", action: func() { patedit.paste(false) }},
+					{label: "Mix paste", action: func() { patedit.paste(true) }},
 				},
 			},
 		},

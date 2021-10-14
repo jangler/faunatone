@@ -30,6 +30,8 @@ type patternEditor struct {
 	beatHeight       int32 // pixels
 	trackWidth       int32 // pixels
 	viewport         *sdl.Rect
+	copyTicks        int64
+	copiedEvents     [][]*trackEvent // ticks are relative to start of copy area
 }
 
 // draw all components of the pattern editor interface
@@ -205,7 +207,11 @@ func (pe *patternEditor) writeEvent(te *trackEvent) {
 
 // delete selected track events
 func (pe *patternEditor) deleteSelectedEvents() {
-	trackMin, trackMax, tickMin, tickMax := pe.getSelection()
+	pe.deleteArea(pe.getSelection())
+}
+
+// delete track events in a given area
+func (pe *patternEditor) deleteArea(trackMin, trackMax int, tickMin, tickMax int64) {
 	for i, t := range pe.song.Tracks {
 		if i >= trackMin && i <= trackMax {
 			for j := 0; j < len(t.Events); j++ {
@@ -224,4 +230,47 @@ func (pe *patternEditor) reset() {
 	pe.cursorTrackClick, pe.cursorTrackDrag = 0, 0
 	pe.cursorTickClick, pe.cursorTickDrag = 0, 0
 	pe.scrollX, pe.scrollY = 0, 0
+}
+
+// copy selected events to a buffer
+func (pe *patternEditor) copy() {
+	trackMin, trackMax, tickMin, tickMax := pe.getSelection()
+	pe.copyTicks = tickMax - tickMin
+	pe.copiedEvents = make([][]*trackEvent, trackMax-trackMin+1)
+	for i := range pe.copiedEvents {
+		for _, te := range pe.song.Tracks[trackMin+i].Events {
+			if te.Tick >= tickMin && te.Tick <= tickMax {
+				te2 := &trackEvent{}
+				*te2 = *te
+				te2.Tick -= tickMin
+				pe.copiedEvents[i] = append(pe.copiedEvents[i], te2)
+			}
+		}
+	}
+}
+
+// copy selected events to a buffer, then delete the selection
+func (pe *patternEditor) cut() {
+	pe.copy()
+	pe.deleteSelectedEvents()
+}
+
+// paste selected events to a buffer; if mix is false then all existing events
+// in the affected area are first deleted
+func (pe *patternEditor) paste(mix bool) {
+	trackMin, _, tickMin, _ := pe.getSelection()
+	if !mix {
+		pe.deleteArea(trackMin, trackMin+len(pe.copiedEvents)-1, tickMin, tickMin+pe.copyTicks)
+	}
+	for i := range pe.copiedEvents {
+		if i+trackMin >= len(pe.song.Tracks) {
+			break
+		}
+		for _, te := range pe.copiedEvents[i] {
+			te2 := &trackEvent{}
+			*te2 = *te
+			te2.Tick += tickMin
+			pe.song.Tracks[i+trackMin].writeEvent(te2)
+		}
+	}
 }
