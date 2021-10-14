@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/veandco/go-sdl2/sdl"
 	"github.com/veandco/go-sdl2/ttf"
@@ -80,28 +81,6 @@ func main() {
 	must(err)
 	defer pr.destroy()
 
-	running := true
-
-	mb := menuBar([]*menu{
-		{
-			label: "File",
-			items: []*menuItem{
-				{label: "Open"},
-				{label: "Save"},
-				{label: "Export"},
-				{label: "Quit", action: func() { running = false }},
-			},
-		},
-		{
-			label: "MIDI",
-			items: []*menuItem{
-				{label: "Reset all controllers"},
-				{label: "All notes off"},
-			},
-		},
-	})
-	mb.init(pr)
-
 	sng := &song{
 		tracks: []*track{
 			&track{events: []*trackEvent{
@@ -118,29 +97,84 @@ func main() {
 		division: 4,
 	}
 
+	dia := &dialog{}
+
+	running := true
+
+	mb := menuBar([]*menu{
+		{
+			label: "File",
+			items: []*menuItem{
+				{label: "Open"},
+				{label: "Save"},
+				{label: "Export"},
+				{label: "Quit", action: func() { running = false }},
+			},
+		},
+		{
+			label: "Cursor",
+			items: []*menuItem{
+				{label: "Go to beat...", action: func() { dialogGoToBeat(dia, patedit) }},
+			},
+		},
+		{
+			label: "MIDI",
+			items: []*menuItem{
+				{label: "Reset all controllers"},
+				{label: "All notes off"},
+			},
+		},
+	})
+	mb.init(pr)
+
 	for running {
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 			switch event := event.(type) {
 			case *sdl.MouseMotionEvent:
-				mb.mouseMotion(event)
-				patedit.mouseMotion(event)
+				if !dia.shown {
+					mb.mouseMotion(event)
+					patedit.mouseMotion(event)
+				}
 			case *sdl.MouseButtonEvent:
-				mb.mouseButton(event)
-				patedit.mouseButton(event)
-			case *sdl.KeyboardEvent:
-				if event.Repeat == 0 && event.Keysym.Sym == sdl.K_z {
+				if dia.shown {
 					if event.State == sdl.PRESSED {
-						if err := writer.NoteOn(wr, 60, 100); err != nil {
-							log.Print(err)
-						}
-					} else {
-						if err := writer.NoteOff(wr, 60); err != nil {
-							log.Print(err)
+						dia.shown = false
+					}
+				} else {
+					mb.mouseButton(event)
+					patedit.mouseButton(event)
+				}
+			case *sdl.KeyboardEvent:
+				if dia.shown {
+					dia.keyboardEvent(event)
+				} else {
+					if event.Repeat == 0 {
+						switch event.Keysym.Sym {
+						case sdl.K_z:
+							if event.State == sdl.PRESSED {
+								if err := writer.NoteOn(wr, 60, 100); err != nil {
+									log.Print(err)
+								}
+							} else {
+								if err := writer.NoteOff(wr, 60); err != nil {
+									log.Print(err)
+								}
+							}
+						case sdl.K_g:
+							if event.Keysym.Mod == sdl.KMOD_LCTRL {
+								dialogGoToBeat(dia, patedit)
+							}
 						}
 					}
 				}
+			case *sdl.TextInputEvent:
+				if dia.shown {
+					dia.textInput(event)
+				}
 			case *sdl.MouseWheelEvent:
-				patedit.mouseWheel(event)
+				if !dia.shown {
+					patedit.mouseWheel(event)
+				}
 			case *sdl.QuitEvent:
 				running = false
 				break
@@ -154,7 +188,31 @@ func main() {
 		y := mb[0].rect.H
 		patedit.draw(renderer, &sdl.Rect{0, y, viewport.W, viewport.H - y})
 		mb.draw(pr, renderer)
+		dia.draw(pr, renderer)
 		renderer.Present()
 		sdl.Delay(1000 / fps)
+	}
+}
+
+func dialogGoToBeat(d *dialog, pe *patternEditor) {
+	*d = dialog{
+		prompt: "Go to beat:",
+		size:   5,
+		action: func(s string) {
+			if f, err := strconv.ParseFloat(s, 64); err == nil {
+				pe.goToBeat(f)
+			} else {
+				dialogMsg(d, "Invalid float syntax.")
+			}
+		},
+		shown: true,
+	}
+}
+
+func dialogMsg(d *dialog, s string) {
+	*d = dialog{
+		prompt: s,
+		size:   0,
+		shown:  true,
 	}
 }

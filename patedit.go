@@ -11,6 +11,7 @@ const (
 	ticksPerBeat = 120
 	scrollTicks  = ticksPerBeat / 2
 	rowsPerBeat  = 4 // used for graphical purposes only
+	beatDigits   = 4
 )
 
 // user interface structure for song editing
@@ -36,7 +37,7 @@ type patternEditor struct {
 func (pe *patternEditor) draw(r *sdl.Renderer, dst *sdl.Rect) {
 	pe.viewport = &sdl.Rect{dst.X, dst.Y, dst.W, dst.H}
 	pe.headerHeight = pe.printer.rect.H + padding*2
-	pe.beatWidth = pe.printer.rect.W*4 + padding*2
+	pe.beatWidth = pe.printer.rect.W*beatDigits + padding*2
 	pe.beatHeight = (pe.printer.rect.H + padding) * rowsPerBeat
 	pe.trackWidth = pe.printer.rect.W*int32(len("ch $ffff")) + padding
 
@@ -79,10 +80,14 @@ func (pe *patternEditor) draw(r *sdl.Renderer, dst *sdl.Rect) {
 	}
 
 	// draw beat numbers
-	for i := 1; i < 1000; i++ { // TODO come up with real range
+	for i := (pe.scrollY / pe.beatHeight); i < (pe.scrollY+dst.H)/pe.beatHeight+2; i++ {
 		y := dst.Y + int32(i-1)*pe.beatHeight + pe.headerHeight - pe.scrollY
 		if y+pe.printer.rect.H > dst.Y && y < dst.Y+dst.H {
-			pe.printer.draw(r, strconv.Itoa(i), dst.X+padding, y+padding/2)
+			s := strconv.Itoa(int(i))
+			if len(s) > beatDigits {
+				s = s[len(s)-beatDigits:]
+			}
+			pe.printer.draw(r, s, dst.X+padding, y+padding/2)
 		}
 	}
 
@@ -140,15 +145,38 @@ func (pe *patternEditor) convertMouseCoords(x, y int32) (int, int64) {
 	if tick < 0 {
 		tick = 0
 	}
-	tick = int64(math.Round(float64(tick*int64(pe.division))/ticksPerBeat)) *
-		ticksPerBeat / int64(pe.division)
+	tick = pe.roundTickToDivision(tick)
 
 	return track, tick
+}
+
+func (pe *patternEditor) roundTickToDivision(t int64) int64 {
+	return int64(math.Round(float64(t*int64(pe.division))/ticksPerBeat)) *
+		ticksPerBeat / int64(pe.division)
 }
 
 // respond to mouse wheel events
 func (pe *patternEditor) mouseWheel(e *sdl.MouseWheelEvent) {
 	pe.scrollY -= e.Y * scrollTicks * pe.beatHeight / ticksPerBeat
+	if pe.scrollY < 0 {
+		pe.scrollY = 0
+	}
+}
+
+// move the cursor and scroll to a specific beat number
+func (pe *patternEditor) goToBeat(beat float64) {
+	tick := pe.roundTickToDivision(int64(math.Round((beat - 1) * ticksPerBeat)))
+	if tick < 0 {
+		tick = 0
+	}
+	pe.cursorTickClick, pe.cursorTickDrag = tick, tick
+	pe.scrollToCursorIfOffscreen()
+}
+
+// if the cursor is outside the viewport, center it in the viewport
+func (pe *patternEditor) scrollToCursorIfOffscreen() {
+	pe.scrollY = int32(pe.cursorTickDrag*int64(pe.beatHeight)/ticksPerBeat) -
+		(pe.viewport.H-pe.headerHeight)/2 - pe.beatHeight/rowsPerBeat/2
 	if pe.scrollY < 0 {
 		pe.scrollY = 0
 	}
