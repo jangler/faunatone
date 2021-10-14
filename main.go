@@ -128,6 +128,9 @@ func main() {
 					{label: "Insert note off", action: func() {
 						patedit.writeEvent(newTrackEvent(&trackEvent{Type: noteOffEvent}))
 					}},
+					{label: "Insert program change...", action: func() {
+						dialogInsertProgramChange(dia, patedit, wr)
+					}},
 					{label: "Delete events", action: func() {
 						patedit.deleteSelectedEvents()
 					}},
@@ -259,6 +262,25 @@ func pitchToMIDI(p float64) (uint8, int16) {
 	note := uint8(math.Max(0, math.Min(127, p)))
 	bend := int16((p - float64(note)) * 4096)
 	return note, bend
+}
+
+// set d to an input dialog
+func dialogInsertProgramChange(d *dialog, pe *patternEditor, wr *writer.Writer) {
+	*d = *newDialog("Insert program change:", 3, func(s string) {
+		if i, err := strconv.ParseUint(s, 10, 8); err == nil {
+			if i >= 1 && i <= 128 {
+				pe.writeEvent(newTrackEvent(&trackEvent{
+					Type:      programEvent,
+					ByteData1: byte(i - 1),
+				}))
+				writer.ProgramChange(wr, uint8(i-1))
+			} else {
+				dialogMsg(d, "Program must be in the range [1, 128].")
+			}
+		} else {
+			dialogMsg(d, "Invalid input.")
+		}
+	})
 }
 
 // set d to an input dialog

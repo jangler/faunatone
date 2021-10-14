@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"math"
 	"sort"
 
@@ -116,8 +115,13 @@ func (s *song) exportSMF(path string) error {
 				channelMapping[te.track] = i
 				cs := channelStates[i]
 				wr.SetChannel(uint8(i))
+				if cs.program != s.Tracks[te.track].program {
+					writer.ProgramChange(wr, s.Tracks[te.track].program)
+				}
 				note, bend := pitchToMIDI(te.FloatData)
-				writer.Pitchbend(wr, bend)
+				if cs.bend != bend {
+					writer.Pitchbend(wr, bend)
+				}
 				writer.NoteOn(wr, note, te.ByteData1)
 				cs.lastNoteOff = -1
 				cs.activeNote = note
@@ -130,8 +134,9 @@ func (s *song) exportSMF(path string) error {
 						writer.NoteOff(wr, cs.activeNote)
 						cs.lastNoteOff = prevTick
 					}
-				} else {
 				}
+			case programEvent:
+				s.Tracks[te.track].program = te.ByteData1
 			default:
 				println("unhandled event type in song.exportSMF")
 			}
@@ -167,6 +172,7 @@ func pickInactiveChannel(a []*channelState) int {
 type track struct {
 	ChannelMask uint16
 	Events      []*trackEvent
+	program     uint8
 }
 
 // write an event to the track, overwriting any event at the same tick
@@ -204,7 +210,7 @@ func (te *trackEvent) setUiString() {
 	case controllerEvent:
 		te.uiString = fmt.Sprintf("cc %d %d", te.ByteData1, te.ByteData2)
 	case programEvent:
-		te.uiString = fmt.Sprintf("pc %d", te.ByteData1)
+		te.uiString = fmt.Sprintf("prog %d", te.ByteData1+1)
 	case tempoEvent:
 		te.uiString = fmt.Sprintf("tp %.2f", te.FloatData)
 	default:
