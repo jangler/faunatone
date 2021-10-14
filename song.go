@@ -19,6 +19,7 @@ const (
 	controllerEvent
 	programEvent
 	tempoEvent
+	drumNoteOnEvent
 )
 
 const (
@@ -71,8 +72,10 @@ func (s *song) exportSMF(path string) error {
 	// first collate all events and sort
 	events := []*trackEvent{}
 	for i, t := range s.Tracks {
+		t.activeNote = 0xff
 		for _, te := range t.Events {
-			te.track = i
+			te.trackIndex = i
+			te.track = t
 			events = append(events, te)
 		}
 	}
@@ -80,7 +83,7 @@ func (s *song) exportSMF(path string) error {
 		if events[i].Tick < events[j].Tick {
 			return true
 		} else if events[i].Tick == events[j].Tick {
-			return events[i].track < events[j].track
+			return events[i].trackIndex < events[j].trackIndex
 		}
 		return false
 	})
@@ -90,8 +93,7 @@ func (s *song) exportSMF(path string) error {
 	for i := range channelStates {
 		channelStates[i] = &channelState{}
 	}
-	channelMapping := make(map[int]int)
-	programs := make(map[uint8]uint8)
+	vcPrograms := make(map[uint8]uint8)
 
 	// then write file
 	return writer.WriteSMF(path, 1, func(wr *writer.SMF) error {
@@ -104,41 +106,54 @@ func (s *song) exportSMF(path string) error {
 			prevTick = te.Tick
 			switch te.Type {
 			case noteOnEvent:
-				if i, ok := channelMapping[te.track]; ok {
-					cs := channelStates[i]
-					if cs.lastNoteOff == -1 {
-						wr.SetChannel(uint8(i))
-						writer.NoteOff(wr, cs.activeNote)
-						cs.lastNoteOff = prevTick
-					}
+				if activeNote := te.track.activeNote; activeNote != 0xff {
+					wr.SetChannel(te.track.midiChannel)
+					writer.NoteOff(wr, activeNote)
+					te.track.activeNote = 0xff
+					cs := channelStates[te.track.midiChannel]
+					cs.lastNoteOff = prevTick
 				}
-				i := pickInactiveChannel(channelStates)
-				channelMapping[te.track] = i
-				cs := channelStates[i]
-				wr.SetChannel(uint8(i))
-				pseudoChannel := s.Tracks[te.track].Channel
-				if cs.program != programs[pseudoChannel] {
-					writer.ProgramChange(wr, programs[pseudoChannel])
+				te.track.midiChannel = pickInactiveChannel(channelStates)
+				cs := channelStates[te.track.midiChannel]
+				wr.SetChannel(te.track.midiChannel)
+				if cs.program != vcPrograms[te.track.Channel] {
+					writer.ProgramChange(wr, vcPrograms[te.track.Channel])
 				}
 				note, bend := pitchToMIDI(te.FloatData)
 				if cs.bend != bend {
 					writer.Pitchbend(wr, bend)
 				}
 				writer.NoteOn(wr, note, te.ByteData1)
+				te.track.activeNote = note
 				cs.lastNoteOff = -1
-				cs.activeNote = note
 				cs.bend = bend
+			case drumNoteOnEvent:
+				if activeNote := te.track.activeNote; activeNote != 0xff {
+					wr.SetChannel(te.track.midiChannel)
+					writer.NoteOff(wr, activeNote)
+					te.track.activeNote = 0xff
+					cs := channelStates[te.track.midiChannel]
+					cs.lastNoteOff = prevTick
+				}
+				te.track.midiChannel = percussionChannelIndex
+				cs := channelStates[te.track.midiChannel]
+				wr.SetChannel(te.track.midiChannel)
+				if cs.program != vcPrograms[te.track.Channel] {
+					writer.ProgramChange(wr, vcPrograms[te.track.Channel])
+				}
+				writer.NoteOn(wr, te.ByteData1, te.ByteData2)
+				te.track.activeNote = te.ByteData1
+				cs.lastNoteOff = -1
 			case noteOffEvent:
-				if i, ok := channelMapping[te.track]; ok {
-					cs := channelStates[i]
-					if cs.lastNoteOff == -1 {
-						wr.SetChannel(uint8(i))
-						writer.NoteOff(wr, cs.activeNote)
-						cs.lastNoteOff = prevTick
-					}
+				if activeNote := te.track.activeNote; activeNote != 0xff {
+					wr.SetChannel(te.track.midiChannel)
+					writer.NoteOff(wr, activeNote)
+					te.track.activeNote = 0xff
+					cs := channelStates[te.track.midiChannel]
+					cs.lastNoteOff = prevTick
 				}
 			case programEvent:
-				programs[s.Tracks[te.track].Channel] = te.ByteData1
+				vcPrograms[te.track.Channel] = te.ByteData1
 			default:
 				println("unhandled event type in song.exportSMF")
 			}
@@ -150,7 +165,6 @@ func (s *song) exportSMF(path string) error {
 
 type channelState struct {
 	eventIndex  int
-	activeNote  uint8
 	lastNoteOff int64
 	program     uint8
 	controllers [128]uint8
@@ -158,22 +172,22 @@ type channelState struct {
 }
 
 // returns the index of the channel which has had no active notes for the
-// longest time
-func pickInactiveChannel(a []*channelState) int {
+// longest time, aside from the percussion channel
+func pickInactiveChannel(a []*channelState) uint8 {
 	bestScore, bestIndex := int64(math.MaxInt64), 0
 	for i, cs := range a {
-		if cs.lastNoteOff == 0 {
-			return i
-		} else if cs.lastNoteOff < bestScore {
+		if i != percussionChannelIndex && cs.lastNoteOff < bestScore {
 			bestScore, bestIndex = cs.lastNoteOff, i
 		}
 	}
-	return bestIndex
+	return uint8(bestIndex)
 }
 
 type track struct {
-	Channel uint8
-	Events  []*trackEvent
+	Channel     uint8
+	Events      []*trackEvent
+	activeNote  uint8
+	midiChannel uint8
 }
 
 // write an event to the track, overwriting any event at the same tick
@@ -188,13 +202,14 @@ func (t *track) writeEvent(te *trackEvent) {
 }
 
 type trackEvent struct {
-	Tick      int64
-	Type      trackEventType
-	FloatData float64 `json:",omitempty"`
-	ByteData1 byte    `json:",omitempty"`
-	ByteData2 byte    `json:",omitempty"`
-	uiString  string
-	track     int // used by export
+	Tick       int64
+	Type       trackEventType
+	FloatData  float64 `json:",omitempty"`
+	ByteData1  byte    `json:",omitempty"`
+	ByteData2  byte    `json:",omitempty"`
+	uiString   string
+	trackIndex int
+	track      *track // used by export
 }
 
 func newTrackEvent(te *trackEvent) *trackEvent {
@@ -206,6 +221,8 @@ func (te *trackEvent) setUiString() {
 	switch te.Type {
 	case noteOnEvent:
 		te.uiString = fmt.Sprintf("on %.2f %d", te.FloatData, te.ByteData1)
+	case drumNoteOnEvent:
+		te.uiString = fmt.Sprintf("dr %d %d", te.ByteData1, te.ByteData2)
 	case noteOffEvent:
 		te.uiString = "off"
 	case controllerEvent:
