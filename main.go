@@ -95,7 +95,8 @@ func main() {
 	patedit := &patternEditor{
 		printer:  pr,
 		song:     sng,
-		division: 4,
+		division: defaultDivision,
+		velocity: defaultVelocity,
 	}
 
 	dia := &dialog{}
@@ -149,6 +150,7 @@ func main() {
 					{label: "Copy", action: func() { patedit.copy() }},
 					{label: "Paste", action: func() { patedit.paste(false) }},
 					{label: "Mix paste", action: func() { patedit.paste(true) }},
+					{label: "Set velocity...", action: func() { dialogSetVelocity(dia, patedit) }},
 				},
 			},
 			{
@@ -170,6 +172,7 @@ func main() {
 	sb := statusBar{
 		rect: &sdl.Rect{},
 		funcs: []func() string{
+			func() string { return fmt.Sprintf("Velocity: %d", patedit.velocity) },
 			func() string { return fmt.Sprintf("Division: %d", patedit.division) },
 		},
 	}
@@ -219,6 +222,9 @@ func main() {
 			}
 		}
 
+		// hack to prevent Alt+<letter> from typing <letter> into dialog
+		dia.accept = dia.shown
+
 		renderer.SetDrawColorArray(colorBgArray...)
 		renderer.Clear()
 		renderer.SetDrawColorArray(colorFgArray...)
@@ -267,15 +273,14 @@ func dialogInsertNote(d *dialog, pe *patternEditor, wr *writer.Writer) {
 			if f, err := strconv.ParseFloat(s, 64); err == nil {
 				if f >= -2 && f <= 129 {
 					note, bend := pitchToMIDI(f)
-					velocity := uint8(100)
 					pe.writeEvent(newTrackEvent(&trackEvent{
 						Type:      noteOnEvent,
 						FloatData: f,
-						ByteData1: velocity,
+						ByteData1: pe.velocity,
 					}))
 					wr.SetChannel(0)
 					writer.Pitchbend(wr, bend)
-					writer.NoteOn(wr, note, velocity)
+					writer.NoteOn(wr, note, pe.velocity)
 					writer.NoteOff(wr, note)
 				} else {
 					dialogMsg(d, "Note must be in the range [-2, 129].")
@@ -298,17 +303,16 @@ func pitchToMIDI(p float64) (uint8, int16) {
 
 // set to d an input dialog
 func dialogInsertDrumNote(d *dialog, pe *patternEditor, wr *writer.Writer) {
-	*d = *newDialog("Insert drum note", 3, func(s string) {
+	*d = *newDialog("Insert drum note:", 3, func(s string) {
 		if i, err := strconv.ParseUint(s, 10, 8); err == nil {
 			if i < 128 {
-				velocity := uint8(100)
 				pe.writeEvent(newTrackEvent(&trackEvent{
 					Type:      drumNoteOnEvent,
 					ByteData1: uint8(i),
-					ByteData2: velocity,
+					ByteData2: pe.velocity,
 				}))
 				wr.SetChannel(percussionChannelIndex)
-				writer.NoteOn(wr, uint8(i), velocity)
+				writer.NoteOn(wr, uint8(i), pe.velocity)
 				writer.NoteOff(wr, uint8(i))
 			} else {
 				dialogMsg(d, "Note must be in the range [0, 127].")
@@ -335,6 +339,21 @@ func dialogInsertProgramChange(d *dialog, pe *patternEditor, wr *writer.Writer) 
 			}
 		} else {
 			dialogMsg(d, "Invalid input.")
+		}
+	})
+}
+
+// set d to an input dialog
+func dialogSetVelocity(d *dialog, pe *patternEditor) {
+	*d = *newDialog("Set velocity:", 3, func(s string) {
+		if i, err := strconv.ParseUint(s, 10, 8); err == nil {
+			if i < 128 {
+				pe.velocity = uint8(i)
+			} else {
+				dialogMsg(d, "Velocity must be in the range [0, 127].")
+			}
+		} else {
+			dialogMsg(d, err.Error())
 		}
 	})
 }

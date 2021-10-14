@@ -18,6 +18,7 @@ type dialog struct {
 	size   int          // text box will have room for this many chars
 	action func(string) // run if dialog is closed with K_RETURN
 	shown  bool
+	accept bool // accept text input
 }
 
 // create a new dialog
@@ -68,7 +69,7 @@ func (d *dialog) draw(p *printer, r *sdl.Renderer) {
 // respond to text input events
 func (d *dialog) textInput(e *sdl.TextInputEvent) {
 	text := e.GetText()
-	if len(d.input)+len(text) <= d.size {
+	if d.accept && len(d.input)+len(text) <= d.size {
 		d.input += e.GetText()
 	}
 }

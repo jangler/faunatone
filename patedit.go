@@ -8,10 +8,12 @@ import (
 )
 
 const (
-	ticksPerBeat = 960
-	scrollTicks  = ticksPerBeat / 2
-	rowsPerBeat  = 4 // used for graphical purposes only
-	beatDigits   = 4
+	ticksPerBeat    = 960
+	scrollTicks     = ticksPerBeat / 2
+	rowsPerBeat     = 4 // used for graphical purposes only
+	beatDigits      = 4
+	defaultDivision = 4
+	defaultVelocity = 100
 )
 
 // user interface structure for song editing
@@ -32,6 +34,7 @@ type patternEditor struct {
 	viewport         *sdl.Rect
 	copyTicks        int64
 	copiedEvents     [][]*trackEvent // ticks are relative to start of copy area
+	velocity         uint8
 }
 
 // draw all components of the pattern editor interface
