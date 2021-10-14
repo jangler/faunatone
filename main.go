@@ -116,6 +116,10 @@ func main() {
 			{
 				label: "Cursor",
 				items: []*menuItem{
+					{label: "Previous division", action: func() { patedit.moveCursor(0, -1) }},
+					{label: "Next division", action: func() { patedit.moveCursor(0, 1) }},
+					{label: "Previous track", action: func() { patedit.moveCursor(-1, 0) }},
+					{label: "Next track", action: func() { patedit.moveCursor(1, 0) }},
 					{label: "Go to beat...", action: func() { dialogGoToBeat(dia, patedit) }},
 				},
 			},

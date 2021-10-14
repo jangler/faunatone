@@ -303,12 +303,26 @@ func (pe *patternEditor) deleteTrack() {
 
 // keep the cursor in bounds
 func (pe *patternEditor) fixCursor() {
+	if pe.cursorTrackClick < 0 {
+		pe.cursorTrackClick = 0
+	}
+	if pe.cursorTrackDrag < 0 {
+		pe.cursorTrackDrag = 0
+	}
 	if pe.cursorTrackClick >= len(pe.song.Tracks) {
 		pe.cursorTrackClick = len(pe.song.Tracks) - 1
 	}
 	if pe.cursorTrackDrag >= len(pe.song.Tracks) {
 		pe.cursorTrackDrag = len(pe.song.Tracks) - 1
 	}
+	if pe.cursorTickClick < 0 {
+		pe.cursorTickClick = 0
+	}
+	if pe.cursorTickDrag < 0 {
+		pe.cursorTickDrag = 0
+	}
+	pe.cursorTickClick = pe.roundTickToDivision(pe.cursorTickClick)
+	pe.cursorTickDrag = pe.roundTickToDivision(pe.cursorTickDrag)
 }
 
 // move selected tracks left or right
@@ -329,4 +343,14 @@ func (pe *patternEditor) shiftTracks(offset int) {
 		pe.cursorTrackDrag += 1
 		pe.shiftTracks(offset - 1)
 	}
+}
+
+// shift cursor
+func (pe *patternEditor) moveCursor(tracks, divisions int) {
+	pe.cursorTrackClick += tracks
+	pe.cursorTrackDrag += tracks
+	pe.cursorTickClick += int64(divisions) * ticksPerBeat / int64(pe.division)
+	pe.cursorTickDrag += int64(divisions) * ticksPerBeat / int64(pe.division)
+	pe.fixCursor()
+	pe.scrollToCursorIfOffscreen()
 }
