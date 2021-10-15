@@ -21,6 +21,8 @@ const (
 	fontSize     = 14
 	padding      = fontSize / 2
 	fps          = 30
+	appName      = "Faunatone"
+	fileExt      = ".fna"
 )
 
 var (
@@ -67,7 +69,7 @@ func main() {
 	err = sdl.Init(sdl.INIT_VIDEO | sdl.INIT_EVENTS)
 	must(err)
 	defer sdl.Quit()
-	window, err := sdl.CreateWindow("Polyfauna", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
+	window, err := sdl.CreateWindow(appName, sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
 		windowWidth, windowHeight, sdl.WINDOW_SHOWN|sdl.WINDOW_RESIZABLE|sdl.WINDOW_ALLOW_HIGHDPI)
 	must(err)
 	defer window.Destroy()
@@ -456,7 +458,7 @@ func dialogLoadKeymap(d *dialog, k *keymap) {
 // set d to an input dialog
 func dialogOpen(d *dialog, sng *song, pe *patternEditor) {
 	*d = *newDialog("Open:", 50, func(s string) {
-		s = addSuffixIfMissing(s, ".pfa")
+		s = addSuffixIfMissing(s, fileExt)
 		if f, err := os.Open(s); err == nil {
 			defer f.Close()
 			if err := sng.read(f); err == nil {
@@ -473,7 +475,7 @@ func dialogOpen(d *dialog, sng *song, pe *patternEditor) {
 // set d to an input dialog
 func dialogSaveAs(d *dialog, sng *song) {
 	*d = *newDialog("Save as:", 50, func(s string) {
-		s = addSuffixIfMissing(s, ".pfa")
+		s = addSuffixIfMissing(s, fileExt)
 		if f, err := os.Create(s); err == nil {
 			defer f.Close()
 			if err := sng.write(f); err != nil {

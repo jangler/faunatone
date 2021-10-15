@@ -1,4 +1,4 @@
-module github.com/jangler/polyfauna
+module github.com/jangler/faunatone
 
 go 1.17
 
