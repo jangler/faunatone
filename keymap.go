@@ -12,20 +12,32 @@ import (
 	"gitlab.com/gomidi/midi/writer"
 )
 
-var keymapPath = filepath.Join(configPath, "keymap.tsv")
+var (
+	keymapPath        = filepath.Join(configPath, "keymaps")
+	defaultKeymapPath = "12edo.tsv"
+)
 
 // turns key events into note events
-type keymap map[string]float64
+type keymap struct {
+	keymap map[string]float64
+	name   string
+}
 
 // load a keymap from a file
-func newKeymap(path string) keymap {
-	k := make(map[string]float64)
-	if records, err := readTSV(path); err == nil {
+func newKeymap(path string) (*keymap, error) {
+	if !strings.HasSuffix(path, ".tsv") {
+		path += ".tsv"
+	}
+	k := &keymap{
+		keymap: make(map[string]float64),
+		name:   strings.Replace(filepath.Base(path), ".tsv", "", 1),
+	}
+	if records, err := readTSV(filepath.Join(keymapPath, path)); err == nil {
 		for _, rec := range records {
 			ok := false
 			if len(rec) == 2 {
 				if pitch, ok2 := parsePitch(rec[1]); ok2 {
-					k[rec[0]] = pitch
+					k.keymap[rec[0]] = pitch
 					ok = true
 				}
 			}
@@ -34,9 +46,10 @@ func newKeymap(path string) keymap {
 			}
 		}
 	} else {
-		log.Print(err)
+		k.name = "none"
+		return k, err
 	}
-	return keymap(k)
+	return k, nil
 }
 
 var (
@@ -61,12 +74,12 @@ func parsePitch(s string) (float64, bool) {
 }
 
 // respond to keyboard events
-func (k keymap) keyboardEvent(e *sdl.KeyboardEvent, pe *patternEditor, wr *writer.Writer) {
+func (k *keymap) keyboardEvent(e *sdl.KeyboardEvent, pe *patternEditor, wr *writer.Writer) {
 	if e.Repeat != 0 || e.State != sdl.PRESSED {
 		return
 	}
 	s := strings.Replace(formatKeyEvent(e), "Shift+", "", 1)
-	if pitch, ok := k[s]; ok {
+	if pitch, ok := k.keymap[s]; ok {
 		pitch += float64(pe.octave * 12)
 		if pitch < -2 {
 			pitch = -2

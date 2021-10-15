@@ -101,7 +101,7 @@ func main() {
 		octave:   defaultOctave,
 	}
 	pl := newPlayer(sng, wr, true)
-
+	km, _ := newKeymap(defaultKeymapPath)
 	dia := &dialog{}
 
 	running := true
@@ -137,10 +137,6 @@ func main() {
 					{label: "Next division", action: func() { patedit.moveCursor(0, 1) }},
 					{label: "Previous track", action: func() { patedit.moveCursor(-1, 0) }},
 					{label: "Next track", action: func() { patedit.moveCursor(1, 0) }},
-					{label: "Decrease division", action: func() { patedit.addDivision(-1) }},
-					{label: "Increase division", action: func() { patedit.addDivision(1) }},
-					{label: "Halve division", action: func() { patedit.multiplyDivision(0.5) }},
-					{label: "Double division", action: func() { patedit.multiplyDivision(2) }},
 					{label: "Go to beat...", action: func() { dialogGoToBeat(dia, patedit) }},
 				},
 			},
@@ -169,9 +165,19 @@ func main() {
 					{label: "Copy", action: func() { patedit.copy() }},
 					{label: "Paste", action: func() { patedit.paste(false) }},
 					{label: "Mix paste", action: func() { patedit.paste(true) }},
+				},
+			},
+			{
+				label: "Status",
+				items: []*menuItem{
 					{label: "Decrease octave", action: func() { patedit.changeOctave(-1) }},
 					{label: "Increase octave", action: func() { patedit.changeOctave(1) }},
 					{label: "Set velocity...", action: func() { dialogSetVelocity(dia, patedit) }},
+					{label: "Decrease division", action: func() { patedit.addDivision(-1) }},
+					{label: "Increase division", action: func() { patedit.addDivision(1) }},
+					{label: "Halve division", action: func() { patedit.multiplyDivision(0.5) }},
+					{label: "Double division", action: func() { patedit.multiplyDivision(2) }},
+					{label: "Load keymap...", action: func() { dialogLoadKeymap(dia, km) }},
 				},
 			},
 			{
@@ -190,14 +196,13 @@ func main() {
 	}
 	mb.init(pr)
 
-	km := newKeymap(keymapPath)
-
 	sb := statusBar{
 		rect: &sdl.Rect{},
 		funcs: []func() string{
 			func() string { return fmt.Sprintf("Octave: %d", patedit.octave) },
 			func() string { return fmt.Sprintf("Velocity: %d", patedit.velocity) },
 			func() string { return fmt.Sprintf("Division: %d", patedit.division) },
+			func() string { return fmt.Sprintf("Keymap: %s", km.name) },
 		},
 	}
 
@@ -388,6 +393,17 @@ func dialogSetVelocity(d *dialog, pe *patternEditor) {
 			} else {
 				dialogMsg(d, "Velocity must be in the range [0, 127].")
 			}
+		} else {
+			dialogMsg(d, err.Error())
+		}
+	})
+}
+
+// set d to an input dialog
+func dialogLoadKeymap(d *dialog, k *keymap) {
+	*d = *newDialog("Load keymap...", 50, func(s string) {
+		if k2, err := newKeymap(s); err == nil {
+			*k = *k2
 		} else {
 			dialogMsg(d, err.Error())
 		}
