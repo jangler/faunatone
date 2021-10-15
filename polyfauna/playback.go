@@ -48,10 +48,10 @@ func newPlayer(s *song, wr writer.ChannelWriter, realtime bool) *player {
 		virtChannels: make([]*channelState, numVirtualChannels),
 	}
 	for i := range p.midiChannels {
-		p.midiChannels[i] = &channelState{}
+		p.midiChannels[i] = newChannelState()
 	}
 	for i := range p.virtChannels {
-		p.virtChannels[i] = &channelState{}
+		p.virtChannels[i] = newChannelState()
 	}
 	return p
 }
@@ -160,6 +160,12 @@ func (p *player) playTrackEvents(i int, tickMin, tickMax int64) {
 				p.writer.SetChannel(t.midiChannel)
 				mcs := p.midiChannels[t.midiChannel]
 				vcs := p.virtChannels[t.Channel]
+				for i, v := range vcs.controllers {
+					if mcs.controllers[i] != v {
+						writer.ControlChange(p.writer, uint8(i), v)
+						mcs.controllers[i] = v
+					}
+				}
 				// if mcs.program != vcs.program {
 				writer.ProgramChange(p.writer, vcs.program)
 				mcs.program = vcs.program
@@ -186,6 +192,14 @@ func (p *player) playTrackEvents(i int, tickMin, tickMax int64) {
 				mcs.lastNoteOff = -1
 			case noteOffEvent:
 				p.noteOff(i, te.Tick)
+			case controllerEvent:
+				p.virtChannels[t.Channel].controllers[te.ByteData1] = te.ByteData2
+				for _, t2 := range p.song.Tracks {
+					if t2.Channel == t.Channel {
+						p.writer.SetChannel(t2.midiChannel)
+						writer.ControlChange(p.writer, te.ByteData1, te.ByteData2)
+					}
+				}
 			case programEvent:
 				// need to write an nop event here for timing reasons
 				vcs := p.virtChannels[t.Channel]
@@ -221,6 +235,21 @@ type channelState struct {
 	program     uint8
 	controllers [128]uint8
 	bend        int16
+}
+
+// return an initialized channelState, using the default controller values from
+// "GM level 1 developer guidelines - second revision"
+func newChannelState() *channelState {
+	cs := &channelState{}
+	for i := range cs.controllers {
+		cs.controllers[i] = 0
+	}
+	cs.controllers[7] = 100    // volume
+	cs.controllers[10] = 64    // pan
+	cs.controllers[11] = 127   // expression
+	cs.controllers[100] = 0x7f // RPN LSB
+	cs.controllers[101] = 0x7f // RPN MSB
+	return cs
 }
 
 // return the index of the channel which has had no active notes for the

@@ -159,6 +159,9 @@ func main() {
 					{label: "Insert tempo change...", action: func() {
 						dialogInsertTempoChange(dia, patedit)
 					}},
+					{label: "Insert control change...", action: func() {
+						dialogInsertControlChange(dia, patedit)
+					}},
 					{label: "Delete events", action: func() {
 						patedit.deleteSelectedEvents()
 					}},
@@ -381,6 +384,31 @@ func dialogInsertTempoChange(d *dialog, pe *patternEditor) {
 				}))
 			} else {
 				dialogMsg(d, "Tempo must be above zero.")
+			}
+		} else {
+			dialogMsg(d, err.Error())
+		}
+	})
+}
+
+// set d to an input dialog chain
+func dialogInsertControlChange(d *dialog, pe *patternEditor) {
+	*d = *newDialog("Controller index:", 3, func(s string) {
+		if i, err := strconv.ParseUint(s, 10, 8); err == nil {
+			if i < 128 {
+				*d = *newDialog("Controller value:", 3, func(s string) {
+					if v, err := strconv.ParseUint(s, 10, 8); err == nil {
+						pe.writeEvent(newTrackEvent(&trackEvent{
+							Type:      controllerEvent,
+							ByteData1: byte(i),
+							ByteData2: byte(v),
+						}))
+					} else {
+						dialogMsg(d, err.Error())
+					}
+				})
+			} else {
+				dialogMsg(d, "Controller must be in the range [0, 127].")
 			}
 		} else {
 			dialogMsg(d, err.Error())
