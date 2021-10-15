@@ -26,6 +26,7 @@ var (
 	colorBg             = sdl.Color{0xf0, 0xf0, 0xf0, 0xff}
 	colorBgArray        = []uint8{0xf0, 0xf0, 0xf0, 0xff}
 	colorHighlightArray = []uint8{0xe0, 0xe0, 0xe0, 0xff}
+	colorPlayPosArray   = []uint8{0xe8, 0xe8, 0xe8, 0xff}
 	colorFg             = sdl.Color{0x10, 0x10, 0x10, 0xff}
 	colorFgArray        = []uint8{0x10, 0x10, 0x10, 0xff}
 
@@ -86,10 +87,10 @@ func main() {
 
 	sng := &song{
 		Tracks: []*track{
-			&track{Channel: 1},
-			&track{Channel: 1},
-			&track{Channel: 1},
-			&track{Channel: 1},
+			&track{},
+			&track{},
+			&track{},
+			&track{},
 		},
 	}
 	patedit := &patternEditor{
@@ -98,6 +99,7 @@ func main() {
 		division: defaultDivision,
 		velocity: defaultVelocity,
 	}
+	pl := newPlayer(sng, wr, true)
 
 	dia := &dialog{}
 
@@ -112,6 +114,19 @@ func main() {
 					{label: "Save as...", action: func() { dialogSaveAs(dia, sng) }},
 					{label: "Export MIDI...", action: func() { dialogExportMIDI(dia, sng) }},
 					{label: "Quit", action: func() { running = false }},
+				},
+			},
+			{
+				label: "Play",
+				items: []*menuItem{
+					{label: "Song", action: func() {
+						go func() {
+							if pl.playing {
+								pl.signal <- signalStop
+							}
+							pl.playFrom(0)
+						}()
+					}},
 				},
 			},
 			{
@@ -230,7 +245,7 @@ func main() {
 		renderer.SetDrawColorArray(colorFgArray...)
 		viewport := renderer.GetViewport()
 		y := mb.menus[0].rect.H
-		patedit.draw(renderer, &sdl.Rect{0, y, viewport.W, viewport.H - y - sb.rect.H})
+		patedit.draw(renderer, &sdl.Rect{0, y, viewport.W, viewport.H - y - sb.rect.H}, pl.lastTick)
 		sb.draw(pr, renderer)
 		mb.draw(pr, renderer)
 		dia.draw(pr, renderer)
@@ -401,7 +416,12 @@ func dialogExportMIDI(d *dialog, sng *song) {
 func dialogTrackSetChannel(d *dialog, sng *song, pe *patternEditor) {
 	*d = *newDialog("Set channel:", 3, func(s string) {
 		if i, err := strconv.ParseUint(s, 10, 8); err == nil {
-			pe.setTrackChannel(uint8(i))
+			if i >= 1 && i <= numVirtualChannels {
+				pe.setTrackChannel(uint8(i - 1))
+			} else {
+				dialogMsg(d, fmt.Sprintf("Channel must be in the range [1, %d].",
+					numVirtualChannels))
+			}
 		} else {
 			dialogMsg(d, err.Error())
 		}

@@ -39,23 +39,31 @@ type patternEditor struct {
 
 // draw all components of the pattern editor interface
 // TODO all the modification to the dst viewport rect is kind of messy
-func (pe *patternEditor) draw(r *sdl.Renderer, dst *sdl.Rect) {
+func (pe *patternEditor) draw(r *sdl.Renderer, dst *sdl.Rect, playPos int64) {
 	pe.viewport = &sdl.Rect{dst.X, dst.Y, dst.W, dst.H}
 	pe.headerHeight = pe.printer.rect.H + padding*2
 	pe.beatWidth = pe.printer.rect.W*beatDigits + padding*2
 	pe.beatHeight = (pe.printer.rect.H + padding) * rowsPerBeat
 	pe.trackWidth = pe.printer.rect.W*int32(len("on 123.86 100")) + padding
 
+	// draw play position
+	dst.Y += pe.headerHeight
+	dst.H -= pe.headerHeight
+	y := dst.Y + int32(playPos*int64(pe.beatHeight)/ticksPerBeat) - pe.scrollY
+	h := pe.beatHeight / rowsPerBeat
+	if y+h > dst.Y && y < dst.Y+dst.H {
+		r.SetDrawColorArray(colorPlayPosArray...)
+		r.FillRect(&sdl.Rect{0, y, pe.viewport.W, h})
+	}
+
 	// draw selection
 	dst.X += pe.beatWidth
 	dst.W -= pe.beatWidth
-	dst.Y += pe.headerHeight
-	dst.H -= pe.headerHeight
 	trackMin, trackMax, tickMin, tickMax := pe.getSelection()
 	x := dst.X + int32(trackMin)*pe.trackWidth - pe.scrollX
-	y := dst.Y + int32(tickMin*int64(pe.beatHeight)/ticksPerBeat) - pe.scrollY
+	y = dst.Y + int32(tickMin*int64(pe.beatHeight)/ticksPerBeat) - pe.scrollY
 	w := int32(trackMax-trackMin+1) * pe.trackWidth
-	h := int32(tickMax-tickMin)*pe.beatHeight/ticksPerBeat + pe.beatHeight/rowsPerBeat
+	h = int32(tickMax-tickMin)*pe.beatHeight/ticksPerBeat + pe.beatHeight/rowsPerBeat
 	if x+w > dst.X && x < dst.X+dst.W &&
 		y+h > dst.Y && y < dst.Y+dst.H {
 		r.SetDrawColorArray(colorHighlightArray...)
@@ -72,7 +80,7 @@ func (pe *patternEditor) draw(r *sdl.Renderer, dst *sdl.Rect) {
 	r.FillRect(&sdl.Rect{x, dst.Y, dst.W, pe.headerHeight})
 	for _, t := range pe.song.Tracks {
 		if x+pe.trackWidth > dst.X && x < dst.X+dst.W {
-			pe.printer.draw(r, "track "+strconv.Itoa(int(t.Channel)), x, dst.Y+padding)
+			pe.printer.draw(r, "track "+strconv.Itoa(int(t.Channel)+1), x, dst.Y+padding)
 		}
 		x += pe.trackWidth
 	}
