@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/veandco/go-sdl2/sdl"
 	"github.com/veandco/go-sdl2/ttf"
@@ -402,6 +403,7 @@ func dialogSetVelocity(d *dialog, pe *patternEditor) {
 // set d to an input dialog
 func dialogLoadKeymap(d *dialog, k *keymap) {
 	*d = *newDialog("Load keymap...", 50, func(s string) {
+		s = addSuffixIfMissing(s, ".tsv")
 		if k2, err := newKeymap(s); err == nil {
 			*k = *k2
 		} else {
@@ -413,6 +415,7 @@ func dialogLoadKeymap(d *dialog, k *keymap) {
 // set d to an input dialog
 func dialogOpen(d *dialog, sng *song, pe *patternEditor) {
 	*d = *newDialog("Open:", 50, func(s string) {
+		s = addSuffixIfMissing(s, ".pfa")
 		if f, err := os.Open(s); err == nil {
 			defer f.Close()
 			if err := sng.read(f); err == nil {
@@ -429,6 +432,7 @@ func dialogOpen(d *dialog, sng *song, pe *patternEditor) {
 // set d to an input dialog
 func dialogSaveAs(d *dialog, sng *song) {
 	*d = *newDialog("Save as:", 50, func(s string) {
+		s = addSuffixIfMissing(s, ".pfa")
 		if f, err := os.Create(s); err == nil {
 			defer f.Close()
 			if err := sng.write(f); err != nil {
@@ -443,6 +447,7 @@ func dialogSaveAs(d *dialog, sng *song) {
 // set d to an input dialog
 func dialogExportMIDI(d *dialog, sng *song) {
 	*d = *newDialog("Export as:", 50, func(s string) {
+		s = addSuffixIfMissing(s, ".mid")
 		if err := sng.exportSMF(s); err != nil {
 			dialogMsg(d, err.Error())
 		}
@@ -476,4 +481,13 @@ func readTSV(path string) ([][]string, error) {
 	r.Comma = '\t'
 	r.Comment = '#'
 	return r.ReadAll()
+}
+
+// return base+suffix if base does not already end with suffix, otherwise
+// return base. NOT case-sensitive.
+func addSuffixIfMissing(base, suffix string) string {
+	if !strings.HasSuffix(strings.ToLower(base), strings.ToLower(suffix)) {
+		return base + suffix
+	}
+	return base
 }

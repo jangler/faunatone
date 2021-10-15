@@ -25,9 +25,6 @@ type keymap struct {
 
 // load a keymap from a file
 func newKeymap(path string) (*keymap, error) {
-	if !strings.HasSuffix(path, ".tsv") {
-		path += ".tsv"
-	}
 	k := &keymap{
 		keymap: make(map[string]float64),
 		name:   strings.Replace(filepath.Base(path), ".tsv", "", 1),
