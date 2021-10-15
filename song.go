@@ -79,6 +79,10 @@ func (s *song) exportSMF(path string) error {
 type track struct {
 	Channel uint8
 	Events  []*trackEvent
+
+	// used by player
+	activeNote  uint8
+	midiChannel uint8
 }
 
 // write an event to the track, overwriting any event at the same tick
@@ -119,7 +123,7 @@ func (te *trackEvent) setUiString() {
 	case programEvent:
 		te.uiString = fmt.Sprintf("prog %d", te.ByteData1+1)
 	case tempoEvent:
-		te.uiString = fmt.Sprintf("tp %.2f", te.FloatData)
+		te.uiString = fmt.Sprintf("tempo %.2f", te.FloatData)
 	default:
 		te.uiString = "UNKNOWN"
 	}

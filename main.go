@@ -158,6 +158,9 @@ func main() {
 					{label: "Insert program change...", action: func() {
 						dialogInsertProgramChange(dia, patedit, wr)
 					}},
+					{label: "Insert tempo change...", action: func() {
+						dialogInsertTempoChange(dia, patedit)
+					}},
 					{label: "Delete events", action: func() {
 						patedit.deleteSelectedEvents()
 					}},
@@ -354,6 +357,24 @@ func dialogInsertProgramChange(d *dialog, pe *patternEditor, wr *writer.Writer) 
 			}
 		} else {
 			dialogMsg(d, "Invalid input.")
+		}
+	})
+}
+
+// set d to an input dialog
+func dialogInsertTempoChange(d *dialog, pe *patternEditor) {
+	*d = *newDialog("Insert tempo change:", 7, func(s string) {
+		if f, err := strconv.ParseFloat(s, 64); err == nil {
+			if f > 0 {
+				pe.writeEvent(newTrackEvent(&trackEvent{
+					Type:      tempoEvent,
+					FloatData: f,
+				}))
+			} else {
+				dialogMsg(d, "Tempo must be above zero.")
+			}
+		} else {
+			dialogMsg(d, err.Error())
 		}
 	})
 }

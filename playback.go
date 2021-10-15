@@ -33,7 +33,6 @@ type player struct {
 	writer       writer.ChannelWriter
 	midiChannels []*channelState
 	virtChannels []*channelState
-	trackStates  []*trackState
 }
 
 // create a new player
@@ -47,16 +46,12 @@ func newPlayer(s *song, wr writer.ChannelWriter, realtime bool) *player {
 		writer:       wr,
 		midiChannels: make([]*channelState, numMIDIChannels),
 		virtChannels: make([]*channelState, numVirtualChannels),
-		trackStates:  make([]*trackState, len(s.Tracks)),
 	}
 	for i := range p.midiChannels {
 		p.midiChannels[i] = &channelState{}
 	}
 	for i := range p.virtChannels {
 		p.virtChannels[i] = &channelState{}
-	}
-	for i := range p.trackStates {
-		p.trackStates[i] = &trackState{activeNote: noNote}
 	}
 	return p
 }
@@ -69,7 +64,7 @@ func (p *player) playFrom(tick int64) {
 	}
 	p.lastTick = tick
 	p.findHorizon()
-	for i := range p.horizon {
+	for i := range p.song.Tracks {
 		p.playTrackEvents(i, 0, 0)
 	}
 	go func() {
@@ -83,19 +78,12 @@ func (p *player) playFrom(tick int64) {
 			}
 			println(tick)
 
-			for i, h := range p.horizon {
-				if h <= tick {
-					p.playTrackEvents(i, p.lastTick+1, tick)
-				}
+			for i := range p.song.Tracks {
+				p.playTrackEvents(i, p.lastTick+1, tick)
 			}
 
 			p.lastTick = tick
-
-			for i, h := range p.horizon {
-				if h <= tick {
-					p.findTrackHorizon(i)
-				}
-			}
+			p.findHorizon()
 
 			go func() {
 				if tth, ok := p.ticksToHorizon(); ok {
@@ -164,44 +152,48 @@ func (p *player) durationFromTicks(t int64) time.Duration {
 // play events on track i in the tick range [tickMin, tickMax]
 func (p *player) playTrackEvents(i int, tickMin, tickMax int64) {
 	t := p.song.Tracks[i]
-	ts := p.trackStates[i]
 	for _, te := range t.Events {
 		if te.Tick >= tickMin && te.Tick <= tickMax {
 			switch te.Type {
 			case noteOnEvent:
 				p.noteOff(i, te.Tick)
-				ts.midiChannel = pickInactiveChannel(p.midiChannels)
-				p.writer.SetChannel(ts.midiChannel)
-				mcs := p.midiChannels[ts.midiChannel]
+				t.midiChannel = pickInactiveChannel(p.midiChannels)
+				p.writer.SetChannel(t.midiChannel)
+				mcs := p.midiChannels[t.midiChannel]
 				vcs := p.virtChannels[t.Channel]
-				if mcs.program != vcs.program {
-					writer.ProgramChange(p.writer, vcs.program)
-					mcs.program = vcs.program
-				}
+				// if mcs.program != vcs.program {
+				writer.ProgramChange(p.writer, vcs.program)
+				mcs.program = vcs.program
+				// }
 				note, bend := pitchToMIDI(te.FloatData)
-				if mcs.bend != bend {
-					writer.Pitchbend(p.writer, bend)
-					mcs.bend = bend
-				}
+				// if mcs.bend != bend {
+				writer.Pitchbend(p.writer, bend)
+				mcs.bend = bend
+				// }
 				writer.NoteOn(p.writer, note, te.ByteData1)
-				ts.activeNote = note
+				t.activeNote = note
 				mcs.lastNoteOff = -1
 			case drumNoteOnEvent:
 				p.noteOff(i, te.Tick)
-				ts.midiChannel = percussionChannelIndex
-				p.writer.SetChannel(ts.midiChannel)
-				mcs := p.midiChannels[ts.midiChannel]
+				t.midiChannel = percussionChannelIndex
+				p.writer.SetChannel(t.midiChannel)
+				mcs := p.midiChannels[t.midiChannel]
 				vcs := p.virtChannels[t.Channel]
 				if mcs.program != vcs.program {
 					writer.ProgramChange(p.writer, vcs.program)
 				}
 				writer.NoteOn(p.writer, te.ByteData1, te.ByteData2)
-				ts.activeNote = te.ByteData1
+				t.activeNote = te.ByteData1
 				mcs.lastNoteOff = -1
 			case noteOffEvent:
 				p.noteOff(i, te.Tick)
 			case programEvent:
 				p.virtChannels[t.Channel].program = te.ByteData1
+			case tempoEvent:
+				p.bpm = te.FloatData
+				if wr, ok := p.writer.(*writer.SMF); ok {
+					writer.TempoBPM(wr, te.FloatData)
+				}
 			default:
 				println("unhandled event type in player.playTrackEvents")
 			}
@@ -211,12 +203,12 @@ func (p *player) playTrackEvents(i int, tickMin, tickMax int64) {
 
 // if a note is playing on the indexed track, play a note off
 func (p *player) noteOff(i int, tick int64) {
-	ts := p.trackStates[i]
-	if activeNote := ts.activeNote; activeNote != 0xff {
-		p.writer.SetChannel(ts.midiChannel)
+	t := p.song.Tracks[i]
+	if activeNote := t.activeNote; activeNote != 0xff {
+		p.writer.SetChannel(t.midiChannel)
 		writer.NoteOff(p.writer, activeNote)
-		ts.activeNote = 0xff
-		p.midiChannels[ts.midiChannel].lastNoteOff = tick
+		t.activeNote = 0xff
+		p.midiChannels[t.midiChannel].lastNoteOff = tick
 	}
 }
 
@@ -238,10 +230,4 @@ func pickInactiveChannel(a []*channelState) uint8 {
 		}
 	}
 	return uint8(bestIndex)
-}
-
-// type that tracks playing state of a track
-type trackState struct {
-	activeNote  uint8
-	midiChannel uint8
 }
