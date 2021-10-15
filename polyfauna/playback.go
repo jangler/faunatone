@@ -76,7 +76,6 @@ func (p *player) playFrom(tick int64) {
 			if wr, ok := p.writer.(*writer.SMF); ok {
 				wr.SetDelta(uint32(tick - p.lastTick))
 			}
-			println(tick)
 
 			for i := range p.song.Tracks {
 				p.playTrackEvents(i, p.lastTick+1, tick)
@@ -188,7 +187,11 @@ func (p *player) playTrackEvents(i int, tickMin, tickMax int64) {
 			case noteOffEvent:
 				p.noteOff(i, te.Tick)
 			case programEvent:
-				p.virtChannels[t.Channel].program = te.ByteData1
+				// need to write an nop event here for timing reasons
+				vcs := p.virtChannels[t.Channel]
+				p.writer.SetChannel(t.midiChannel)
+				writer.ProgramChange(p.writer, vcs.program)
+				vcs.program = te.ByteData1
 			case tempoEvent:
 				p.bpm = te.FloatData
 				if wr, ok := p.writer.(*writer.SMF); ok {

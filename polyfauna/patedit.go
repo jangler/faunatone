@@ -86,7 +86,7 @@ func (pe *patternEditor) draw(r *sdl.Renderer, dst *sdl.Rect, playPos int64) {
 	r.FillRect(&sdl.Rect{x, dst.Y, dst.W, pe.headerHeight})
 	for _, t := range pe.song.Tracks {
 		if x+pe.trackWidth > dst.X && x < dst.X+dst.W {
-			pe.printer.draw(r, "track "+strconv.Itoa(int(t.Channel)+1), x, dst.Y+padding)
+			pe.printer.draw(r, "channel "+strconv.Itoa(int(t.Channel)+1), x, dst.Y+padding)
 		}
 		x += pe.trackWidth
 	}
