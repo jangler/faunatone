@@ -9,8 +9,8 @@ Left	Cursor	Previous track
 Right	Cursor	Next track
 Shift+Tab	Cursor	Previous track
 Tab	Cursor	Next track
-Ctrl+-	Cursor	Decrement division
-Ctrl+=	Cursor	Increment division
+Ctrl+-	Cursor	Decrease division
+Ctrl+=	Cursor	Increase division
 Ctrl+Keypad /	Cursor	Halve division
 Ctrl+Keypad *	Cursor	Double division
 Ctrl+G	Cursor	Go to beat...
@@ -24,6 +24,8 @@ Ctrl+X	Edit	Cut
 Ctrl+C	Edit	Copy
 Ctrl+V	Edit	Paste
 Ctrl+M	Edit	Mix paste
+Keypad /	Edit	Decrease octave
+Keypad *	Edit	Increase octave
 Alt+V	Edit	Set velocity...
 Ctrl+L	Track	Set channel...
 Ctrl+Insert	Track	Insert

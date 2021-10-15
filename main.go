@@ -98,6 +98,7 @@ func main() {
 		song:     sng,
 		division: defaultDivision,
 		velocity: defaultVelocity,
+		octave:   defaultOctave,
 	}
 	pl := newPlayer(sng, wr, true)
 
@@ -136,8 +137,8 @@ func main() {
 					{label: "Next division", action: func() { patedit.moveCursor(0, 1) }},
 					{label: "Previous track", action: func() { patedit.moveCursor(-1, 0) }},
 					{label: "Next track", action: func() { patedit.moveCursor(1, 0) }},
-					{label: "Decrement division", action: func() { patedit.addDivision(-1) }},
-					{label: "Increment division", action: func() { patedit.addDivision(1) }},
+					{label: "Decrease division", action: func() { patedit.addDivision(-1) }},
+					{label: "Increase division", action: func() { patedit.addDivision(1) }},
 					{label: "Halve division", action: func() { patedit.multiplyDivision(0.5) }},
 					{label: "Double division", action: func() { patedit.multiplyDivision(2) }},
 					{label: "Go to beat...", action: func() { dialogGoToBeat(dia, patedit) }},
@@ -168,6 +169,8 @@ func main() {
 					{label: "Copy", action: func() { patedit.copy() }},
 					{label: "Paste", action: func() { patedit.paste(false) }},
 					{label: "Mix paste", action: func() { patedit.paste(true) }},
+					{label: "Decrease octave", action: func() { patedit.changeOctave(-1) }},
+					{label: "Increase octave", action: func() { patedit.changeOctave(1) }},
 					{label: "Set velocity...", action: func() { dialogSetVelocity(dia, patedit) }},
 				},
 			},
@@ -187,9 +190,12 @@ func main() {
 	}
 	mb.init(pr)
 
+	km := newKeymap(keymapPath)
+
 	sb := statusBar{
 		rect: &sdl.Rect{},
 		funcs: []func() string{
+			func() string { return fmt.Sprintf("Octave: %d", patedit.octave) },
 			func() string { return fmt.Sprintf("Velocity: %d", patedit.velocity) },
 			func() string { return fmt.Sprintf("Division: %d", patedit.division) },
 		},
@@ -218,13 +224,7 @@ func main() {
 				if dia.shown {
 					dia.keyboardEvent(event)
 				} else if !mb.keyboardEvent(event) {
-					if event.Repeat == 0 {
-						switch event.Keysym.Sym {
-						case sdl.K_z:
-							if event.State == sdl.PRESSED {
-							}
-						}
-					}
+					km.keyboardEvent(event, patedit, wr)
 				}
 			case *sdl.TextInputEvent:
 				if dia.shown {
@@ -451,7 +451,7 @@ func dialogTrackSetChannel(d *dialog, sng *song, pe *patternEditor) {
 
 // read records from a TSV file
 func readTSV(path string) ([][]string, error) {
-	f, err := os.Open(shortcutsPath)
+	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}

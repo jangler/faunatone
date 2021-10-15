@@ -14,6 +14,7 @@ const (
 	beatDigits      = 4
 	defaultDivision = 4
 	defaultVelocity = 100
+	defaultOctave   = 4
 )
 
 // user interface structure for song editing
@@ -35,6 +36,7 @@ type patternEditor struct {
 	copyTicks        int64
 	copiedEvents     [][]*trackEvent // ticks are relative to start of copy area
 	velocity         uint8
+	octave           int
 }
 
 // draw all components of the pattern editor interface
@@ -384,4 +386,14 @@ func (pe *patternEditor) multiplyDivision(factor float64) {
 		pe.division = 1
 	}
 	pe.fixCursor()
+}
+
+// change octave via addition
+func (pe *patternEditor) changeOctave(delta int) {
+	pe.octave += delta
+	if pe.octave < 0 {
+		pe.octave = 0
+	} else if pe.octave > 10 {
+		pe.octave = 10
+	}
 }
