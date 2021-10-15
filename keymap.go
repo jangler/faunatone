@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/veandco/go-sdl2/sdl"
 	"gitlab.com/gomidi/midi/writer"
@@ -64,21 +65,31 @@ func (k keymap) keyboardEvent(e *sdl.KeyboardEvent, pe *patternEditor, wr *write
 	if e.Repeat != 0 || e.State != sdl.PRESSED {
 		return
 	}
-	if pitch, ok := k[formatKeyEvent(e)]; ok {
+	s := strings.Replace(formatKeyEvent(e), "Shift+", "", 1)
+	if pitch, ok := k[s]; ok {
 		pitch += float64(pe.octave * 12)
 		if pitch < -2 {
 			pitch = -2
 		} else if pitch > 129 {
 			pitch = 129
 		}
-		pe.writeEvent(newTrackEvent(&trackEvent{
-			Type:      noteOnEvent,
-			FloatData: pitch,
-			ByteData1: pe.velocity,
-		}))
 		note, bend := pitchToMIDI(pitch)
-		wr.SetChannel(0)
-		writer.Pitchbend(wr, bend)
+		if e.Keysym.Mod&sdl.KMOD_SHIFT == 0 {
+			pe.writeEvent(newTrackEvent(&trackEvent{
+				Type:      noteOnEvent,
+				FloatData: pitch,
+				ByteData1: pe.velocity,
+			}))
+			wr.SetChannel(0)
+			writer.Pitchbend(wr, bend)
+		} else {
+			pe.writeEvent(newTrackEvent(&trackEvent{
+				Type:      drumNoteOnEvent,
+				ByteData1: note,
+				ByteData2: pe.velocity,
+			}))
+			wr.SetChannel(percussionChannelIndex)
+		}
 		writer.NoteOn(wr, note, pe.velocity)
 		writer.NoteOff(wr, note)
 	}
