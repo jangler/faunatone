@@ -14,7 +14,11 @@ const (
 	beatDigits      = 4
 	defaultDivision = 4
 	defaultVelocity = 100
-	defaultOctave   = 4
+	defaultRefPitch = 60
+
+	// widest range achievable with 2-semitone pitch wheel range
+	minPitch = -2
+	maxPitch = 129
 )
 
 // user interface structure for song editing
@@ -36,7 +40,7 @@ type patternEditor struct {
 	copyTicks        int64
 	copiedEvents     [][]*trackEvent // ticks are relative to start of copy area
 	velocity         uint8
-	octave           int
+	refPitch         float64
 }
 
 // draw all components of the pattern editor interface
@@ -388,12 +392,23 @@ func (pe *patternEditor) multiplyDivision(factor float64) {
 	pe.fixCursor()
 }
 
-// change octave via addition
-func (pe *patternEditor) changeOctave(delta int) {
-	pe.octave += delta
-	if pe.octave < 0 {
-		pe.octave = 0
-	} else if pe.octave > 10 {
-		pe.octave = 10
+// change reference pitch via addition
+func (pe *patternEditor) modifyRefPitch(delta float64) {
+	pe.refPitch += delta
+	if pe.refPitch < minPitch {
+		pe.refPitch = minPitch
+	} else if pe.refPitch > maxPitch {
+		pe.refPitch = maxPitch
+	}
+}
+
+// set ref pitch to the top-left corner of selection
+func (pe *patternEditor) captureRefPitch() {
+	trackMin, _, tickMin, _ := pe.getSelection()
+	for _, te := range pe.song.Tracks[trackMin].Events {
+		if te.Type == noteOnEvent && te.Tick == tickMin {
+			pe.refPitch = te.FloatData
+			return
+		}
 	}
 }

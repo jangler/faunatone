@@ -99,7 +99,7 @@ func main() {
 		song:     sng,
 		division: defaultDivision,
 		velocity: defaultVelocity,
-		octave:   defaultOctave,
+		refPitch: defaultRefPitch,
 	}
 	pl := newPlayer(sng, wr, true)
 	km, _ := newKeymap(defaultKeymapPath)
@@ -171,8 +171,9 @@ func main() {
 			{
 				label: "Status",
 				items: []*menuItem{
-					{label: "Decrease octave", action: func() { patedit.changeOctave(-1) }},
-					{label: "Increase octave", action: func() { patedit.changeOctave(1) }},
+					{label: "Decrease octave", action: func() { patedit.modifyRefPitch(-12) }},
+					{label: "Increase octave", action: func() { patedit.modifyRefPitch(12) }},
+					{label: "Capture root pitch", action: func() { patedit.captureRefPitch() }},
 					{label: "Set velocity...", action: func() { dialogSetVelocity(dia, patedit) }},
 					{label: "Decrease division", action: func() { patedit.addDivision(-1) }},
 					{label: "Increase division", action: func() { patedit.addDivision(1) }},
@@ -200,7 +201,7 @@ func main() {
 	sb := statusBar{
 		rect: &sdl.Rect{},
 		funcs: []func() string{
-			func() string { return fmt.Sprintf("Octave: %d", patedit.octave) },
+			func() string { return fmt.Sprintf("Root: %.2f", patedit.refPitch) },
 			func() string { return fmt.Sprintf("Velocity: %d", patedit.velocity) },
 			func() string { return fmt.Sprintf("Division: %d", patedit.division) },
 			func() string { return fmt.Sprintf("Keymap: %s", km.name) },
@@ -272,7 +273,7 @@ func dialogGoToBeat(d *dialog, pe *patternEditor) {
 			if f, err := strconv.ParseFloat(s, 64); err == nil {
 				pe.goToBeat(f)
 			} else {
-				dialogMsg(d, "Invalid input.")
+				dialogMsg(d, err.Error())
 			}
 		},
 		shown: true,
@@ -295,7 +296,7 @@ func dialogInsertNote(d *dialog, pe *patternEditor, wr *writer.Writer) {
 		size:   7,
 		action: func(s string) {
 			if f, err := strconv.ParseFloat(s, 64); err == nil {
-				if f >= -2 && f <= 129 {
+				if f >= minPitch && f <= maxPitch {
 					note, bend := pitchToMIDI(f)
 					pe.writeEvent(newTrackEvent(&trackEvent{
 						Type:      noteOnEvent,
@@ -307,10 +308,11 @@ func dialogInsertNote(d *dialog, pe *patternEditor, wr *writer.Writer) {
 					writer.NoteOn(wr, note, pe.velocity)
 					writer.NoteOff(wr, note)
 				} else {
-					dialogMsg(d, "Note must be in the range [-2, 129].")
+					dialogMsg(d, fmt.Sprintf("Note must be in the range [-%.f, %.f].",
+						minPitch, maxPitch))
 				}
 			} else {
-				dialogMsg(d, "Invalid syntax.")
+				dialogMsg(d, err.Error())
 			}
 		},
 		shown: true,
@@ -362,7 +364,7 @@ func dialogInsertProgramChange(d *dialog, pe *patternEditor, wr *writer.Writer) 
 				dialogMsg(d, "Program must be in the range [1, 128].")
 			}
 		} else {
-			dialogMsg(d, "Invalid input.")
+			dialogMsg(d, err.Error())
 		}
 	})
 }

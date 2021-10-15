@@ -22,6 +22,7 @@ Ctrl+V	Edit	Paste
 Ctrl+M	Edit	Mix paste
 Keypad /	Status	Decrease octave
 Keypad *	Status	Increase octave
+Space	Status	Capture root pitch
 Alt+V	Status	Set velocity...
 Ctrl+-	Status	Decrease division
 Ctrl+=	Status	Increase division

@@ -77,11 +77,11 @@ func (k *keymap) keyboardEvent(e *sdl.KeyboardEvent, pe *patternEditor, wr *writ
 	}
 	s := strings.Replace(formatKeyEvent(e), "Shift+", "", 1)
 	if pitch, ok := k.keymap[s]; ok {
-		pitch += float64(pe.octave * 12)
-		if pitch < -2 {
-			pitch = -2
-		} else if pitch > 129 {
-			pitch = 129
+		pitch += pe.refPitch
+		if pitch < minPitch {
+			pitch = minPitch
+		} else if pitch > maxPitch {
+			pitch = maxPitch
 		}
 		note, bend := pitchToMIDI(pitch)
 		if e.Keysym.Mod&sdl.KMOD_SHIFT == 0 {
