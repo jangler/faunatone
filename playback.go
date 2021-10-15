@@ -176,12 +176,13 @@ func (p *player) playTrackEvents(i int, tickMin, tickMax int64) {
 				vcs := p.virtChannels[t.Channel]
 				if mcs.program != vcs.program {
 					writer.ProgramChange(p.writer, vcs.program)
+					mcs.program = vcs.program
 				}
 				note, bend := pitchToMIDI(te.FloatData)
-				// if mcs.bend != bend {
-				writer.Pitchbend(p.writer, bend)
-				mcs.bend = bend
-				// }
+				if mcs.bend != bend {
+					writer.Pitchbend(p.writer, bend)
+					mcs.bend = bend
+				}
 				writer.NoteOn(p.writer, note, te.ByteData1)
 				ts.activeNote = note
 				mcs.lastNoteOff = -1
