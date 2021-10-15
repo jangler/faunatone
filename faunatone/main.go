@@ -171,7 +171,7 @@ func main() {
 					{label: "Copy", action: func() { patedit.copy() }},
 					{label: "Paste", action: func() { patedit.paste(false) }},
 					{label: "Mix paste", action: func() { patedit.paste(true) }},
-					{label: "Transpose...", action: func() { dialogTranpose(dia, patedit) }},
+					{label: "Transpose...", action: func() { dialogTranpose(dia, patedit, km) }},
 				},
 			},
 			{
@@ -418,12 +418,13 @@ func dialogInsertControlChange(d *dialog, pe *patternEditor) {
 	})
 }
 
-func dialogTranpose(d *dialog, pe *patternEditor) {
+// set d to an input dialog
+func dialogTranpose(d *dialog, pe *patternEditor, k *keymap) {
 	*d = *newDialog("Transpose selection by:", 7, func(s string) {
-		if f, ok := parsePitch(s); ok {
+		if f, err := parsePitch(s, k); err == nil {
 			pe.transposeSelection(f)
 		} else {
-			dialogMsg(d, "Invalid pitch syntax.")
+			dialogMsg(d, err.Error())
 		}
 	})
 }

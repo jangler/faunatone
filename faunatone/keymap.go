@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"math"
 	"path/filepath"
@@ -33,7 +34,7 @@ func newKeymap(path string) (*keymap, error) {
 		for _, rec := range records {
 			ok := false
 			if len(rec) == 2 {
-				if pitch, ok2 := parsePitch(rec[1]); ok2 {
+				if pitch, err := parsePitch(rec[1], k); err == nil {
 					k.keymap[rec[0]] = pitch
 					ok = true
 				}
@@ -52,22 +53,28 @@ func newKeymap(path string) (*keymap, error) {
 var (
 	ratioRegexp   = regexp.MustCompile(`([0-9.]+)/([0-9.]+)`)
 	edoStepRegexp = regexp.MustCompile(`(-?[0-9.]+)\\([0-9.]+)`)
+	keyRefRegexp  = regexp.MustCompile(`@(.+)`)
 )
 
 // convert a string to a floating-point midi pitch offset
-func parsePitch(s string) (float64, bool) {
+func parsePitch(s string, k *keymap) (float64, error) {
 	if m := ratioRegexp.FindAllStringSubmatch(s, 1); m != nil {
 		num, _ := strconv.ParseFloat(m[0][1], 64)
 		den, _ := strconv.ParseFloat(m[0][2], 64)
-		return 12 * math.Log(num/den) / math.Log(2), true
+		return 12 * math.Log(num/den) / math.Log(2), nil
 	} else if m := edoStepRegexp.FindAllStringSubmatch(s, 1); m != nil {
 		step, _ := strconv.ParseFloat(m[0][1], 64)
 		edo, _ := strconv.ParseFloat(m[0][2], 64)
-		return 12 / edo * step, true
+		return 12 / edo * step, nil
+	} else if m := keyRefRegexp.FindAllStringSubmatch(s, 1); m != nil {
+		if f, ok := k.keymap[m[0][1]]; ok {
+			return f, nil
+		}
+		return 0, fmt.Errorf("no key \"%s\" in keymap", m[0][1])
 	} else if f, err := strconv.ParseFloat(s, 64); err == nil {
-		return f, true
+		return f, nil
 	}
-	return 0, false
+	return 0, fmt.Errorf("invalid pitch syntax")
 }
 
 // respond to keyboard events
