@@ -189,6 +189,7 @@ func main() {
 					{label: "Paste", action: func() { patedit.paste(false) }},
 					{label: "Mix paste", action: func() { patedit.paste(true) }},
 					{label: "Transpose...", action: func() { dialogTranpose(dia, patedit, km) }},
+					{label: "Interpolate", action: func() { patedit.interpolateSelection() }},
 				},
 			},
 			{

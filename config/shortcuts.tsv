@@ -24,6 +24,7 @@ Ctrl+C	Edit	Copy
 Ctrl+V	Edit	Paste
 Ctrl+M	Edit	Mix paste
 Ctrl+T	Edit	Transpose...
+Ctrl+I	Edit	Interpolate
 Keypad /	Status	Decrease octave
 Keypad *	Status	Increase octave
 Space	Status	Capture root pitch

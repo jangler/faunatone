@@ -217,10 +217,10 @@ func (pe *patternEditor) scrollToCursorIfOffscreen() {
 	}
 }
 
-// write an event to the cursor click position
+// write an event to the cursor position(s)
 func (pe *patternEditor) writeEvent(te *trackEvent) {
-	trackMin, trackMax, _, _ := pe.getSelection()
-	te.Tick = pe.cursorTickClick
+	trackMin, trackMax, tickMin, _ := pe.getSelection()
+	te.Tick = tickMin
 	for i := trackMin; i <= trackMax; i++ {
 		// need to make a separate struct for each track
 		te2 := &trackEvent{}
@@ -435,4 +435,52 @@ func (pe *patternEditor) transposeSelection(delta float64) {
 			}
 		}
 	}
+}
+
+// insert interpolated events at each division between events of same type at
+// each end of selection
+func (pe *patternEditor) interpolateSelection() {
+	trackMin, trackMax, tickMin, tickMax := pe.getSelection()
+	for i := trackMin; i <= trackMax; i++ {
+		var startEvt, endEvt *trackEvent
+		for _, te := range pe.song.Tracks[i].Events {
+			if te.Tick == tickMin {
+				startEvt = te
+			} else if te.Tick == tickMax {
+				endEvt = te
+			}
+		}
+		if startEvt != nil && endEvt != nil && startEvt.Type == endEvt.Type {
+			increment := ticksPerBeat / int64(pe.division)
+			for tick := startEvt.Tick + increment; tick < endEvt.Tick; tick += increment {
+				te := &trackEvent{}
+				*te = *startEvt
+				te.Tick = tick
+				switch te.Type {
+				case controllerEvent:
+					te.ByteData2 = byte(math.Round(interpolateValue(tick, startEvt.Tick,
+						endEvt.Tick, float64(startEvt.ByteData2), float64(endEvt.ByteData2))))
+				case noteOnEvent:
+					te.FloatData = interpolateValue(tick,
+						startEvt.Tick, endEvt.Tick, startEvt.FloatData, endEvt.FloatData)
+					te.ByteData1 = byte(math.Round(interpolateValue(tick, startEvt.Tick,
+						endEvt.Tick, float64(startEvt.ByteData1), float64(endEvt.ByteData1))))
+				case tempoEvent:
+					te.FloatData = interpolateValue(tick,
+						startEvt.Tick, endEvt.Tick, startEvt.FloatData, endEvt.FloatData)
+				case programEvent:
+					te.ByteData1 = byte(math.Round(interpolateValue(tick, startEvt.Tick,
+						endEvt.Tick, float64(startEvt.ByteData1), float64(endEvt.ByteData1))))
+				}
+				te.setUiString()
+				pe.song.Tracks[i].writeEvent(te)
+			}
+		}
+	}
+}
+
+// linearly interpolate a value
+func interpolateValue(pos, start, end int64, a, b float64) float64 {
+	coeff := float64(pos-start) / float64(end-start)
+	return a*(1-coeff) + b*coeff
 }
