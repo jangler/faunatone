@@ -96,7 +96,6 @@ func main() {
 		}
 	}()
 	fps := getRefreshRate()
-	println(fps)
 
 	sng := &song{
 		Tracks: []*track{

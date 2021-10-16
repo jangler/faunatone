@@ -115,7 +115,7 @@ func (pe *patternEditor) draw(r *sdl.Renderer, dst *sdl.Rect, playPos int64) {
 		if x+pe.trackWidth > dst.X && x < dst.X+dst.W {
 			for _, e := range t.Events {
 				y := dst.Y + int32(e.Tick*int64(pe.beatHeight)/ticksPerBeat) - pe.scrollY
-				if y+pe.beatHeight > dst.Y && y < dst.Y+dst.H {
+				if y >= dst.Y && y < dst.Y+dst.H {
 					pe.printer.draw(r, e.uiString, x+padding/2, y+padding/2)
 				}
 			}
