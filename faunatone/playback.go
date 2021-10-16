@@ -40,6 +40,7 @@ type player struct {
 	writer       writer.ChannelWriter
 	midiChannels []*channelState
 	virtChannels []*channelState
+	redrawChan   chan bool // send true on this when a signal is received
 
 	// ignore signalContinue messages with world < this.
 	// increment world when signalStop and signalStart are sent.
@@ -131,6 +132,11 @@ func (p *player) run() {
 			}
 		case signalSongChanged:
 			p.findHorizon()
+		}
+
+		// if we got any signal, assume redraw is needed
+		if p.redrawChan != nil {
+			p.redrawChan <- true
 		}
 	}
 }

@@ -20,9 +20,9 @@ const (
 	windowHeight = 720
 	fontSize     = 14
 	padding      = fontSize / 2
-	fps          = 30
 	appName      = "Faunatone"
 	fileExt      = ".fna"
+	defaultFps   = 60
 )
 
 var (
@@ -88,6 +88,16 @@ func main() {
 	must(err)
 	defer pr.destroy()
 
+	redraw := false
+	redrawChan := make(chan bool)
+	go func() {
+		for v := range redrawChan {
+			redraw = v
+		}
+	}()
+	fps := getRefreshRate()
+	println(fps)
+
 	sng := &song{
 		Tracks: []*track{
 			&track{},
@@ -105,6 +115,7 @@ func main() {
 		refPitch:   defaultRefPitch,
 	}
 	pl := newPlayer(sng, wr, true)
+	pl.redrawChan = redrawChan
 	go pl.run()
 	km, _ := newKeymap(defaultKeymapPath)
 	dia := &dialog{}
@@ -232,6 +243,9 @@ func main() {
 
 	for running {
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
+			// if we got any event, assume redraw is needed
+			redrawChan <- true
+
 			switch event := event.(type) {
 			case *sdl.MouseMotionEvent:
 				if !dia.shown {
@@ -272,17 +286,20 @@ func main() {
 		// hack to prevent Alt+<letter> from typing <letter> into dialog
 		dia.accept = dia.shown
 
-		renderer.SetDrawColorArray(colorBgArray...)
-		renderer.Clear()
-		renderer.SetDrawColorArray(colorFgArray...)
-		viewport := renderer.GetViewport()
-		y := mb.menus[0].rect.H
-		patedit.draw(renderer, &sdl.Rect{0, y, viewport.W, viewport.H - y - sb.rect.H}, pl.lastTick)
-		sb.draw(pr, renderer)
-		mb.draw(pr, renderer)
-		dia.draw(pr, renderer)
-		renderer.Present()
-		sdl.Delay(1000 / fps)
+		if redraw {
+			redrawChan <- false
+			renderer.SetDrawColorArray(colorBgArray...)
+			renderer.Clear()
+			renderer.SetDrawColorArray(colorFgArray...)
+			viewport := renderer.GetViewport()
+			y := mb.menus[0].rect.H
+			patedit.draw(renderer, &sdl.Rect{0, y, viewport.W, viewport.H - y - sb.rect.H}, pl.lastTick)
+			sb.draw(pr, renderer)
+			mb.draw(pr, renderer)
+			dia.draw(pr, renderer)
+			renderer.Present()
+		}
+		sdl.Delay(uint32(1000 / fps))
 	}
 }
 
@@ -570,4 +587,13 @@ func addSuffixIfMissing(base, suffix string) string {
 		return base + suffix
 	}
 	return base
+}
+
+// return the refresh rate of the display, according to SDL, or default FPS if
+// it's not available
+func getRefreshRate() int {
+	if dm, err := sdl.GetCurrentDisplayMode(0); err == nil {
+		return int(dm.RefreshRate)
+	}
+	return defaultFps
 }
