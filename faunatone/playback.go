@@ -36,6 +36,7 @@ type player struct {
 	horizon      map[int]int64
 	bpm          float64
 	signal       chan playerSignal
+	stopping     chan struct{} // player sends on this channel when stopping
 	writer       writer.ChannelWriter
 	midiChannels []*channelState
 	virtChannels []*channelState
@@ -53,6 +54,7 @@ func newPlayer(s *song, wr writer.ChannelWriter, realtime bool) *player {
 		horizon:      make(map[int]int64),
 		bpm:          defaultBPM,
 		signal:       make(chan playerSignal),
+		stopping:     make(chan struct{}),
 		writer:       wr,
 		midiChannels: make([]*channelState, numMIDIChannels),
 		virtChannels: make([]*channelState, numVirtualChannels),
@@ -120,6 +122,10 @@ func (p *player) run() {
 			}()
 		case signalStop:
 			p.world++
+			select {
+			case p.stopping <- struct{}{}:
+				// do nothing
+			}
 		case signalSongChanged:
 			p.findHorizon()
 		}

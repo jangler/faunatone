@@ -72,6 +72,7 @@ func (s *song) exportSMF(path string) error {
 		p := newPlayer(s, wr, false)
 		go p.run()
 		p.signal <- playerSignal{typ: signalStart}
+		<-p.stopping
 		writer.EndOfTrack(wr)
 		return nil
 	})
