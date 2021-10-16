@@ -77,10 +77,11 @@ func (p *player) run() {
 			for _, c := range p.midiChannels {
 				c.lastNoteOff = 0 // reset; all channels are fair game now
 			}
+			p.determineVirtualChannelStates(sig.tick)
 			p.lastTick = sig.tick
 			p.findHorizon()
 			for i := range p.song.Tracks {
-				p.playTrackEvents(i, 0, 0)
+				p.playTrackEvents(i, sig.tick, sig.tick)
 			}
 			go func() {
 				p.signal <- playerSignal{
@@ -255,6 +256,25 @@ func (p *player) noteOff(i int, tick int64) {
 		writer.NoteOff(p.writer, activeNote)
 		t.activeNote = 0xff
 		p.midiChannels[t.midiChannel].lastNoteOff = tick
+	}
+}
+
+// set virtual channel states based on everything that happens from the start
+// of the song up to (but not including) a given tick
+func (p *player) determineVirtualChannelStates(tick int64) {
+	for _, t := range p.song.Tracks {
+		for _, te := range t.Events {
+			if te.Tick < tick {
+				switch te.Type {
+				case controllerEvent:
+					p.virtChannels[t.Channel].controllers[te.ByteData1] = te.ByteData2
+				case programEvent:
+					p.virtChannels[t.Channel].program = te.ByteData1
+				case tempoEvent:
+					p.bpm = te.FloatData
+				}
+			}
+		}
 	}
 }
 
