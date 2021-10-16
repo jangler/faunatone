@@ -125,6 +125,8 @@ func (p *player) run() {
 			select {
 			case p.stopping <- struct{}{}:
 				// do nothing
+			default:
+				// also do nothing
 			}
 		case signalSongChanged:
 			p.findHorizon()
