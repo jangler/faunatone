@@ -97,11 +97,12 @@ func main() {
 		},
 	}
 	patedit := &patternEditor{
-		printer:  pr,
-		song:     sng,
-		division: defaultDivision,
-		velocity: defaultVelocity,
-		refPitch: defaultRefPitch,
+		printer:    pr,
+		song:       sng,
+		division:   defaultDivision,
+		velocity:   defaultVelocity,
+		controller: defaultController,
+		refPitch:   defaultRefPitch,
 	}
 	pl := newPlayer(sng, wr, true)
 	km, _ := newKeymap(defaultKeymapPath)
@@ -197,6 +198,9 @@ func main() {
 					{label: "Increase octave", action: func() { patedit.modifyRefPitch(12) }},
 					{label: "Capture root pitch", action: func() { patedit.captureRefPitch() }},
 					{label: "Set velocity...", action: func() { dialogSetVelocity(dia, patedit) }},
+					{label: "Set controller...", action: func() {
+						dialogSetController(dia, patedit)
+					}},
 					{label: "Decrease division", action: func() { patedit.addDivision(-1) }},
 					{label: "Increase division", action: func() { patedit.addDivision(1) }},
 					{label: "Halve division", action: func() { patedit.multiplyDivision(0.5) }},
@@ -225,8 +229,9 @@ func main() {
 		rect: &sdl.Rect{},
 		funcs: []func() string{
 			func() string { return fmt.Sprintf("Root: %.2f", patedit.refPitch) },
-			func() string { return fmt.Sprintf("Velocity: %d", patedit.velocity) },
 			func() string { return fmt.Sprintf("Division: %d", patedit.division) },
+			func() string { return fmt.Sprintf("Velocity: %d", patedit.velocity) },
+			func() string { return fmt.Sprintf("Controller: %d", patedit.controller) },
 			func() string { return fmt.Sprintf("Keymap: %s", km.name) },
 		},
 	}
@@ -410,22 +415,27 @@ func dialogInsertTempoChange(d *dialog, pe *patternEditor) {
 	})
 }
 
-// set d to an input dialog chain
+// set d to an input dialog
 func dialogInsertControlChange(d *dialog, pe *patternEditor) {
+	*d = *newDialog("Controller value:", 3, func(s string) {
+		if i, err := strconv.ParseUint(s, 10, 8); err == nil {
+			pe.writeEvent(newTrackEvent(&trackEvent{
+				Type:      controllerEvent,
+				ByteData1: pe.controller,
+				ByteData2: byte(i),
+			}))
+		} else {
+			dialogMsg(d, err.Error())
+		}
+	})
+}
+
+// set d to an input dialog
+func dialogSetController(d *dialog, pe *patternEditor) {
 	*d = *newDialog("Controller index:", 3, func(s string) {
 		if i, err := strconv.ParseUint(s, 10, 8); err == nil {
 			if i < 128 {
-				*d = *newDialog("Controller value:", 3, func(s string) {
-					if v, err := strconv.ParseUint(s, 10, 8); err == nil {
-						pe.writeEvent(newTrackEvent(&trackEvent{
-							Type:      controllerEvent,
-							ByteData1: byte(i),
-							ByteData2: byte(v),
-						}))
-					} else {
-						dialogMsg(d, err.Error())
-					}
-				})
+				pe.controller = uint8(i)
 			} else {
 				dialogMsg(d, "Controller must be in the range [0, 127].")
 			}

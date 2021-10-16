@@ -8,13 +8,14 @@ import (
 )
 
 const (
-	ticksPerBeat    = 960
-	scrollTicks     = ticksPerBeat / 2
-	rowsPerBeat     = 4 // used for graphical purposes only
-	beatDigits      = 4
-	defaultDivision = 4
-	defaultVelocity = 100
-	defaultRefPitch = 60
+	ticksPerBeat      = 960
+	scrollTicks       = ticksPerBeat / 2
+	rowsPerBeat       = 4 // used for graphical purposes only
+	beatDigits        = 4
+	defaultDivision   = 4
+	defaultVelocity   = 100
+	defaultController = 1
+	defaultRefPitch   = 60
 
 	// widest range achievable with 2-semitone pitch wheel range
 	minPitch = -2
@@ -40,6 +41,7 @@ type patternEditor struct {
 	copyTicks        int64
 	copiedEvents     [][]*trackEvent // ticks are relative to start of copy area
 	velocity         uint8
+	controller       uint8
 	refPitch         float64
 }
 

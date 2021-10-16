@@ -28,6 +28,7 @@ Keypad /	Status	Decrease octave
 Keypad *	Status	Increase octave
 Space	Status	Capture root pitch
 Alt+V	Status	Set velocity...
+Alt+Shift+C	Status	Set controller...
 Ctrl+-	Status	Decrease division
 Ctrl+=	Status	Increase division
 Ctrl+Keypad /	Status	Halve division
