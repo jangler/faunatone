@@ -131,6 +131,22 @@ func main() {
 							pl.playFrom(0)
 						}()
 					}},
+					{label: "From cursor", action: func() {
+						go func() {
+							if pl.playing {
+								pl.signal <- signalStop
+							}
+							_, _, minTick, _ := patedit.getSelection()
+							pl.playFrom(minTick)
+						}()
+					}},
+					{label: "Stop", action: func() {
+						go func() {
+							if pl.playing {
+								pl.signal <- signalStop
+							}
+						}()
+					}},
 				},
 			},
 			{
@@ -185,6 +201,7 @@ func main() {
 					{label: "Increase division", action: func() { patedit.addDivision(1) }},
 					{label: "Halve division", action: func() { patedit.multiplyDivision(0.5) }},
 					{label: "Double division", action: func() { patedit.multiplyDivision(2) }},
+					{label: "Remap key...", action: func() { dialogRemapKey(dia, km) }},
 					{label: "Load keymap...", action: func() { dialogLoadKeymap(dia, km) }},
 				},
 			},
@@ -444,9 +461,23 @@ func dialogSetVelocity(d *dialog, pe *patternEditor) {
 	})
 }
 
+// set d to a key dialog, then input dialog
+func dialogRemapKey(d *dialog, k *keymap) {
+	*d = *newDialog("Press key to remap...", 0, func(s1 string) {
+		*d = *newDialog("Remap to interval:", 7, func(s2 string) {
+			if f, err := parsePitch(s2, k); err == nil {
+				k.keymap[s1] = f
+			} else {
+				dialogMsg(d, err.Error())
+			}
+		})
+	})
+	d.keymode = true
+}
+
 // set d to an input dialog
 func dialogLoadKeymap(d *dialog, k *keymap) {
-	*d = *newDialog("Load keymap...", 50, func(s string) {
+	*d = *newDialog("Load keymap:", 50, func(s string) {
 		s = addSuffixIfMissing(s, ".tsv")
 		if k2, err := newKeymap(s); err == nil {
 			*k = *k2

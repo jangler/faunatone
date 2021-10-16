@@ -82,6 +82,9 @@ func (mb *menuBar) keyboardEvent(e *sdl.KeyboardEvent) bool {
 // convert a keyboard event into a shortcut string
 func formatKeyEvent(e *sdl.KeyboardEvent) string {
 	keys := []string{}
+	if e.Keysym.Mod&sdl.KMOD_GUI != 0 {
+		keys = append(keys, "Win")
+	}
 	if e.Keysym.Mod&sdl.KMOD_CTRL != 0 {
 		keys = append(keys, "Ctrl")
 	}

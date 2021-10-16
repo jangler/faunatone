@@ -13,12 +13,13 @@ const (
 
 // modal dialog that displays a message or prompts for input
 type dialog struct {
-	prompt string
-	input  string
-	size   int          // text box will have room for this many chars
-	action func(string) // run if dialog is closed with K_RETURN
-	shown  bool
-	accept bool // accept text input
+	prompt  string
+	input   string
+	size    int          // text box will have room for this many chars
+	action  func(string) // run if dialog is closed with K_RETURN
+	shown   bool
+	accept  bool // accept input
+	keymode bool // convert key presses to strings instead of text input
 }
 
 // create a new dialog
@@ -69,7 +70,7 @@ func (d *dialog) draw(p *printer, r *sdl.Renderer) {
 // respond to text input events
 func (d *dialog) textInput(e *sdl.TextInputEvent) {
 	text := e.GetText()
-	if d.accept && len(d.input)+len(text) <= d.size {
+	if d.accept && !d.keymode && len(d.input)+len(text) <= d.size {
 		d.input += e.GetText()
 	}
 }
@@ -81,17 +82,32 @@ func (d *dialog) keyboardEvent(e *sdl.KeyboardEvent) {
 		return
 	}
 
-	switch e.Keysym.Sym {
-	case sdl.K_BACKSPACE:
-		if len(d.input) > 0 {
-			d.input = d.input[:len(d.input)-1]
+	if d.keymode {
+		switch e.Keysym.Sym {
+		case sdl.K_ESCAPE:
+			d.shown = false
+		case sdl.K_LSHIFT, sdl.K_RSHIFT, sdl.K_LCTRL, sdl.K_RCTRL, sdl.K_LALT, sdl.K_RALT,
+			sdl.K_LGUI, sdl.K_RGUI:
+			// don't react to modifier keys
+		default:
+			d.shown = false
+			if d.action != nil {
+				d.action(formatKeyEvent(e))
+			}
 		}
-	case sdl.K_ESCAPE:
-		d.shown = false
-	case sdl.K_RETURN:
-		d.shown = false
-		if d.action != nil {
-			d.action(d.input)
+	} else {
+		switch e.Keysym.Sym {
+		case sdl.K_BACKSPACE:
+			if len(d.input) > 0 {
+				d.input = d.input[:len(d.input)-1]
+			}
+		case sdl.K_ESCAPE:
+			d.shown = false
+		case sdl.K_RETURN:
+			d.shown = false
+			if d.action != nil {
+				d.action(d.input)
+			}
 		}
 	}
 }
