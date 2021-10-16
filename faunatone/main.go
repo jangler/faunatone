@@ -105,6 +105,7 @@ func main() {
 		refPitch:   defaultRefPitch,
 	}
 	pl := newPlayer(sng, wr, true)
+	go pl.run()
 	km, _ := newKeymap(defaultKeymapPath)
 	dia := &dialog{}
 
@@ -126,26 +127,18 @@ func main() {
 				items: []*menuItem{
 					{label: "Song", action: func() {
 						go func() {
-							if pl.playing {
-								pl.signal <- signalStop
-							}
-							pl.playFrom(0)
+							pl.signal <- playerSignal{typ: signalStart}
 						}()
 					}},
 					{label: "From cursor", action: func() {
 						go func() {
-							if pl.playing {
-								pl.signal <- signalStop
-							}
 							_, _, minTick, _ := patedit.getSelection()
-							pl.playFrom(minTick)
+							pl.signal <- playerSignal{typ: signalStart, tick: minTick}
 						}()
 					}},
 					{label: "Stop", action: func() {
 						go func() {
-							if pl.playing {
-								pl.signal <- signalStop
-							}
+							pl.signal <- playerSignal{typ: signalStop}
 						}()
 					}},
 				},

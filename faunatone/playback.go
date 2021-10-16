@@ -8,12 +8,19 @@ import (
 )
 
 // type used to signal player behavior
-type playerSignal uint8
+type playerSignal struct {
+	typ   playerSignalType
+	tick  int64
+	world int
+}
+
+type playerSignalType uint8
 
 const (
-	signalContinue playerSignal = iota
+	signalContinue playerSignalType = iota
+	signalStart
 	signalStop
-	signalSongChanged
+	signalSongChanged // TODO actually use this
 )
 
 const (
@@ -25,7 +32,6 @@ const (
 type player struct {
 	song         *song
 	realtime     bool
-	playing      bool
 	lastTick     int64
 	horizon      map[int]int64
 	bpm          float64
@@ -33,6 +39,10 @@ type player struct {
 	writer       writer.ChannelWriter
 	midiChannels []*channelState
 	virtChannels []*channelState
+
+	// ignore signalContinue messages with world < this.
+	// increment world when signalStop and signalStart are sent.
+	world int
 }
 
 // create a new player
@@ -56,49 +66,60 @@ func newPlayer(s *song, wr writer.ChannelWriter, realtime bool) *player {
 	return p
 }
 
-// start playing from a given tick
-func (p *player) playFrom(tick int64) {
-	p.playing = true
-	for _, c := range p.midiChannels {
-		c.lastNoteOff = 0 // reset; all channels are fair game now
-	}
-	p.lastTick = tick
-	p.findHorizon()
-	for i := range p.song.Tracks {
-		p.playTrackEvents(i, 0, 0)
-	}
-	go func() {
-		p.signal <- signalContinue
-	}()
+// start signal-handling loop
+func (p *player) run() {
 	for sig := range p.signal {
-		switch sig {
+		switch sig.typ {
+		case signalStart:
+			p.world++
+			for _, c := range p.midiChannels {
+				c.lastNoteOff = 0 // reset; all channels are fair game now
+			}
+			p.lastTick = sig.tick
+			p.findHorizon()
+			for i := range p.song.Tracks {
+				p.playTrackEvents(i, 0, 0)
+			}
+			go func() {
+				p.signal <- playerSignal{
+					typ:   signalContinue,
+					tick:  sig.tick,
+					world: p.world,
+				}
+			}()
 		case signalContinue:
+			if sig.world < p.world {
+				break
+			}
+
 			if wr, ok := p.writer.(*writer.SMF); ok {
-				wr.SetDelta(uint32(tick - p.lastTick))
+				wr.SetDelta(uint32(sig.tick - p.lastTick))
 			}
 
 			for i := range p.song.Tracks {
-				p.playTrackEvents(i, p.lastTick+1, tick)
+				p.playTrackEvents(i, p.lastTick+1, sig.tick)
 			}
 
-			p.lastTick = tick
+			p.lastTick = sig.tick
 			p.findHorizon()
 
 			go func() {
 				if tth, ok := p.ticksToHorizon(); ok {
-					tick = p.lastTick + tth
+					sig2 := playerSignal{
+						typ:   signalContinue,
+						tick:  p.lastTick + tth,
+						world: p.world,
+					}
 					if p.realtime {
 						time.Sleep(p.durationFromTicks(tth))
 					}
-					p.signal <- signalContinue
+					p.signal <- sig2
 				} else {
-					p.signal <- signalStop
+					p.signal <- playerSignal{typ: signalStop}
 				}
 			}()
 		case signalStop:
-			println("stopping")
-			p.playing = false
-			return
+			p.world++
 		case signalSongChanged:
 			p.findHorizon()
 		}

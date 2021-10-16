@@ -70,7 +70,8 @@ func (s *song) write(w io.Writer) error {
 func (s *song) exportSMF(path string) error {
 	return writer.WriteSMF(path, 1, func(wr *writer.SMF) error {
 		p := newPlayer(s, wr, false)
-		p.playFrom(0)
+		go p.run()
+		p.signal <- playerSignal{typ: signalStart}
 		writer.EndOfTrack(wr)
 		return nil
 	})
