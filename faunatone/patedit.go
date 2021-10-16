@@ -220,7 +220,10 @@ func (pe *patternEditor) writeEvent(te *trackEvent) {
 	trackMin, trackMax, _, _ := pe.getSelection()
 	te.Tick = pe.cursorTickClick
 	for i := trackMin; i <= trackMax; i++ {
-		pe.song.Tracks[i].writeEvent(te)
+		// need to make a separate struct for each track
+		te2 := &trackEvent{}
+		*te2 = *te
+		pe.song.Tracks[i].writeEvent(te2)
 	}
 }
 
