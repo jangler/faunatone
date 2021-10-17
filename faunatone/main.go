@@ -130,7 +130,7 @@ func main() {
 				items: []*menuItem{
 					{label: "Open...", action: func() { dialogOpen(dia, sng, patedit) }},
 					{label: "Save as...", action: func() { dialogSaveAs(dia, sng) }},
-					{label: "Export MIDI...", action: func() { dialogExportMIDI(dia, sng) }},
+					{label: "Export MIDI...", action: func() { dialogExportMIDI(dia, sng, pl) }},
 					{label: "Quit", action: func() { running = false }},
 				},
 			},
@@ -573,9 +573,10 @@ func dialogSaveAs(d *dialog, sng *song) {
 }
 
 // set d to an input dialog
-func dialogExportMIDI(d *dialog, sng *song) {
+func dialogExportMIDI(d *dialog, sng *song, p *player) {
 	*d = *newDialog("Export as:", 50, func(s string) {
 		s = addSuffixIfMissing(s, ".mid")
+		p.signal <- playerSignal{typ: signalStop} // avoid race conditions
 		if err := sng.exportSMF(s); err != nil {
 			dialogMsg(d, err.Error())
 		}
