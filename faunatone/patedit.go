@@ -94,6 +94,8 @@ func (pe *patternEditor) draw(r *sdl.Renderer, dst *sdl.Rect, playPos int64) {
 	}
 
 	// draw beat numbers
+	r.SetDrawColorArray(colorBgArray...)
+	r.FillRect(&sdl.Rect{dst.X, dst.Y, pe.beatWidth, dst.H})
 	for i := (pe.scrollY / pe.beatHeight); i < (pe.scrollY+dst.H)/pe.beatHeight+2; i++ {
 		y := dst.Y + int32(i-1)*pe.beatHeight + pe.headerHeight - pe.scrollY
 		if y+pe.printer.rect.H > dst.Y && y < dst.Y+dst.H {
@@ -206,7 +208,8 @@ func (pe *patternEditor) goToBeat(beat float64) {
 	pe.scrollToCursorIfOffscreen()
 }
 
-// if the cursor is outside the viewport, center it in the viewport
+// if cursor y is outside the viewport, center it in the viewport
+// if cursor x is outside the viewport, adjust until it's not
 func (pe *patternEditor) scrollToCursorIfOffscreen() {
 	y := int32(pe.cursorTickDrag*int64(pe.beatHeight)/ticksPerBeat) - pe.scrollY
 	if y < 0 || y+pe.beatHeight/rowsPerBeat > pe.viewport.H-pe.headerHeight {
@@ -214,6 +217,18 @@ func (pe *patternEditor) scrollToCursorIfOffscreen() {
 		if pe.scrollY < 0 {
 			pe.scrollY = 0
 		}
+	}
+	x := int32(pe.cursorTrackDrag)*pe.trackWidth - pe.scrollX
+	for x < pe.beatWidth {
+		pe.scrollX -= pe.trackWidth
+		x += pe.trackWidth
+	}
+	for x+pe.trackWidth > pe.viewport.W {
+		pe.scrollX += pe.trackWidth
+		x -= pe.trackWidth
+	}
+	if pe.scrollX < 0 {
+		pe.scrollX = 0 // this is sloppy
 	}
 }
 
