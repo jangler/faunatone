@@ -24,28 +24,47 @@ var (
 	}
 	isoCenterX = 4
 	isoCenterY = 2
+
+	midiRegexp = regexp.MustCompile(`m(\d+)`)
 )
 
 // turns key events into note events
 type keymap struct {
-	keymap  map[string]float64
-	name    string
-	lastKey string
+	keymap   map[string]float64
+	midimap  [128]float64
+	name     string
+	lastKey  string
+	lastMidi byte
 }
 
 // load a keymap from a file
 func newKeymap(path string) (*keymap, error) {
 	k := &keymap{
-		keymap: make(map[string]float64),
-		name:   strings.Replace(filepath.Base(path), ".csv", "", 1),
+		keymap:   make(map[string]float64),
+		name:     strings.Replace(filepath.Base(path), ".csv", "", 1),
+		lastMidi: 0xff,
 	}
+	firstMidi, lastMidi := -1, -1
 	if records, err := readCSV(filepath.Join(keymapPath, path)); err == nil {
 		for _, rec := range records {
 			ok := false
 			if len(rec) == 2 {
 				if pitch, err := parsePitch(rec[1], k); err == nil {
 					k.keymap[rec[0]] = pitch
-					ok = true
+					if midiRegexp.MatchString(rec[0]) {
+						if i, err := strconv.ParseUint(rec[0][1:], 10, 8); err == nil && i < 128 {
+							k.midimap[i] = pitch
+							ok = true
+							if firstMidi == -1 || int(i) < firstMidi {
+								firstMidi = int(i)
+							}
+							if int(i) > lastMidi {
+								lastMidi = int(i)
+							}
+						}
+					} else {
+						ok = true
+					}
 				}
 			}
 			if !ok {
@@ -56,7 +75,24 @@ func newKeymap(path string) (*keymap, error) {
 		k.name = "none"
 		return k, err
 	}
+	k.repeatMidiPattern(firstMidi, lastMidi)
 	return k, nil
+}
+
+// repeats the pattern of midi notes already present in the keymap across the
+// entire range
+func (k *keymap) repeatMidiPattern(firstIndex, lastIndex int) {
+	if firstIndex != -1 && lastIndex != -1 {
+		octave := k.midimap[lastIndex] - k.midimap[firstIndex]
+		for i := range k.midimap {
+			period := math.Floor(float64(i-firstIndex) / float64(lastIndex-firstIndex))
+			index := firstIndex + ((i - firstIndex) % (lastIndex - firstIndex))
+			if index < firstIndex {
+				index += lastIndex - firstIndex
+			}
+			k.midimap[i] = k.midimap[index] + period*octave
+		}
+	}
 }
 
 // generate a two-dimensional isomorphic keyboard keymap from two intervals
@@ -126,6 +162,32 @@ func (k *keymap) keyboardEvent(e *sdl.KeyboardEvent, pe *patternEditor, p *playe
 		} else if s == k.lastKey {
 			k.lastKey = ""
 			pe.playSelectionNoteOff(p)
+		}
+	}
+}
+
+// respond to midi input events
+func (k *keymap) midiEvent(msg []byte, pe *patternEditor, p *player) {
+	if msg[0]&0xf0 == 0x90 && msg[2] > 0 { // note on
+		k.lastMidi = msg[1]
+		if sdl.GetModState()&sdl.KMOD_SHIFT == 0 {
+			pitch := k.midimap[msg[1]] + pe.refPitch
+			pe.writeEvent(newTrackEvent(&trackEvent{
+				Type:      noteOnEvent,
+				FloatData: pitch,
+				ByteData1: msg[2],
+			}), p)
+		} else {
+			pe.writeEvent(newTrackEvent(&trackEvent{
+				Type:      drumNoteOnEvent,
+				ByteData1: msg[1],
+				ByteData2: msg[2],
+			}), p)
+		}
+	} else if msg[0]&0xf0 == 0x80 || (msg[0]&0xf0 == 0x90 && msg[2] == 0) { // note off
+		if msg[1] == k.lastMidi {
+			pe.playSelectionNoteOff(p)
+			k.lastMidi = 0xff
 		}
 	}
 }

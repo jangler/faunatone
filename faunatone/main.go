@@ -12,6 +12,8 @@ import (
 
 	"github.com/veandco/go-sdl2/sdl"
 	"github.com/veandco/go-sdl2/ttf"
+	"gitlab.com/gomidi/midi"
+	"gitlab.com/gomidi/midi/reader"
 	"gitlab.com/gomidi/midi/writer"
 	driver "gitlab.com/gomidi/rtmididrv"
 )
@@ -35,10 +37,9 @@ var (
 	colorFg             = sdl.Color{0x10, 0x10, 0x10, 0xff}
 	colorFgArray        = []uint8{0x10, 0x10, 0x10, 0xff}
 
-	configPath = "config"
-
-	// TODO load font from RW instead of file
-	fontPath = filepath.Join("assets", "RobotoMono-Regular-BasicLatin.ttf")
+	configPath   = "config"
+	settingsPath = filepath.Join("config", "settings.csv")
+	fontPath     = filepath.Join("assets", "RobotoMono-Regular-BasicLatin.ttf")
 
 	uiScale = 1
 )
@@ -50,14 +51,32 @@ func must(err error) {
 }
 
 func main() {
+	settings := loadSettings()
+
 	drv, err := driver.New()
 	must(err)
 	defer drv.Close()
 
-	outs, err := drv.Outs()
+	midiIn := make(chan midi.Message, 100)
+	ins, err := drv.Ins()
+	must(err)
+	in := ins[settings["midiInPortNumber"]]
+	must(in.Open())
+	defer in.Close()
+	rd := reader.New(reader.NoLogger(),
+		reader.Each(func(pos *reader.Position, msg midi.Message) {
+			select {
+			case midiIn <- msg:
+			default:
+			}
+		}),
+	)
+	err = rd.ListenTo(in)
 	must(err)
 
-	out := outs[0]
+	outs, err := drv.Outs()
+	must(err)
+	out := outs[settings["midiOutPortNumber"]]
 	must(out.Open())
 	defer out.Close()
 	wr := writer.New(out)
@@ -280,6 +299,7 @@ func main() {
 	}
 
 	for running {
+		// process SDL events
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 			// if we got any event, assume redraw is needed
 			redrawChan <- true
@@ -318,6 +338,22 @@ func main() {
 			case *sdl.QuitEvent:
 				running = false
 				break
+			}
+		}
+
+		// process MIDI events
+	outer:
+		for {
+			select {
+			case msg := <-midiIn:
+				if !dia.shown {
+					switch msg.Raw()[0] & 0xf0 {
+					case 0x80, 0x90: // note off, note on
+						km.midiEvent(msg.Raw(), patedit, pl)
+					}
+				}
+			default:
+				break outer
 			}
 		}
 
@@ -664,4 +700,19 @@ func getRefreshRate() int {
 		return int(dm.RefreshRate)
 	}
 	return defaultFps
+}
+
+// load settings from config/settings.csv
+func loadSettings() map[string]int {
+	m := make(map[string]int)
+	if records, err := readCSV(settingsPath); err == nil {
+		for _, rec := range records {
+			if len(rec) == 2 {
+				if i, err := strconv.Atoi(rec[1]); err == nil {
+					m[rec[0]] = i
+				}
+			}
+		}
+	}
+	return m
 }
