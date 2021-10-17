@@ -359,7 +359,7 @@ func dialogInsertNote(d *dialog, pe *patternEditor, wr *writer.Writer) {
 					writer.NoteOn(wr, note, pe.velocity)
 					writer.NoteOff(wr, note)
 				} else {
-					dialogMsg(d, fmt.Sprintf("Note must be in the range [-%.f, %.f].",
+					dialogMsg(d, fmt.Sprintf("Note must be in the range [-%d, %d].",
 						minPitch, maxPitch))
 				}
 			} else {
