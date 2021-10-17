@@ -100,12 +100,13 @@ func main() {
 		},
 	}
 	patedit := &patternEditor{
-		printer:    pr,
-		song:       sng,
-		division:   defaultDivision,
-		velocity:   defaultVelocity,
-		controller: defaultController,
-		refPitch:   defaultRefPitch,
+		printer:      pr,
+		song:         sng,
+		division:     defaultDivision,
+		velocity:     defaultVelocity,
+		controller:   defaultController,
+		refPitch:     defaultRefPitch,
+		historyIndex: -1,
 	}
 	pl := newPlayer(sng, wr, true)
 	pl.redrawChan = redrawChan
@@ -191,6 +192,10 @@ func main() {
 					{label: "Delete events", action: func() {
 						patedit.deleteSelectedEvents()
 					}},
+					{label: "Undo", action: func() { dialogIfErr(dia, patedit.undo()) },
+						repeat: true},
+					{label: "Redo", action: func() { dialogIfErr(dia, patedit.redo()) },
+						repeat: true},
 					{label: "Cut", action: func() { patedit.cut() }},
 					{label: "Copy", action: func() { patedit.copy() }},
 					{label: "Paste", action: func() { patedit.paste(false) }},
@@ -337,6 +342,13 @@ func dialogMsg(d *dialog, s string) {
 		prompt: s,
 		size:   0,
 		shown:  true,
+	}
+}
+
+// set d to a message dialog if err is non-nil
+func dialogIfErr(d *dialog, err error) {
+	if err != nil {
+		dialogMsg(d, err.Error())
 	}
 }
 

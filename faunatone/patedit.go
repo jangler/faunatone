@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"strconv"
+	"unsafe"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -20,6 +22,8 @@ const (
 	// widest range achievable with 2-semitone pitch wheel range
 	minPitch = -2
 	maxPitch = 129
+
+	historySizeLimit = 10000000 // 10 MB
 )
 
 // user interface structure for song editing
@@ -43,6 +47,31 @@ type patternEditor struct {
 	velocity         uint8
 	controller       uint8
 	refPitch         float64
+	history          []*editAction
+	historyIndex     int // index of action that undo will undo
+}
+
+// used for undo/redo. the track structs have nil event slices.
+type editAction struct {
+	beforeTracks []*track
+	afterTracks  []*track
+	beforeEvents []*trackEvent
+	afterEvents  []*trackEvent
+	trackShift   *trackShift
+	size         int
+}
+
+// substruct in editAction
+type trackShift struct {
+	min, max, offset int
+}
+
+// return a new track shift that will undo this one
+func reverseTrackShift(ts *trackShift) *trackShift {
+	if ts == nil {
+		return nil
+	}
+	return &trackShift{ts.min + ts.offset, ts.max + ts.offset, -ts.offset}
 }
 
 // draw all components of the pattern editor interface
@@ -239,40 +268,47 @@ func (pe *patternEditor) scrollToCursorIfOffscreen() {
 func (pe *patternEditor) writeEvent(te *trackEvent, p *player) {
 	trackMin, trackMax, tickMin, _ := pe.getSelection()
 	te.Tick = tickMin
+	ea := &editAction{}
 	for i := trackMin; i <= trackMax; i++ {
-		// need to make a separate struct for each track
-		te2 := &trackEvent{}
-		*te2 = *te
-		pe.song.Tracks[i].writeEvent(te2)
-		p.signal <- playerSignal{typ: signalEvent, track: i, event: te2}
+		if te2 := pe.song.Tracks[i].getEventAtTick(te.Tick); te2 != nil {
+			ea.beforeEvents = append(ea.afterEvents, te2.clone())
+		}
+		te3 := te.clone()
+		te3.track = i
+		ea.afterEvents = append(ea.afterEvents, te3)
+		p.signal <- playerSignal{typ: signalEvent, event: te3}
 	}
+	pe.doNewEditAction(ea)
 }
 
 // delete selected track events
 func (pe *patternEditor) deleteSelectedEvents() {
-	pe.deleteArea(pe.getSelection())
+	ea := pe.deleteArea(pe.getSelection())
+	pe.doNewEditAction(ea)
 }
 
-// delete track events in a given area
-func (pe *patternEditor) deleteArea(trackMin, trackMax int, tickMin, tickMax int64) {
+// return an editAction that would delete track events in a given area
+func (pe *patternEditor) deleteArea(trackMin, trackMax int, tickMin, tickMax int64) *editAction {
+	ea := &editAction{}
 	for i, t := range pe.song.Tracks {
 		if i >= trackMin && i <= trackMax {
-			for j := 0; j < len(t.Events); j++ {
-				te := t.Events[j]
+			for _, te := range t.Events {
 				if te.Tick >= tickMin && te.Tick <= tickMax {
-					t.Events = append(t.Events[:j], t.Events[j+1:]...)
-					j--
+					ea.beforeEvents = append(ea.beforeEvents, te.clone())
 				}
 			}
 		}
 	}
+	return ea
 }
 
-// reset scroll and cursor state
+// reset scroll, cursor, and history state
 func (pe *patternEditor) reset() {
 	pe.cursorTrackClick, pe.cursorTrackDrag = 0, 0
 	pe.cursorTickClick, pe.cursorTickDrag = 0, 0
 	pe.scrollX, pe.scrollY = 0, 0
+	pe.history = pe.history[:0]
+	pe.historyIndex = -1
 }
 
 // copy selected events to a buffer
@@ -283,8 +319,7 @@ func (pe *patternEditor) copy() {
 	for i := range pe.copiedEvents {
 		for _, te := range pe.song.Tracks[trackMin+i].Events {
 			if te.Tick >= tickMin && te.Tick <= tickMax {
-				te2 := &trackEvent{}
-				*te2 = *te
+				te2 := te.clone()
 				te2.Tick -= tickMin
 				pe.copiedEvents[i] = append(pe.copiedEvents[i], te2)
 			}
@@ -302,46 +337,64 @@ func (pe *patternEditor) cut() {
 // in the affected area are first deleted
 func (pe *patternEditor) paste(mix bool) {
 	trackMin, _, tickMin, _ := pe.getSelection()
+	ea := &editAction{}
 	if !mix {
-		pe.deleteArea(trackMin, trackMin+len(pe.copiedEvents)-1, tickMin, tickMin+pe.copyTicks)
+		ea = pe.deleteArea(trackMin, trackMin+len(pe.copiedEvents)-1, tickMin, tickMin+pe.copyTicks)
 	}
 	for i := range pe.copiedEvents {
 		if i+trackMin >= len(pe.song.Tracks) {
 			break
 		}
 		for _, te := range pe.copiedEvents[i] {
-			te2 := &trackEvent{}
-			*te2 = *te
+			te2 := te.clone()
 			te2.Tick += tickMin
-			pe.song.Tracks[i+trackMin].writeEvent(te2)
+			te2.track = i + trackMin
+			ea.afterEvents = append(ea.afterEvents, te2)
 		}
 	}
+	pe.doNewEditAction(ea)
 }
 
 // set the channels of selected tracks
 func (pe *patternEditor) setTrackChannel(channel uint8) {
 	trackMin, trackMax, _, _ := pe.getSelection()
+	ea := &editAction{}
 	for i := trackMin; i <= trackMax; i++ {
-		pe.song.Tracks[i].Channel = channel
+		ea.beforeTracks = append(ea.beforeTracks, &track{
+			Channel: pe.song.Tracks[i].Channel,
+			index:   i,
+		})
+		ea.afterTracks = append(ea.afterTracks, &track{
+			Channel: channel,
+			index:   i,
+		})
 	}
+	pe.doNewEditAction(ea)
 }
 
 // add a track to the right of the selection
 func (pe *patternEditor) insertTrack() {
 	_, trackMax, _, _ := pe.getSelection()
-	pe.song.Tracks = append(pe.song.Tracks[:trackMax+1], pe.song.Tracks[trackMax:]...)
-	pe.song.Tracks[trackMax+1] = &track{
-		Channel: pe.song.Tracks[trackMax].Channel,
-	}
+	pe.doNewEditAction(&editAction{
+		afterTracks: []*track{&track{
+			Channel: pe.song.Tracks[trackMax].Channel,
+			index:   trackMax,
+		}},
+	})
 }
 
 // delete selected tracks
 func (pe *patternEditor) deleteTrack() {
 	trackMin, trackMax, _, _ := pe.getSelection()
-	for i := trackMax; i >= trackMin && len(pe.song.Tracks) > 1; i-- {
-		pe.song.Tracks = append(pe.song.Tracks[:i], pe.song.Tracks[i+1:]...)
+	ea := &editAction{}
+	for i := trackMin; i <= trackMax; i++ {
+		t := pe.song.Tracks[i]
+		ea.beforeTracks = append(ea.beforeTracks, &track{Channel: t.Channel, index: i})
+		for _, te := range t.Events {
+			ea.beforeEvents = append(ea.beforeEvents, te.clone())
+		}
 	}
-	pe.fixCursor()
+	pe.doNewEditAction(ea)
 }
 
 // keep the cursor in bounds
@@ -371,20 +424,33 @@ func (pe *patternEditor) fixCursor() {
 // move selected tracks left or right
 func (pe *patternEditor) shiftTracks(offset int) {
 	trackMin, trackMax, _, _ := pe.getSelection()
+	pe.doNewEditAction(&editAction{trackShift: &trackShift{trackMin, trackMax, offset}})
+}
+
+// actually implement track shifting
+func (pe *patternEditor) applyTrackShift(trackMin, trackMax, offset int) {
 	if offset < 0 && trackMin > 0 {
 		for i := trackMin - 1; i < trackMax; i++ {
 			pe.song.Tracks[i], pe.song.Tracks[i+1] = pe.song.Tracks[i+1], pe.song.Tracks[i]
 		}
-		pe.cursorTrackClick -= 1
-		pe.cursorTrackDrag -= 1
-		pe.shiftTracks(offset + 1)
+		if pe.cursorTrackClick >= trackMin && pe.cursorTrackClick <= trackMax {
+			pe.cursorTrackClick -= 1
+		}
+		if pe.cursorTrackDrag >= trackMin && pe.cursorTrackDrag <= trackMax {
+			pe.cursorTrackDrag -= 1
+		}
+		pe.applyTrackShift(trackMin, trackMax, offset+1)
 	} else if offset > 0 && trackMax < len(pe.song.Tracks)-1 {
 		for i := trackMax + 1; i > trackMin; i-- {
 			pe.song.Tracks[i], pe.song.Tracks[i-1] = pe.song.Tracks[i-1], pe.song.Tracks[i]
 		}
-		pe.cursorTrackClick += 1
-		pe.cursorTrackDrag += 1
-		pe.shiftTracks(offset - 1)
+		if pe.cursorTrackClick >= trackMin && pe.cursorTrackClick <= trackMax {
+			pe.cursorTrackClick += 1
+		}
+		if pe.cursorTrackDrag >= trackMin && pe.cursorTrackDrag <= trackMax {
+			pe.cursorTrackDrag += 1
+		}
+		pe.applyTrackShift(trackMin, trackMax, offset-1)
 	}
 }
 
@@ -440,6 +506,7 @@ func (pe *patternEditor) captureRefPitch() {
 // add to pitch of selected notes
 func (pe *patternEditor) transposeSelection(delta float64) {
 	trackMin, trackMax, tickMin, tickMax := pe.getSelection()
+	ea := &editAction{}
 	for i := trackMin; i <= trackMax; i++ {
 		for _, te := range pe.song.Tracks[i].Events {
 			if te.Type == noteOnEvent && te.Tick >= tickMin && te.Tick <= tickMax {
@@ -449,17 +516,22 @@ func (pe *patternEditor) transposeSelection(delta float64) {
 				} else if f > maxPitch {
 					f = maxPitch
 				}
-				te.FloatData = f
-				te.setUiString()
+				ea.beforeEvents = append(ea.beforeEvents, te.clone())
+				te2 := te.clone()
+				te2.FloatData = f
+				te2.setUiString()
+				ea.afterEvents = append(ea.afterEvents, te2)
 			}
 		}
 	}
+	pe.doNewEditAction(ea)
 }
 
 // insert interpolated events at each division between events of same type at
 // each end of selection
 func (pe *patternEditor) interpolateSelection() {
 	trackMin, trackMax, tickMin, tickMax := pe.getSelection()
+	ea := &editAction{}
 	for i := trackMin; i <= trackMax; i++ {
 		var startEvt, endEvt *trackEvent
 		for _, te := range pe.song.Tracks[i].Events {
@@ -472,8 +544,7 @@ func (pe *patternEditor) interpolateSelection() {
 		if startEvt != nil && endEvt != nil && startEvt.Type == endEvt.Type {
 			increment := ticksPerBeat / int64(pe.division)
 			for tick := startEvt.Tick + increment; tick < endEvt.Tick; tick += increment {
-				te := &trackEvent{}
-				*te = *startEvt
+				te := startEvt.clone()
 				te.Tick = tick
 				switch te.Type {
 				case controllerEvent:
@@ -492,10 +563,14 @@ func (pe *patternEditor) interpolateSelection() {
 						endEvt.Tick, float64(startEvt.ByteData1), float64(endEvt.ByteData1))))
 				}
 				te.setUiString()
-				pe.song.Tracks[i].writeEvent(te)
+				if te2 := pe.song.Tracks[i].getEventAtTick(te.Tick); te2 != nil {
+					ea.beforeEvents = append(ea.beforeEvents, te2.clone())
+				}
+				ea.afterEvents = append(ea.afterEvents, te)
 			}
 		}
 	}
+	pe.doNewEditAction(ea)
 }
 
 // linearly interpolate a value
@@ -508,8 +583,9 @@ func interpolateValue(pos, start, end int64, a, b float64) float64 {
 func (pe *patternEditor) playSelectionNoteOff(p *player) {
 	trackMin, trackMax, _, _ := pe.getSelection()
 	for i := trackMin; i <= trackMax; i++ {
-		p.signal <- playerSignal{typ: signalEvent, track: i, event: &trackEvent{
-			Type: noteOffEvent,
+		p.signal <- playerSignal{typ: signalEvent, event: &trackEvent{
+			Type:  noteOffEvent,
+			track: i,
 		}}
 	}
 }
@@ -517,4 +593,143 @@ func (pe *patternEditor) playSelectionNoteOff(p *player) {
 // return the first tick in the current view
 func (pe *patternEditor) firstTickOnScreen() int64 {
 	return int64(pe.scrollY) * ticksPerBeat / int64(pe.beatHeight)
+}
+
+// undo the last edit action
+func (pe *patternEditor) undo() error {
+	if pe.historyIndex >= 0 {
+		ea := pe.history[pe.historyIndex]
+		pe.historyIndex--
+		pe.doEditAction(&editAction{
+			beforeTracks: ea.afterTracks,
+			afterTracks:  ea.beforeTracks,
+			beforeEvents: ea.afterEvents,
+			afterEvents:  ea.beforeEvents,
+			trackShift:   reverseTrackShift(ea.trackShift),
+		})
+		return nil
+	}
+	return fmt.Errorf("nothing to undo")
+}
+
+// redo the last undone edit action
+func (pe *patternEditor) redo() error {
+	if pe.historyIndex+1 < len(pe.history) {
+		pe.historyIndex++
+		pe.doEditAction(pe.history[pe.historyIndex])
+		return nil
+	}
+	return fmt.Errorf("nothing to redo")
+}
+
+// do an edit action in the "forward" order, without modifying the history
+func (pe *patternEditor) doEditAction(ea *editAction) {
+	for _, te := range ea.beforeEvents {
+		pe.removeEvent(te)
+	}
+	removedTracks := 0
+	for _, t := range ea.beforeTracks {
+		stillExists := false
+		for _, t2 := range ea.afterTracks {
+			if t2.index == t.index {
+				stillExists = true
+				break
+			}
+		}
+		if !stillExists {
+			pe.removeTrack(t, -removedTracks)
+			removedTracks++
+		}
+	}
+	for _, t := range ea.afterTracks {
+		alreadyExists := false
+		for _, t2 := range ea.beforeTracks {
+			if t2.index == t.index {
+				alreadyExists = true
+				break
+			}
+		}
+		if alreadyExists {
+			pe.song.Tracks[t.index].Channel = t.Channel
+		} else {
+			pe.addTrack(t)
+		}
+	}
+	for _, te := range ea.afterEvents {
+		pe.addEvent(te)
+	}
+	if ts := ea.trackShift; ts != nil {
+		pe.applyTrackShift(ts.min, ts.max, ts.offset)
+	}
+}
+
+// remove a matching event from the song (based on track and tick only)
+func (pe *patternEditor) removeEvent(te *trackEvent) {
+	t := pe.song.Tracks[te.track]
+	for i, te2 := range t.Events {
+		if te2.Tick == te.Tick {
+			t.Events = append(t.Events[:i], t.Events[i+1:]...)
+			break
+		}
+	}
+}
+
+// add a copy of the event to the song
+func (pe *patternEditor) addEvent(te *trackEvent) {
+	te2 := te.clone()
+	t := pe.song.Tracks[te.track]
+	t.Events = append(t.Events, te2)
+}
+
+// remove a matching track from the song (based on index only)
+func (pe *patternEditor) removeTrack(t *track, offset int) {
+	pe.song.Tracks = append(pe.song.Tracks[:t.index+offset], pe.song.Tracks[t.index+1+offset:]...)
+	pe.fixCursor()
+}
+
+// add a copy of the track to the song
+func (pe *patternEditor) addTrack(t *track) {
+	pe.song.Tracks = append(pe.song.Tracks[:t.index+1], pe.song.Tracks[t.index:]...)
+	t2 := &track{}
+	*t2 = *t
+	pe.song.Tracks[t.index] = t2
+}
+
+// do a new edit action and insert it at the history index, clearing the
+// history beyond that index
+func (pe *patternEditor) doNewEditAction(ea *editAction) {
+	pe.historyIndex++
+	pe.history = pe.history[:pe.historyIndex]
+	pe.history = append(pe.history, ea)
+	pe.doEditAction(ea)
+	size := pe.getHistorySize()
+	for size > historySizeLimit {
+		size -= pe.history[0].size
+		pe.history = pe.history[1:]
+		pe.historyIndex--
+	}
+}
+
+// returns the approximate size of the undo buffer in bytes
+func (pe *patternEditor) getHistorySize() int {
+	size := 0
+	for _, ea := range pe.history {
+		if ea.size == 0 {
+			for _, t := range ea.beforeTracks {
+				ea.size += int(unsafe.Sizeof(t))
+			}
+			for _, t := range ea.afterTracks {
+				ea.size += int(unsafe.Sizeof(t))
+			}
+			for _, te := range ea.beforeEvents {
+				ea.size += int(unsafe.Sizeof(te))
+			}
+			for _, te := range ea.afterEvents {
+				ea.size += int(unsafe.Sizeof(te))
+			}
+			ea.size += int(unsafe.Sizeof(ea.trackShift))
+		}
+		size += ea.size
+	}
+	return size
 }

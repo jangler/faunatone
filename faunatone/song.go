@@ -48,8 +48,10 @@ func (s *song) read(r io.Reader) error {
 		return err
 	}
 	*s = *newSong
-	for _, t := range s.Tracks {
+	for i, t := range s.Tracks {
+		t.index = i
 		for _, te := range t.Events {
+			te.track = i
 			te.setUiString()
 		}
 	}
@@ -81,21 +83,33 @@ func (s *song) exportSMF(path string) error {
 type track struct {
 	Channel uint8
 	Events  []*trackEvent
+	index   int // only used by undo/redo
 
-	// used by player
+	// only used by player
 	activeNote  uint8
 	midiChannel uint8
 }
 
-// write an event to the track, overwriting any event at the same tick
-func (t *track) writeEvent(te *trackEvent) {
-	for _, te2 := range t.Events {
-		if te2.Tick == te.Tick {
-			*te2 = *te
-			return
-		}
+// write an event to the track, overwriting any event at the same tick and
+// returning the event that was overwritten
+func (t *track) writeEvent(te *trackEvent) *trackEvent {
+	if te2 := t.getEventAtTick(te.Tick); te2 != nil {
+		te3 := te2.clone()
+		*te2 = *te
+		return te3
 	}
 	t.Events = append(t.Events, te)
+	return nil
+}
+
+// return the event at the tick in the track, if any
+func (t *track) getEventAtTick(tick int64) *trackEvent {
+	for _, te := range t.Events {
+		if te.Tick == tick {
+			return te
+		}
+	}
+	return nil
 }
 
 type trackEvent struct {
@@ -105,6 +119,7 @@ type trackEvent struct {
 	ByteData1 byte    `json:",omitempty"`
 	ByteData2 byte    `json:",omitempty"`
 	uiString  string
+	track     int // only used by undo/redo
 }
 
 func newTrackEvent(te *trackEvent) *trackEvent {
@@ -129,4 +144,11 @@ func (te *trackEvent) setUiString() {
 	default:
 		te.uiString = "UNKNOWN"
 	}
+}
+
+// return a pointer to a copy of the event
+func (te *trackEvent) clone() *trackEvent {
+	te2 := &trackEvent{}
+	*te2 = *te
+	return te2
 }

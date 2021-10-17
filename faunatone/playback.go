@@ -12,9 +12,6 @@ type playerSignal struct {
 	typ   playerSignalType
 	tick  int64
 	world int
-
-	// used together
-	track int
 	event *trackEvent
 }
 
@@ -139,7 +136,7 @@ func (p *player) run() {
 				// also do nothing
 			}
 		case signalEvent:
-			p.playEvent(sig.track, sig.event)
+			p.playEvent(sig.event)
 		case signalSongChanged:
 			p.findHorizon()
 		}
@@ -198,13 +195,14 @@ func (p *player) durationFromTicks(t int64) time.Duration {
 func (p *player) playTrackEvents(i int, tickMin, tickMax int64) {
 	for _, te := range p.song.Tracks[i].Events {
 		if te.Tick >= tickMin && te.Tick <= tickMax {
-			p.playEvent(i, te)
+			p.playEvent(te)
 		}
 	}
 }
 
 // play a single event; i is track index
-func (p *player) playEvent(i int, te *trackEvent) {
+func (p *player) playEvent(te *trackEvent) {
+	i := te.track
 	t := p.song.Tracks[i]
 	switch te.Type {
 	case noteOnEvent:
