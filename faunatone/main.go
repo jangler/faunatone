@@ -113,6 +113,7 @@ func main() {
 	pl := newPlayer(sng, wr, true)
 	pl.redrawChan = redrawChan
 	go pl.run()
+	defer pl.cleanup()
 	km, _ := newKeymap(defaultKeymapPath)
 	dia := &dialog{}
 

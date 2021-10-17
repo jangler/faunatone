@@ -149,6 +149,14 @@ func (p *player) run() {
 	}
 }
 
+// clean up active notes and reset pitch bend sensitivity to default
+func (p *player) cleanup() {
+	for i := range p.song.Tracks {
+		p.noteOff(i, p.lastTick)
+	}
+	p.broadcastPitchBendRPN(2, 0)
+}
+
 // send the "pitch bend sensitivity" RPN to every channel
 func (p *player) broadcastPitchBendRPN(semitones, cents uint8) {
 	for i := uint8(0); i < numMIDIChannels; i++ {
