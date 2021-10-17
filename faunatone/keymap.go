@@ -16,6 +16,15 @@ import (
 var (
 	keymapPath        = filepath.Join(configPath, "keymaps")
 	defaultKeymapPath = "12edo.tsv"
+
+	qwertyLayout = [][]string{
+		{"1", "2", "3", "4", "5", "6", "7", "8", "9", "0"},
+		{"Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"},
+		{"A", "S", "D", "F", "G", "H", "J", "K", "L"},
+		{"Z", "X", "C", "V", "B", "N", "M"},
+	}
+	isoCenterX = 4
+	isoCenterY = 2
 )
 
 // turns key events into note events
@@ -48,6 +57,20 @@ func newKeymap(path string) (*keymap, error) {
 		return k, err
 	}
 	return k, nil
+}
+
+// generate a two-dimensional isomorphic keyboard keymap from two intervals
+func genIsoKeymap(interval1, interval2 float64) *keymap {
+	k := &keymap{
+		keymap: make(map[string]float64),
+		name:   "gen-iso",
+	}
+	for y, row := range qwertyLayout {
+		for x, key := range row {
+			k.keymap[key] = interval1*float64(x-isoCenterX+y-2) + interval2*float64(isoCenterY-y)
+		}
+	}
+	return k
 }
 
 var (

@@ -211,6 +211,9 @@ func main() {
 					{label: "Double division", action: func() { patedit.multiplyDivision(2) }},
 					{label: "Remap key...", action: func() { dialogRemapKey(dia, km) }},
 					{label: "Load keymap...", action: func() { dialogLoadKeymap(dia, km) }},
+					{label: "Make isomorphic keymap...", action: func() {
+						dialogMakeIsoKeymap(dia, km)
+					}},
 				},
 			},
 			{
@@ -502,6 +505,23 @@ func dialogLoadKeymap(d *dialog, k *keymap) {
 		s = addSuffixIfMissing(s, ".tsv")
 		if k2, err := newKeymap(s); err == nil {
 			*k = *k2
+		} else {
+			dialogMsg(d, err.Error())
+		}
+	})
+}
+
+// set d to an input dialog chain
+func dialogMakeIsoKeymap(d *dialog, k *keymap) {
+	*d = *newDialog("Enter first interval:", 7, func(s string) {
+		if f1, err := parsePitch(s, k); err == nil {
+			*d = *newDialog("Enter second interval:", 7, func(s string) {
+				if f2, err := parsePitch(s, k); err == nil {
+					*k = *genIsoKeymap(f1, f2)
+				} else {
+					dialogMsg(d, err.Error())
+				}
+			})
 		} else {
 			dialogMsg(d, err.Error())
 		}
