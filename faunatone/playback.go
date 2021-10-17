@@ -73,10 +73,10 @@ func newPlayer(s *song, wr writer.ChannelWriter, realtime bool) *player {
 
 // start signal-handling loop
 func (p *player) run() {
+	p.broadcastPitchBendRPN(bendSemitones, 0)
 	for sig := range p.signal {
 		switch sig.typ {
 		case signalStart:
-			p.broadcastPitchBendRPN(bendSemitones, 0)
 			p.world++
 			for _, c := range p.midiChannels {
 				c.lastNoteOff = 0 // reset; all channels are fair game now
