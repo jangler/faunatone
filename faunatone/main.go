@@ -169,26 +169,31 @@ func main() {
 				},
 			},
 			{
-				label: "Edit",
+				label: "Insert",
 				items: []*menuItem{
-					{label: "Insert note...", action: func() {
+					{label: "Note...", action: func() {
 						dialogInsertNote(dia, patedit, pl)
 					}},
-					{label: "Insert drum note...", action: func() {
+					{label: "Drum note...", action: func() {
 						dialogInsertDrumNote(dia, patedit, pl)
 					}},
-					{label: "Insert note off", action: func() {
+					{label: "Note off", action: func() {
 						patedit.writeEvent(newTrackEvent(&trackEvent{Type: noteOffEvent}), pl)
 					}},
-					{label: "Insert program change...", action: func() {
+					{label: "Program change...", action: func() {
 						dialogInsertProgramChange(dia, patedit, pl)
 					}},
-					{label: "Insert tempo change...", action: func() {
+					{label: "Tempo change...", action: func() {
 						dialogInsertTempoChange(dia, patedit, pl)
 					}},
-					{label: "Insert control change...", action: func() {
+					{label: "Control change...", action: func() {
 						dialogInsertControlChange(dia, patedit, pl)
 					}},
+				},
+			},
+			{
+				label: "Edit",
+				items: []*menuItem{
 					{label: "Delete events", action: func() {
 						patedit.deleteSelectedEvents()
 					}},
