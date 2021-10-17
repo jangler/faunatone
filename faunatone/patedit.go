@@ -160,8 +160,11 @@ func (pe *patternEditor) mouseButton(e *sdl.MouseButtonEvent) {
 	if !(&sdl.Point{e.X, e.Y}).InRect(pe.viewport) {
 		return
 	}
-	pe.cursorTrackClick, pe.cursorTickClick = pe.convertMouseCoords(e.X, e.Y)
-	pe.cursorTrackDrag, pe.cursorTickDrag = pe.cursorTrackClick, pe.cursorTickClick
+	x, y := pe.convertMouseCoords(e.X, e.Y)
+	if sdl.GetModState()&sdl.KMOD_SHIFT == 0 {
+		pe.cursorTrackClick, pe.cursorTickClick = x, y
+	}
+	pe.cursorTrackDrag, pe.cursorTickDrag = x, y
 }
 
 // converts click/drag coords to track index and tick
