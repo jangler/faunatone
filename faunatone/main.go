@@ -55,12 +55,6 @@ func main() {
 	outs, err := drv.Outs()
 	must(err)
 
-	if len(os.Args) == 2 && os.Args[1] == "list" {
-		for _, port := range outs {
-			fmt.Printf("[%v] %s\n", port.Number(), port)
-		}
-	}
-
 	out := outs[0]
 	must(out.Open())
 	defer out.Close()
@@ -118,6 +112,14 @@ func main() {
 	go pl.run()
 	km, _ := newKeymap(defaultKeymapPath)
 	dia := &dialog{}
+
+	// attempt to load save file specified by first CLI arg
+	if len(os.Args) > 1 {
+		if f, err := os.Open(os.Args[1]); err == nil {
+			_ = sng.read(f)
+			f.Close()
+		}
+	}
 
 	running := true
 
