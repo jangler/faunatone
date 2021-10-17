@@ -137,21 +137,19 @@ func main() {
 			{
 				label: "Play",
 				items: []*menuItem{
-					{label: "Song", action: func() {
-						go func() {
-							pl.signal <- playerSignal{typ: signalStart}
-						}()
+					{label: "From start", action: func() {
+						pl.signal <- playerSignal{typ: signalStart}
+					}},
+					{label: "From top of screen", action: func() {
+						pl.signal <- playerSignal{typ: signalStart,
+							tick: patedit.firstTickOnScreen()}
 					}},
 					{label: "From cursor", action: func() {
-						go func() {
-							_, _, minTick, _ := patedit.getSelection()
-							pl.signal <- playerSignal{typ: signalStart, tick: minTick}
-						}()
+						_, _, minTick, _ := patedit.getSelection()
+						pl.signal <- playerSignal{typ: signalStart, tick: minTick}
 					}},
 					{label: "Stop", action: func() {
-						go func() {
-							pl.signal <- playerSignal{typ: signalStop}
-						}()
+						pl.signal <- playerSignal{typ: signalStop}
 					}},
 				},
 			},

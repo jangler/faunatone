@@ -513,3 +513,8 @@ func (pe *patternEditor) playSelectionNoteOff(p *player) {
 		}}
 	}
 }
+
+// return the first tick in the current view
+func (pe *patternEditor) firstTickOnScreen() int64 {
+	return int64(pe.scrollY) * ticksPerBeat / int64(pe.beatHeight)
+}

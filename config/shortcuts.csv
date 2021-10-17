@@ -2,7 +2,8 @@ Ctrl+O, File, Open...
 Ctrl+S, File, Save as...
 Ctrl+E, File, Export MIDI...
 Ctrl+Q, File, Quit
-F5, Play, Song
+F5, Play, From start
+F6, Play, From top of screen
 F7, Play, From cursor
 F8, Play, Stop
 Up, Cursor, Previous division
