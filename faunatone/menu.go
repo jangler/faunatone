@@ -8,7 +8,7 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-var shortcutsPath = filepath.Join(configPath, "shortcuts.tsv")
+var shortcutsPath = filepath.Join(configPath, "shortcuts.csv")
 
 // top-level drop-down menu bar
 type menuBar struct {
@@ -22,7 +22,7 @@ func (mb *menuBar) init(p *printer) {
 	if mb.shortcuts == nil {
 		mb.shortcuts = make(map[string]*menuItem)
 	}
-	if records, err := readTSV(shortcutsPath); err == nil {
+	if records, err := readCSV(shortcutsPath); err == nil {
 		for _, rec := range records {
 			ok := false
 			if len(rec) == 3 {

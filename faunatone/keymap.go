@@ -14,7 +14,7 @@ import (
 
 var (
 	keymapPath        = filepath.Join(configPath, "keymaps")
-	defaultKeymapPath = "12edo.tsv"
+	defaultKeymapPath = "12edo.csv"
 
 	qwertyLayout = [][]string{
 		{"1", "2", "3", "4", "5", "6", "7", "8", "9", "0"},
@@ -37,9 +37,9 @@ type keymap struct {
 func newKeymap(path string) (*keymap, error) {
 	k := &keymap{
 		keymap: make(map[string]float64),
-		name:   strings.Replace(filepath.Base(path), ".tsv", "", 1),
+		name:   strings.Replace(filepath.Base(path), ".csv", "", 1),
 	}
-	if records, err := readTSV(filepath.Join(keymapPath, path)); err == nil {
+	if records, err := readCSV(filepath.Join(keymapPath, path)); err == nil {
 		for _, rec := range records {
 			ok := false
 			if len(rec) == 2 {

@@ -504,7 +504,7 @@ func dialogRemapKey(d *dialog, k *keymap) {
 // set d to an input dialog
 func dialogLoadKeymap(d *dialog, k *keymap) {
 	*d = *newDialog("Load keymap:", 50, func(s string) {
-		s = addSuffixIfMissing(s, ".tsv")
+		s = addSuffixIfMissing(s, ".csv")
 		if k2, err := newKeymap(s); err == nil {
 			*k = *k2
 		} else {
@@ -589,15 +589,15 @@ func dialogTrackSetChannel(d *dialog, sng *song, pe *patternEditor) {
 	})
 }
 
-// read records from a TSV file
-func readTSV(path string) ([][]string, error) {
+// read records from a CSV file
+func readCSV(path string) ([][]string, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
 	r := csv.NewReader(f)
-	r.Comma = '\t'
+	r.TrimLeadingSpace = true
 	r.Comment = '#'
 	return r.ReadAll()
 }
