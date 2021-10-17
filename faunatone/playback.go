@@ -129,6 +129,9 @@ func (p *player) run() {
 			}()
 		case signalStop:
 			p.world++
+			for i := range p.song.Tracks {
+				p.noteOff(i, p.lastTick)
+			}
 			select {
 			case p.stopping <- struct{}{}:
 				// do nothing
