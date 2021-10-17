@@ -232,8 +232,8 @@ func (pe *patternEditor) scrollToCursorIfOffscreen() {
 	}
 }
 
-// write an event to the cursor position(s)
-func (pe *patternEditor) writeEvent(te *trackEvent) {
+// write an event to the cursor position(s) and play it
+func (pe *patternEditor) writeEvent(te *trackEvent, p *player) {
 	trackMin, trackMax, tickMin, _ := pe.getSelection()
 	te.Tick = tickMin
 	for i := trackMin; i <= trackMax; i++ {
@@ -241,6 +241,7 @@ func (pe *patternEditor) writeEvent(te *trackEvent) {
 		te2 := &trackEvent{}
 		*te2 = *te
 		pe.song.Tracks[i].writeEvent(te2)
+		p.signal <- playerSignal{typ: signalEvent, track: i, event: te2}
 	}
 }
 
@@ -498,4 +499,14 @@ func (pe *patternEditor) interpolateSelection() {
 func interpolateValue(pos, start, end int64, a, b float64) float64 {
 	coeff := float64(pos-start) / float64(end-start)
 	return a*(1-coeff) + b*coeff
+}
+
+// play note offs for selected tracks
+func (pe *patternEditor) playSelectionNoteOff(p *player) {
+	trackMin, trackMax, _, _ := pe.getSelection()
+	for i := trackMin; i <= trackMax; i++ {
+		p.signal <- playerSignal{typ: signalEvent, track: i, event: &trackEvent{
+			Type: noteOffEvent,
+		}}
+	}
 }

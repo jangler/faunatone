@@ -12,6 +12,10 @@ type playerSignal struct {
 	typ   playerSignalType
 	tick  int64
 	world int
+
+	// used together
+	track int
+	event *trackEvent
 }
 
 type playerSignalType uint8
@@ -20,6 +24,7 @@ const (
 	signalContinue playerSignalType = iota
 	signalStart
 	signalStop
+	signalEvent
 	signalSongChanged // TODO actually use this
 )
 
@@ -130,6 +135,8 @@ func (p *player) run() {
 			default:
 				// also do nothing
 			}
+		case signalEvent:
+			p.playEvent(sig.track, sig.event)
 		case signalSongChanged:
 			p.findHorizon()
 		}
@@ -186,71 +193,76 @@ func (p *player) durationFromTicks(t int64) time.Duration {
 
 // play events on track i in the tick range [tickMin, tickMax]
 func (p *player) playTrackEvents(i int, tickMin, tickMax int64) {
-	t := p.song.Tracks[i]
-	for _, te := range t.Events {
+	for _, te := range p.song.Tracks[i].Events {
 		if te.Tick >= tickMin && te.Tick <= tickMax {
-			switch te.Type {
-			case noteOnEvent:
-				p.noteOff(i, te.Tick)
-				t.midiChannel = pickInactiveChannel(p.midiChannels)
-				p.writer.SetChannel(t.midiChannel)
-				mcs := p.midiChannels[t.midiChannel]
-				vcs := p.virtChannels[t.Channel]
-				for i, v := range vcs.controllers {
-					if mcs.controllers[i] != v {
-						writer.ControlChange(p.writer, uint8(i), v)
-						mcs.controllers[i] = v
-					}
-				}
-				// if mcs.program != vcs.program {
-				writer.ProgramChange(p.writer, vcs.program)
-				mcs.program = vcs.program
-				// }
-				note, bend := pitchToMIDI(te.FloatData)
-				// if mcs.bend != bend {
-				writer.Pitchbend(p.writer, bend)
-				mcs.bend = bend
-				// }
-				writer.NoteOn(p.writer, note, te.ByteData1)
-				t.activeNote = note
-				mcs.lastNoteOff = -1
-			case drumNoteOnEvent:
-				p.noteOff(i, te.Tick)
-				t.midiChannel = percussionChannelIndex
-				p.writer.SetChannel(t.midiChannel)
-				mcs := p.midiChannels[t.midiChannel]
-				vcs := p.virtChannels[t.Channel]
-				if mcs.program != vcs.program {
-					writer.ProgramChange(p.writer, vcs.program)
-				}
-				writer.NoteOn(p.writer, te.ByteData1, te.ByteData2)
-				t.activeNote = te.ByteData1
-				mcs.lastNoteOff = -1
-			case noteOffEvent:
-				p.noteOff(i, te.Tick)
-			case controllerEvent:
-				p.virtChannels[t.Channel].controllers[te.ByteData1] = te.ByteData2
-				for _, t2 := range p.song.Tracks {
-					if t2.Channel == t.Channel {
-						p.writer.SetChannel(t2.midiChannel)
-						writer.ControlChange(p.writer, te.ByteData1, te.ByteData2)
-					}
-				}
-			case programEvent:
-				// need to write an nop event here for timing reasons
-				vcs := p.virtChannels[t.Channel]
-				p.writer.SetChannel(t.midiChannel)
-				writer.ProgramChange(p.writer, vcs.program)
-				vcs.program = te.ByteData1
-			case tempoEvent:
-				p.bpm = te.FloatData
-				if wr, ok := p.writer.(*writer.SMF); ok {
-					writer.TempoBPM(wr, te.FloatData)
-				}
-			default:
-				println("unhandled event type in player.playTrackEvents")
+			p.playEvent(i, te)
+		}
+	}
+}
+
+// play a single event; i is track index
+func (p *player) playEvent(i int, te *trackEvent) {
+	t := p.song.Tracks[i]
+	switch te.Type {
+	case noteOnEvent:
+		p.noteOff(i, te.Tick)
+		t.midiChannel = pickInactiveChannel(p.midiChannels)
+		p.writer.SetChannel(t.midiChannel)
+		mcs := p.midiChannels[t.midiChannel]
+		vcs := p.virtChannels[t.Channel]
+		for i, v := range vcs.controllers {
+			if mcs.controllers[i] != v {
+				writer.ControlChange(p.writer, uint8(i), v)
+				mcs.controllers[i] = v
 			}
 		}
+		// if mcs.program != vcs.program {
+		writer.ProgramChange(p.writer, vcs.program)
+		mcs.program = vcs.program
+		// }
+		note, bend := pitchToMIDI(te.FloatData)
+		// if mcs.bend != bend {
+		writer.Pitchbend(p.writer, bend)
+		mcs.bend = bend
+		// }
+		writer.NoteOn(p.writer, note, te.ByteData1)
+		t.activeNote = note
+		mcs.lastNoteOff = -1
+	case drumNoteOnEvent:
+		p.noteOff(i, te.Tick)
+		t.midiChannel = percussionChannelIndex
+		p.writer.SetChannel(t.midiChannel)
+		mcs := p.midiChannels[t.midiChannel]
+		vcs := p.virtChannels[t.Channel]
+		if mcs.program != vcs.program {
+			writer.ProgramChange(p.writer, vcs.program)
+		}
+		writer.NoteOn(p.writer, te.ByteData1, te.ByteData2)
+		t.activeNote = te.ByteData1
+		mcs.lastNoteOff = -1
+	case noteOffEvent:
+		p.noteOff(i, te.Tick)
+	case controllerEvent:
+		p.virtChannels[t.Channel].controllers[te.ByteData1] = te.ByteData2
+		for _, t2 := range p.song.Tracks {
+			if t2.Channel == t.Channel {
+				p.writer.SetChannel(t2.midiChannel)
+				writer.ControlChange(p.writer, te.ByteData1, te.ByteData2)
+			}
+		}
+	case programEvent:
+		// need to write an nop event here for timing reasons
+		vcs := p.virtChannels[t.Channel]
+		p.writer.SetChannel(t.midiChannel)
+		writer.ProgramChange(p.writer, vcs.program)
+		vcs.program = te.ByteData1
+	case tempoEvent:
+		p.bpm = te.FloatData
+		if wr, ok := p.writer.(*writer.SMF); ok {
+			writer.TempoBPM(wr, te.FloatData)
+		}
+	default:
+		println("unhandled event type in player.playTrackEvents")
 	}
 }
 

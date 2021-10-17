@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/veandco/go-sdl2/sdl"
-	"gitlab.com/gomidi/midi/writer"
 )
 
 var (
@@ -29,8 +28,9 @@ var (
 
 // turns key events into note events
 type keymap struct {
-	keymap map[string]float64
-	name   string
+	keymap  map[string]float64
+	name    string
+	lastKey string
 }
 
 // load a keymap from a file
@@ -101,36 +101,37 @@ func parsePitch(s string, k *keymap) (float64, error) {
 }
 
 // respond to keyboard events
-func (k *keymap) keyboardEvent(e *sdl.KeyboardEvent, pe *patternEditor, wr *writer.Writer) {
-	if e.Repeat != 0 || e.State != sdl.PRESSED {
+func (k *keymap) keyboardEvent(e *sdl.KeyboardEvent, pe *patternEditor, p *player) {
+	if e.Repeat != 0 {
 		return
 	}
 	s := strings.Replace(formatKeyEvent(e), "Shift+", "", 1)
 	if pitch, ok := k.keymap[s]; ok {
-		pitch += pe.refPitch
-		if pitch < minPitch {
-			pitch = minPitch
-		} else if pitch > maxPitch {
-			pitch = maxPitch
+		if e.State == sdl.PRESSED {
+			k.lastKey = s
+			pitch += pe.refPitch
+			if pitch < minPitch {
+				pitch = minPitch
+			} else if pitch > maxPitch {
+				pitch = maxPitch
+			}
+			note, _ := pitchToMIDI(pitch)
+			if e.Keysym.Mod&sdl.KMOD_SHIFT == 0 {
+				pe.writeEvent(newTrackEvent(&trackEvent{
+					Type:      noteOnEvent,
+					FloatData: pitch,
+					ByteData1: pe.velocity,
+				}), p)
+			} else {
+				pe.writeEvent(newTrackEvent(&trackEvent{
+					Type:      drumNoteOnEvent,
+					ByteData1: note,
+					ByteData2: pe.velocity,
+				}), p)
+			}
+		} else if s == k.lastKey {
+			k.lastKey = ""
+			pe.playSelectionNoteOff(p)
 		}
-		note, bend := pitchToMIDI(pitch)
-		if e.Keysym.Mod&sdl.KMOD_SHIFT == 0 {
-			pe.writeEvent(newTrackEvent(&trackEvent{
-				Type:      noteOnEvent,
-				FloatData: pitch,
-				ByteData1: pe.velocity,
-			}))
-			wr.SetChannel(0)
-			writer.Pitchbend(wr, bend)
-		} else {
-			pe.writeEvent(newTrackEvent(&trackEvent{
-				Type:      drumNoteOnEvent,
-				ByteData1: note,
-				ByteData2: pe.velocity,
-			}))
-			wr.SetChannel(percussionChannelIndex)
-		}
-		writer.NoteOn(wr, note, pe.velocity)
-		writer.NoteOff(wr, note)
 	}
 }

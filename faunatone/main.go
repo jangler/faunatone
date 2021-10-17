@@ -173,22 +173,22 @@ func main() {
 				label: "Edit",
 				items: []*menuItem{
 					{label: "Insert note...", action: func() {
-						dialogInsertNote(dia, patedit, wr)
+						dialogInsertNote(dia, patedit, pl)
 					}},
 					{label: "Insert drum note...", action: func() {
-						dialogInsertDrumNote(dia, patedit, wr)
+						dialogInsertDrumNote(dia, patedit, pl)
 					}},
 					{label: "Insert note off", action: func() {
-						patedit.writeEvent(newTrackEvent(&trackEvent{Type: noteOffEvent}))
+						patedit.writeEvent(newTrackEvent(&trackEvent{Type: noteOffEvent}), pl)
 					}},
 					{label: "Insert program change...", action: func() {
-						dialogInsertProgramChange(dia, patedit, wr)
+						dialogInsertProgramChange(dia, patedit, pl)
 					}},
 					{label: "Insert tempo change...", action: func() {
-						dialogInsertTempoChange(dia, patedit)
+						dialogInsertTempoChange(dia, patedit, pl)
 					}},
 					{label: "Insert control change...", action: func() {
-						dialogInsertControlChange(dia, patedit)
+						dialogInsertControlChange(dia, patedit, pl)
 					}},
 					{label: "Delete events", action: func() {
 						patedit.deleteSelectedEvents()
@@ -281,7 +281,7 @@ func main() {
 				if dia.shown {
 					dia.keyboardEvent(event)
 				} else if !mb.keyboardEvent(event) {
-					km.keyboardEvent(event, patedit, wr)
+					km.keyboardEvent(event, patedit, pl)
 				}
 			case *sdl.TextInputEvent:
 				if dia.shown {
@@ -343,23 +343,18 @@ func dialogMsg(d *dialog, s string) {
 }
 
 // set d to an input dialog
-func dialogInsertNote(d *dialog, pe *patternEditor, wr *writer.Writer) {
+func dialogInsertNote(d *dialog, pe *patternEditor, p *player) {
 	*d = dialog{
 		prompt: "Insert note:",
 		size:   7,
 		action: func(s string) {
 			if f, err := strconv.ParseFloat(s, 64); err == nil {
 				if f >= minPitch && f <= maxPitch {
-					note, bend := pitchToMIDI(f)
 					pe.writeEvent(newTrackEvent(&trackEvent{
 						Type:      noteOnEvent,
 						FloatData: f,
 						ByteData1: pe.velocity,
-					}))
-					wr.SetChannel(0)
-					writer.Pitchbend(wr, bend)
-					writer.NoteOn(wr, note, pe.velocity)
-					writer.NoteOff(wr, note)
+					}), p)
 				} else {
 					dialogMsg(d, fmt.Sprintf("Note must be in the range [-%d, %d].",
 						minPitch, maxPitch))
@@ -381,7 +376,7 @@ func pitchToMIDI(p float64) (uint8, int16) {
 }
 
 // set to d an input dialog
-func dialogInsertDrumNote(d *dialog, pe *patternEditor, wr *writer.Writer) {
+func dialogInsertDrumNote(d *dialog, pe *patternEditor, p *player) {
 	*d = *newDialog("Insert drum note:", 3, func(s string) {
 		if i, err := strconv.ParseUint(s, 10, 8); err == nil {
 			if i < 128 {
@@ -389,10 +384,7 @@ func dialogInsertDrumNote(d *dialog, pe *patternEditor, wr *writer.Writer) {
 					Type:      drumNoteOnEvent,
 					ByteData1: uint8(i),
 					ByteData2: pe.velocity,
-				}))
-				wr.SetChannel(percussionChannelIndex)
-				writer.NoteOn(wr, uint8(i), pe.velocity)
-				writer.NoteOff(wr, uint8(i))
+				}), p)
 			} else {
 				dialogMsg(d, "Note must be in the range [0, 127].")
 			}
@@ -403,16 +395,14 @@ func dialogInsertDrumNote(d *dialog, pe *patternEditor, wr *writer.Writer) {
 }
 
 // set d to an input dialog
-func dialogInsertProgramChange(d *dialog, pe *patternEditor, wr *writer.Writer) {
+func dialogInsertProgramChange(d *dialog, pe *patternEditor, p *player) {
 	*d = *newDialog("Insert program change:", 3, func(s string) {
 		if i, err := strconv.ParseUint(s, 10, 8); err == nil {
 			if i >= 1 && i <= 128 {
 				pe.writeEvent(newTrackEvent(&trackEvent{
 					Type:      programEvent,
 					ByteData1: byte(i - 1),
-				}))
-				wr.SetChannel(0)
-				writer.ProgramChange(wr, uint8(i-1))
+				}), p)
 			} else {
 				dialogMsg(d, "Program must be in the range [1, 128].")
 			}
@@ -423,14 +413,14 @@ func dialogInsertProgramChange(d *dialog, pe *patternEditor, wr *writer.Writer) 
 }
 
 // set d to an input dialog
-func dialogInsertTempoChange(d *dialog, pe *patternEditor) {
+func dialogInsertTempoChange(d *dialog, pe *patternEditor, p *player) {
 	*d = *newDialog("Insert tempo change:", 7, func(s string) {
 		if f, err := strconv.ParseFloat(s, 64); err == nil {
 			if f > 0 {
 				pe.writeEvent(newTrackEvent(&trackEvent{
 					Type:      tempoEvent,
 					FloatData: f,
-				}))
+				}), p)
 			} else {
 				dialogMsg(d, "Tempo must be above zero.")
 			}
@@ -441,14 +431,14 @@ func dialogInsertTempoChange(d *dialog, pe *patternEditor) {
 }
 
 // set d to an input dialog
-func dialogInsertControlChange(d *dialog, pe *patternEditor) {
+func dialogInsertControlChange(d *dialog, pe *patternEditor, p *player) {
 	*d = *newDialog("Controller value:", 3, func(s string) {
 		if i, err := strconv.ParseUint(s, 10, 8); err == nil {
 			pe.writeEvent(newTrackEvent(&trackEvent{
 				Type:      controllerEvent,
 				ByteData1: pe.controller,
 				ByteData2: byte(i),
-			}))
+			}), p)
 		} else {
 			dialogMsg(d, err.Error())
 		}
