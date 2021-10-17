@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/veandco/go-sdl2/sdl"
 	"github.com/veandco/go-sdl2/ttf"
@@ -113,6 +114,16 @@ func main() {
 	go pl.run()
 	km, _ := newKeymap(defaultKeymapPath)
 	dia := &dialog{}
+
+	// required for cursor blink
+	go func() {
+		for {
+			if dia.shown && dia.size > 0 {
+				redrawChan <- true
+				time.Sleep(time.Millisecond * inputCursorBlinkMs)
+			}
+		}
+	}()
 
 	// attempt to load save file specified by first CLI arg
 	if len(os.Args) > 1 {
