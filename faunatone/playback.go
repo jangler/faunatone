@@ -76,6 +76,7 @@ func (p *player) run() {
 	for sig := range p.signal {
 		switch sig.typ {
 		case signalStart:
+			p.broadcastPitchBendRPN(bendSemitones, 0)
 			p.world++
 			for _, c := range p.midiChannels {
 				c.lastNoteOff = 0 // reset; all channels are fair game now
@@ -145,6 +146,17 @@ func (p *player) run() {
 		if p.redrawChan != nil {
 			p.redrawChan <- true
 		}
+	}
+}
+
+// send the "pitch bend sensitivity" RPN to every channel
+func (p *player) broadcastPitchBendRPN(semitones, cents uint8) {
+	for i := uint8(0); i < numMIDIChannels; i++ {
+		p.writer.SetChannel(i)
+		writer.ControlChange(p.writer, 100, 0)
+		writer.ControlChange(p.writer, 101, 0)
+		writer.ControlChange(p.writer, 6, semitones)
+		writer.ControlChange(p.writer, 38, cents)
 	}
 }
 
@@ -225,6 +237,7 @@ func (p *player) playEvent(te *trackEvent) {
 		// if mcs.bend != bend {
 		writer.Pitchbend(p.writer, bend)
 		mcs.bend = bend
+		vcs.bend = bend
 		// }
 		writer.NoteOn(p.writer, note, te.ByteData1)
 		t.activeNote = note
@@ -250,6 +263,16 @@ func (p *player) playEvent(te *trackEvent) {
 				p.writer.SetChannel(t2.midiChannel)
 				writer.ControlChange(p.writer, te.ByteData1, te.ByteData2)
 			}
+		}
+	case pitchBendEvent:
+		if note := t.activeNote; note != noNote {
+			p.writer.SetChannel(t.midiChannel)
+			mcs := p.midiChannels[t.midiChannel]
+			vcs := p.virtChannels[t.Channel]
+			bend := int16((te.FloatData - float64(note)) * 8192.0 / bendSemitones)
+			writer.Pitchbend(p.writer, bend)
+			mcs.bend = bend
+			vcs.bend = bend
 		}
 	case programEvent:
 		// need to write an nop event here for timing reasons

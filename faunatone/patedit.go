@@ -19,9 +19,9 @@ const (
 	defaultController = 1
 	defaultRefPitch   = 60
 
-	// widest range achievable with 2-semitone pitch wheel range
-	minPitch = -2
-	maxPitch = 129
+	// widest range achievable with pitch wheel
+	minPitch = -bendSemitones
+	maxPitch = 127 + bendSemitones
 
 	historySizeLimit = 10000000 // 10 MB
 )
@@ -555,7 +555,7 @@ func (pe *patternEditor) interpolateSelection() {
 						startEvt.Tick, endEvt.Tick, startEvt.FloatData, endEvt.FloatData)
 					te.ByteData1 = byte(math.Round(interpolateValue(tick, startEvt.Tick,
 						endEvt.Tick, float64(startEvt.ByteData1), float64(endEvt.ByteData1))))
-				case tempoEvent:
+				case pitchBendEvent, tempoEvent:
 					te.FloatData = interpolateValue(tick,
 						startEvt.Tick, endEvt.Tick, startEvt.FloatData, endEvt.FloatData)
 				case programEvent:

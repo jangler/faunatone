@@ -17,13 +17,14 @@ import (
 )
 
 const (
-	windowWidth  = 1280
-	windowHeight = 720
-	fontSize     = 14
-	padding      = fontSize / 2
-	appName      = "Faunatone"
-	fileExt      = ".fna"
-	defaultFps   = 60
+	windowWidth   = 1280
+	windowHeight  = 720
+	fontSize      = 14
+	padding       = fontSize / 2
+	appName       = "Faunatone"
+	fileExt       = ".fna"
+	defaultFps    = 60
+	bendSemitones = 24
 )
 
 var (
@@ -190,6 +191,9 @@ func main() {
 					}},
 					{label: "Note off", action: func() {
 						patedit.writeEvent(newTrackEvent(&trackEvent{Type: noteOffEvent}), pl)
+					}},
+					{label: "Pitch bend...", action: func() {
+						dialogInsertPitchBend(dia, km, patedit, pl)
 					}},
 					{label: "Program change...", action: func() {
 						dialogInsertProgramChange(dia, patedit, pl)
@@ -382,7 +386,7 @@ func dialogInsertNote(d *dialog, pe *patternEditor, p *player) {
 						ByteData1: pe.velocity,
 					}), p)
 				} else {
-					dialogMsg(d, fmt.Sprintf("Note must be in the range [-%d, %d].",
+					dialogMsg(d, fmt.Sprintf("Note must be in the range [%d, %d].",
 						minPitch, maxPitch))
 				}
 			} else {
@@ -396,8 +400,8 @@ func dialogInsertNote(d *dialog, pe *patternEditor, p *player) {
 // return note and pitch wheel values required to play a pitch in MIDI,
 // assuming a 2-semitone pitch bend range
 func pitchToMIDI(p float64) (uint8, int16) {
-	note := uint8(math.Max(0, math.Min(127, p)))
-	bend := int16((p - float64(note)) * 4096)
+	note := uint8(math.Round(math.Max(0, math.Min(127, p))))
+	bend := int16((p - float64(note)) * 8192.0 / bendSemitones)
 	return note, bend
 }
 
@@ -418,6 +422,21 @@ func dialogInsertDrumNote(d *dialog, pe *patternEditor, p *player) {
 			dialogMsg(d, err.Error())
 		}
 	})
+}
+
+// set d to a key dialog
+func dialogInsertPitchBend(d *dialog, k *keymap, pe *patternEditor, p *player) {
+	*d = *newDialog("Insert pitch bend...", 0, func(s string) {
+		if f, ok := k.pitchFromString(s, pe.refPitch); ok {
+			pe.writeEvent(newTrackEvent(&trackEvent{
+				Type:      pitchBendEvent,
+				FloatData: f,
+			}), p)
+		} else {
+			dialogMsg(d, "Key not in keymap.")
+		}
+	})
+	d.keymode = true
 }
 
 // set d to an input dialog

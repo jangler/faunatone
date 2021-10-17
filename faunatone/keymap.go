@@ -106,15 +106,9 @@ func (k *keymap) keyboardEvent(e *sdl.KeyboardEvent, pe *patternEditor, p *playe
 		return
 	}
 	s := strings.Replace(formatKeyEvent(e), "Shift+", "", 1)
-	if pitch, ok := k.keymap[s]; ok {
+	if pitch, ok := k.pitchFromString(s, pe.refPitch); ok {
 		if e.State == sdl.PRESSED {
 			k.lastKey = s
-			pitch += pe.refPitch
-			if pitch < minPitch {
-				pitch = minPitch
-			} else if pitch > maxPitch {
-				pitch = maxPitch
-			}
 			note, _ := pitchToMIDI(pitch)
 			if e.Keysym.Mod&sdl.KMOD_SHIFT == 0 {
 				pe.writeEvent(newTrackEvent(&trackEvent{
@@ -134,4 +128,18 @@ func (k *keymap) keyboardEvent(e *sdl.KeyboardEvent, pe *patternEditor, p *playe
 			pe.playSelectionNoteOff(p)
 		}
 	}
+}
+
+// convert a key string to an absolute pitch
+func (k *keymap) pitchFromString(s string, refPitch float64) (float64, bool) {
+	if pitch, ok := k.keymap[s]; ok {
+		pitch += refPitch
+		if pitch < minPitch {
+			pitch = minPitch
+		} else if pitch > maxPitch {
+			pitch = maxPitch
+		}
+		return pitch, true
+	}
+	return 0, false
 }

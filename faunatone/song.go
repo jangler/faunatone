@@ -18,6 +18,7 @@ const (
 	programEvent
 	tempoEvent
 	drumNoteOnEvent
+	pitchBendEvent
 )
 
 const (
@@ -137,6 +138,8 @@ func (te *trackEvent) setUiString() {
 		te.uiString = "off"
 	case controllerEvent:
 		te.uiString = fmt.Sprintf("cc %d %d", te.ByteData1, te.ByteData2)
+	case pitchBendEvent:
+		te.uiString = fmt.Sprintf("bend %.2f", te.FloatData)
 	case programEvent:
 		te.uiString = fmt.Sprintf("prog %d", te.ByteData1+1)
 	case tempoEvent:
