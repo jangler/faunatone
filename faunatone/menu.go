@@ -69,12 +69,14 @@ func (mb *menuBar) draw(p *printer, r *sdl.Renderer) {
 
 // respond to keyboard events, returning true if an action was triggered
 func (mb *menuBar) keyboardEvent(e *sdl.KeyboardEvent) bool {
-	if e.Repeat != 0 || e.State != sdl.PRESSED {
+	if e.State != sdl.PRESSED {
 		return false
 	}
 	if item, ok := mb.shortcuts[formatKeyEvent(e)]; ok && item.action != nil {
-		item.action()
-		return true
+		if item.repeat || e.Repeat == 0 {
+			item.action()
+			return true
+		}
 	}
 	return false
 }
@@ -204,6 +206,7 @@ type menuItem struct {
 	text      string // final text to be drawn
 	action    func()
 	rect      *sdl.Rect
+	repeat    bool // allow triggering by key repeat
 }
 
 // initialize the menu item's properties and layout; returns (x+w, y+h)
