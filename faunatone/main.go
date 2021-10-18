@@ -21,8 +21,6 @@ import (
 const (
 	windowWidth   = 1280
 	windowHeight  = 720
-	fontSize      = 14
-	padding       = fontSize / 2
 	appName       = "Faunatone"
 	fileExt       = ".fna"
 	defaultFps    = 60
@@ -41,7 +39,8 @@ var (
 	settingsPath = filepath.Join("config", "settings.csv")
 	fontPath     = filepath.Join("assets", "RobotoMono-Regular-BasicLatin.ttf")
 
-	uiScale = 1
+	fontSize = int32(12)
+	padding  = fontSize / 2
 )
 
 func must(err error) {
@@ -52,6 +51,10 @@ func must(err error) {
 
 func main() {
 	settings := loadSettings()
+	if v, ok := settings["fontSize"]; ok {
+		fontSize = int32(v)
+		padding = fontSize / 2
+	}
 
 	drv, err := driver.New()
 	must(err)
@@ -98,7 +101,7 @@ func main() {
 	err = ttf.Init()
 	must(err)
 	defer ttf.Quit()
-	font, err := ttf.OpenFont(fontPath, fontSize)
+	font, err := ttf.OpenFont(fontPath, int(fontSize))
 	must(err)
 	defer font.Close()
 	pr, err := newPrinter(font)
