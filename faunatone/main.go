@@ -58,21 +58,23 @@ func main() {
 	defer drv.Close()
 
 	midiIn := make(chan midi.Message, 100)
-	ins, err := drv.Ins()
-	must(err)
-	in := ins[settings["midiInPortNumber"]]
-	must(in.Open())
-	defer in.Close()
-	rd := reader.New(reader.NoLogger(),
-		reader.Each(func(pos *reader.Position, msg midi.Message) {
-			select {
-			case midiIn <- msg:
-			default:
-			}
-		}),
-	)
-	err = rd.ListenTo(in)
-	must(err)
+	if n, ok := settings["midiInPortNumber"]; ok {
+		ins, err := drv.Ins()
+		must(err)
+		in := ins[n]
+		must(in.Open())
+		defer in.Close()
+		rd := reader.New(reader.NoLogger(),
+			reader.Each(func(pos *reader.Position, msg midi.Message) {
+				select {
+				case midiIn <- msg:
+				default:
+				}
+			}),
+		)
+		err = rd.ListenTo(in)
+		must(err)
+	}
 
 	outs, err := drv.Outs()
 	must(err)
