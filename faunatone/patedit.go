@@ -49,6 +49,8 @@ type patternEditor struct {
 	refPitch         float64
 	history          []*editAction
 	historyIndex     int // index of action that undo will undo
+	followSong       bool
+	prevPlayPos      int64
 }
 
 // used for undo/redo. the track structs have nil event slices.
@@ -83,9 +85,19 @@ func (pe *patternEditor) draw(r *sdl.Renderer, dst *sdl.Rect, playPos int64) {
 	pe.beatHeight = (pe.printer.rect.H + padding) * rowsPerBeat
 	pe.trackWidth = pe.printer.rect.W*int32(len("on 123.86 100")) + padding
 
-	// draw play position
+	// scroll to center play position if song follow is on and play pos changed
 	dst.Y += pe.headerHeight
 	dst.H -= pe.headerHeight
+	if pe.followSong && playPos != pe.prevPlayPos {
+		pe.scrollY = int32(playPos*int64(pe.beatHeight)/ticksPerBeat) -
+			dst.H/2 + pe.beatHeight/rowsPerBeat/2
+		if pe.scrollY < 0 {
+			pe.scrollY = 0
+		}
+	}
+	pe.prevPlayPos = playPos
+
+	// draw play position
 	y := dst.Y + int32(playPos*int64(pe.beatHeight)/ticksPerBeat) - pe.scrollY
 	h := pe.beatHeight / rowsPerBeat
 	if y+h > dst.Y && y < dst.Y+dst.H {

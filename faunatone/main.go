@@ -261,6 +261,9 @@ func main() {
 					{label: "Make isomorphic keymap...", action: func() {
 						dialogMakeIsoKeymap(dia, km)
 					}},
+					{label: "Toggle song follow", action: func() {
+						patedit.followSong = !patedit.followSong
+					}},
 				},
 			},
 			{
@@ -287,6 +290,12 @@ func main() {
 		func() string { return fmt.Sprintf("Velocity: %d", patedit.velocity) },
 		func() string { return fmt.Sprintf("Controller: %d", patedit.controller) },
 		func() string { return fmt.Sprintf("Keymap: %s", km.name) },
+		func() string {
+			if patedit.followSong {
+				return "Follow"
+			}
+			return ""
+		},
 	)
 
 	// attempt to load save file specified by first CLI arg
@@ -372,7 +381,8 @@ func main() {
 			renderer.SetDrawColorArray(colorFgArray...)
 			viewport := renderer.GetViewport()
 			y := mb.menus[0].rect.H
-			patedit.draw(renderer, &sdl.Rect{0, y, viewport.W, viewport.H - y - sb.rect.H}, pl.lastTick)
+			patedit.draw(renderer, &sdl.Rect{0, y, viewport.W, viewport.H - y - sb.rect.H},
+				pl.lastTick)
 			sb.draw(pr, renderer)
 			mb.draw(pr, renderer)
 			dia.draw(pr, renderer)
