@@ -148,14 +148,6 @@ func main() {
 		}
 	}()
 
-	// attempt to load save file specified by first CLI arg
-	if len(os.Args) > 1 {
-		if f, err := os.Open(os.Args[1]); err == nil {
-			_ = sng.read(f)
-			f.Close()
-		}
-	}
-
 	running := true
 
 	mb := &menuBar{
@@ -289,15 +281,26 @@ func main() {
 	}
 	mb.init(pr)
 
-	sb := statusBar{
-		rect: &sdl.Rect{},
-		funcs: []func() string{
-			func() string { return fmt.Sprintf("Root: %.2f", patedit.refPitch) },
-			func() string { return fmt.Sprintf("Division: %d", patedit.division) },
-			func() string { return fmt.Sprintf("Velocity: %d", patedit.velocity) },
-			func() string { return fmt.Sprintf("Controller: %d", patedit.controller) },
-			func() string { return fmt.Sprintf("Keymap: %s", km.name) },
-		},
+	sb := newStatusBar(
+		func() string { return fmt.Sprintf("Root: %.2f", patedit.refPitch) },
+		func() string { return fmt.Sprintf("Division: %d", patedit.division) },
+		func() string { return fmt.Sprintf("Velocity: %d", patedit.velocity) },
+		func() string { return fmt.Sprintf("Controller: %d", patedit.controller) },
+		func() string { return fmt.Sprintf("Keymap: %s", km.name) },
+	)
+
+	// attempt to load save file specified by first CLI arg
+	if len(os.Args) > 1 {
+		if f, err := os.Open(os.Args[1]); err == nil {
+			if err := sng.read(f); err == nil {
+				sb.showMessage(fmt.Sprintf("Loaded %s.", os.Args[1]), redrawChan)
+			} else {
+				sb.showMessage(err.Error(), redrawChan)
+			}
+			f.Close()
+		} else {
+			sb.showMessage(err.Error(), redrawChan)
+		}
 	}
 
 	for running {
