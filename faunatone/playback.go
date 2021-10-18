@@ -159,10 +159,7 @@ func (p *player) cleanup() {
 func (p *player) broadcastPitchBendRPN(semitones, cents uint8) {
 	for i := uint8(0); i < numMIDIChannels; i++ {
 		p.writer.SetChannel(i)
-		writer.ControlChange(p.writer, 100, 0)
-		writer.ControlChange(p.writer, 101, 0)
-		writer.ControlChange(p.writer, 6, semitones)
-		writer.ControlChange(p.writer, 38, cents)
+		writer.RPN(p.writer, 0, 0, semitones, cents)
 	}
 }
 
