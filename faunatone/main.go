@@ -41,6 +41,9 @@ var (
 
 	fontSize = int32(12)
 	padding  = fontSize / 2
+
+	saveAutofill   string
+	exportAutofill string
 )
 
 func must(err error) {
@@ -628,6 +631,8 @@ func dialogNew(d *dialog, sng *song, pe *patternEditor, p *player) {
 		p.stop(true)
 		*sng = *newSong()
 		pe.reset()
+		saveAutofill = ""
+		exportAutofill = ""
 	})
 	d.mode = yesNoInput
 }
@@ -641,6 +646,7 @@ func dialogOpen(d *dialog, sng *song, pe *patternEditor, p *player) {
 			p.stop(true)
 			if err := sng.read(f); err == nil {
 				pe.reset()
+				saveAutofill = s
 			} else {
 				dialogMsg(d, err.Error())
 			}
@@ -654,6 +660,7 @@ func dialogOpen(d *dialog, sng *song, pe *patternEditor, p *player) {
 func dialogSaveAs(d *dialog, sng *song) {
 	*d = *newDialog("Save as:", 50, func(s string) {
 		s = addSuffixIfMissing(s, fileExt)
+		saveAutofill = s
 		if f, err := os.Create(s); err == nil {
 			defer f.Close()
 			if err := sng.write(f); err != nil {
@@ -663,17 +670,20 @@ func dialogSaveAs(d *dialog, sng *song) {
 			dialogMsg(d, err.Error())
 		}
 	})
+	d.input = saveAutofill
 }
 
 // set d to an input dialog
 func dialogExportMIDI(d *dialog, sng *song, p *player) {
 	*d = *newDialog("Export as:", 50, func(s string) {
 		s = addSuffixIfMissing(s, ".mid")
+		exportAutofill = s
 		p.stop(true) // avoid race condition
 		if err := sng.exportSMF(s); err != nil {
 			dialogMsg(d, err.Error())
 		}
 	})
+	d.input = exportAutofill
 }
 
 // set d to an input dialog
