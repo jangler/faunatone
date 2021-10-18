@@ -39,6 +39,7 @@ type player struct {
 	bpm          float64
 	signal       chan playerSignal
 	stopping     chan struct{} // player sends on this channel when stopping
+	sendStopping bool          // but only if this is true
 	writer       writer.ChannelWriter
 	midiChannels []*channelState
 	virtChannels []*channelState
@@ -130,11 +131,8 @@ func (p *player) run() {
 			for i := range p.song.Tracks {
 				p.noteOff(i, p.lastTick)
 			}
-			select {
-			case p.stopping <- struct{}{}:
-				// do nothing
-			default:
-				// also do nothing
+			if p.sendStopping {
+				p.stopping <- struct{}{}
 			}
 		case signalEvent:
 			p.playEvent(sig.event)
