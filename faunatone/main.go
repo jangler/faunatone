@@ -117,14 +117,7 @@ func main() {
 	}()
 	fps := getRefreshRate()
 
-	sng := &song{
-		Tracks: []*track{
-			&track{},
-			&track{},
-			&track{},
-			&track{},
-		},
-	}
+	sng := newSong()
 	patedit := &patternEditor{
 		printer:      pr,
 		song:         sng,
@@ -158,7 +151,8 @@ func main() {
 			{
 				label: "File",
 				items: []*menuItem{
-					{label: "Open...", action: func() { dialogOpen(dia, sng, patedit) }},
+					{label: "New", action: func() { dialogNew(dia, sng, patedit, pl) }},
+					{label: "Open...", action: func() { dialogOpen(dia, sng, patedit, pl) }},
 					{label: "Save as...", action: func() { dialogSaveAs(dia, sng) }},
 					{label: "Export MIDI...", action: func() { dialogExportMIDI(dia, sng, pl) }},
 					{label: "Quit", action: func() { running = false }},
@@ -178,9 +172,7 @@ func main() {
 						_, _, minTick, _ := patedit.getSelection()
 						pl.signal <- playerSignal{typ: signalStart, tick: minTick}
 					}},
-					{label: "Stop", action: func() {
-						pl.signal <- playerSignal{typ: signalStop}
-					}},
+					{label: "Stop", action: func() { pl.stop(false) }},
 				},
 			},
 			{
@@ -491,7 +483,7 @@ func dialogInsertPitchBend(d *dialog, k *keymap, pe *patternEditor, p *player) {
 			dialogMsg(d, "Key not in keymap.")
 		}
 	})
-	d.keymode = true
+	d.mode = noteInput
 }
 
 // set d to an input dialog
@@ -598,7 +590,7 @@ func dialogRemapKey(d *dialog, k *keymap) {
 			}
 		})
 	})
-	d.keymode = true
+	d.mode = noteInput
 }
 
 // set d to an input dialog
@@ -630,12 +622,23 @@ func dialogMakeIsoKeymap(d *dialog, k *keymap) {
 	})
 }
 
+// set d to a y/n dialog
+func dialogNew(d *dialog, sng *song, pe *patternEditor, p *player) {
+	*d = *newDialog("Create new song? (y/n)", 0, func(s string) {
+		p.stop(true)
+		*sng = *newSong()
+		pe.reset()
+	})
+	d.mode = yesNoInput
+}
+
 // set d to an input dialog
-func dialogOpen(d *dialog, sng *song, pe *patternEditor) {
+func dialogOpen(d *dialog, sng *song, pe *patternEditor, p *player) {
 	*d = *newDialog("Open:", 50, func(s string) {
 		s = addSuffixIfMissing(s, fileExt)
 		if f, err := os.Open(s); err == nil {
 			defer f.Close()
+			p.stop(true)
 			if err := sng.read(f); err == nil {
 				pe.reset()
 			} else {
@@ -666,7 +669,7 @@ func dialogSaveAs(d *dialog, sng *song) {
 func dialogExportMIDI(d *dialog, sng *song, p *player) {
 	*d = *newDialog("Export as:", 50, func(s string) {
 		s = addSuffixIfMissing(s, ".mid")
-		p.signal <- playerSignal{typ: signalStop} // avoid race conditions
+		p.stop(true) // avoid race condition
 		if err := sng.exportSMF(s); err != nil {
 			dialogMsg(d, err.Error())
 		}

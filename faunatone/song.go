@@ -34,6 +34,17 @@ type song struct {
 	Tracks []*track
 }
 
+func newSong() *song {
+	return &song{
+		Tracks: []*track{
+			&track{},
+			&track{},
+			&track{},
+			&track{},
+		},
+	}
+}
+
 // decode song data; if successful, the current song data is replaced
 func (s *song) read(r io.Reader) error {
 	comp, err := zlib.NewReader(r)

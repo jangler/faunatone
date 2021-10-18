@@ -323,6 +323,14 @@ func (p *player) determineVirtualChannelStates(tick int64) {
 	}
 }
 
+// send a stop signal to the player, waiting if await is true
+func (p *player) stop(await bool) {
+	p.sendStopping = true
+	p.signal <- playerSignal{typ: signalStop}
+	<-p.stopping
+	p.sendStopping = false
+}
+
 // type that tracks state of a midi or virtual channel
 type channelState struct {
 	lastNoteOff int64
