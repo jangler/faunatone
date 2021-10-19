@@ -12,6 +12,7 @@ var (
 )
 
 type settings struct {
+	ColorBeat         uint32
 	ColorBg1          uint32
 	ColorBg2          uint32
 	ColorFg           uint32

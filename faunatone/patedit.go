@@ -137,20 +137,10 @@ func (pe *patternEditor) draw(r *sdl.Renderer, dst *sdl.Rect, playPos int64) {
 	dst.Y -= pe.headerHeight
 	dst.H += pe.headerHeight
 
-	// draw track headers
-	x = dst.X + pe.beatWidth - pe.scrollX
-	r.SetDrawColorArray(colorBg1Array...)
-	r.FillRect(&sdl.Rect{x, dst.Y, dst.W, pe.headerHeight})
-	for _, t := range pe.song.Tracks {
-		if x+pe.trackWidth > dst.X && x < dst.X+dst.W {
-			pe.printer.draw(r, "channel "+strconv.Itoa(int(t.Channel)+1), x, dst.Y+padding)
-		}
-		x += pe.trackWidth
-	}
-
-	// draw beat numbers
+	// draw beat numbers and lines
 	r.SetDrawColorArray(colorBg1Array...)
 	r.FillRect(&sdl.Rect{dst.X, dst.Y, pe.beatWidth, dst.H})
+	r.SetDrawColorArray(colorBeatArray...)
 	for i := (pe.scrollY / pe.beatHeight); i < (pe.scrollY+dst.H)/pe.beatHeight+2; i++ {
 		y := dst.Y + int32(i-1)*pe.beatHeight + pe.headerHeight - pe.scrollY
 		if y+pe.printer.rect.H > dst.Y && y < dst.Y+dst.H {
@@ -159,7 +149,19 @@ func (pe *patternEditor) draw(r *sdl.Renderer, dst *sdl.Rect, playPos int64) {
 				s = s[len(s)-beatDigits:]
 			}
 			pe.printer.draw(r, s, dst.X+padding, y+padding/2)
+			r.DrawLine(dst.X, y, dst.X+dst.W, y)
 		}
+	}
+
+	// draw track headers
+	x = dst.X + pe.beatWidth - pe.scrollX
+	r.SetDrawColorArray(colorBg1Array...)
+	r.FillRect(&sdl.Rect{dst.X, dst.Y, dst.W, pe.headerHeight})
+	for _, t := range pe.song.Tracks {
+		if x+pe.trackWidth > dst.X && x < dst.X+dst.W {
+			pe.printer.draw(r, "channel "+strconv.Itoa(int(t.Channel)+1), x, dst.Y+padding)
+		}
+		x += pe.trackWidth
 	}
 
 	// draw events

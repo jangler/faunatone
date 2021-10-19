@@ -30,6 +30,7 @@ const (
 )
 
 var (
+	colorBeatArray    = make([]uint8, 4)
 	colorBg1Array     = make([]uint8, 4)
 	colorBg2Array     = make([]uint8, 4)
 	colorFgArray      = make([]uint8, 4)
@@ -49,6 +50,7 @@ func must(err error) {
 
 func main() {
 	settings := loadSettings(func(s string) { println(s) })
+	setColorArray(colorBeatArray, settings.ColorBeat)
 	setColorArray(colorBg1Array, settings.ColorBg1)
 	setColorArray(colorBg2Array, settings.ColorBg2)
 	setColorArray(colorFgArray, settings.ColorFg)
