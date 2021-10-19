@@ -27,7 +27,7 @@ const (
 
 const (
 	defaultBPM = 120
-	noNote     = 0xff
+	byteNil    = 0xff
 )
 
 // type that writes midi events over time according to a song
@@ -232,16 +232,16 @@ func (p *player) playEvent(te *trackEvent) {
 				mcs.controllers[i] = v
 			}
 		}
-		// if mcs.program != vcs.program {
-		writer.ProgramChange(p.writer, vcs.program)
-		mcs.program = vcs.program
-		// }
+		if mcs.program != vcs.program {
+			writer.ProgramChange(p.writer, vcs.program)
+			mcs.program = vcs.program
+		}
 		note, bend := pitchToMIDI(te.FloatData)
-		// if mcs.bend != bend {
-		writer.Pitchbend(p.writer, bend)
-		mcs.bend = bend
 		vcs.bend = bend
-		// }
+		if mcs.bend != bend {
+			writer.Pitchbend(p.writer, bend)
+			mcs.bend = bend
+		}
 		writer.NoteOn(p.writer, note, te.ByteData1)
 		t.activeNote = note
 		mcs.lastNoteOff = -1
@@ -262,27 +262,29 @@ func (p *player) playEvent(te *trackEvent) {
 	case controllerEvent:
 		p.virtChannels[t.Channel].controllers[te.ByteData1] = te.ByteData2
 		for _, t2 := range p.song.Tracks {
-			if t2.Channel == t.Channel {
+			if t2.Channel == t.Channel && t2.midiChannel != byteNil {
 				p.writer.SetChannel(t2.midiChannel)
 				writer.ControlChange(p.writer, te.ByteData1, te.ByteData2)
+				p.midiChannels[t2.midiChannel].controllers[te.ByteData1] = te.ByteData2
 			}
 		}
 	case pitchBendEvent:
-		if note := t.activeNote; note != noNote {
-			p.writer.SetChannel(t.midiChannel)
-			mcs := p.midiChannels[t.midiChannel]
-			vcs := p.virtChannels[t.Channel]
+		if note := t.activeNote; note != byteNil {
 			bend := int16((te.FloatData - float64(note)) * 8192.0 / bendSemitones)
+			p.virtChannels[t.Channel].bend = bend
+			p.writer.SetChannel(t.midiChannel)
 			writer.Pitchbend(p.writer, bend)
-			mcs.bend = bend
-			vcs.bend = bend
+			p.midiChannels[t.midiChannel].bend = bend
 		}
 	case programEvent:
-		// need to write an nop event here for timing reasons
-		vcs := p.virtChannels[t.Channel]
-		p.writer.SetChannel(t.midiChannel)
-		writer.ProgramChange(p.writer, vcs.program)
-		vcs.program = te.ByteData1
+		p.virtChannels[t.Channel].program = te.ByteData1
+		for _, t2 := range p.song.Tracks {
+			if t2.Channel == t.Channel && t2.midiChannel != byteNil {
+				p.writer.SetChannel(t2.midiChannel)
+				writer.ProgramChange(p.writer, te.ByteData1)
+				p.midiChannels[t2.midiChannel].program = te.ByteData1
+			}
+		}
 	case tempoEvent:
 		p.bpm = te.FloatData
 		if wr, ok := p.writer.(*writer.SMF); ok {
@@ -296,10 +298,10 @@ func (p *player) playEvent(te *trackEvent) {
 // if a note is playing on the indexed track, play a note off
 func (p *player) noteOff(i int, tick int64) {
 	t := p.song.Tracks[i]
-	if activeNote := t.activeNote; activeNote != 0xff {
+	if activeNote := t.activeNote; activeNote != byteNil {
 		p.writer.SetChannel(t.midiChannel)
 		writer.NoteOff(p.writer, activeNote)
-		t.activeNote = 0xff
+		t.activeNote = byteNil
 		p.midiChannels[t.midiChannel].lastNoteOff = tick
 	}
 }

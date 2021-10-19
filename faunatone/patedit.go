@@ -371,14 +371,8 @@ func (pe *patternEditor) setTrackChannel(channel uint8) {
 	trackMin, trackMax, _, _ := pe.getSelection()
 	ea := &editAction{}
 	for i := trackMin; i <= trackMax; i++ {
-		ea.beforeTracks = append(ea.beforeTracks, &track{
-			Channel: pe.song.Tracks[i].Channel,
-			index:   i,
-		})
-		ea.afterTracks = append(ea.afterTracks, &track{
-			Channel: channel,
-			index:   i,
-		})
+		ea.beforeTracks = append(ea.beforeTracks, newTrack(pe.song.Tracks[i].Channel, i))
+		ea.afterTracks = append(ea.afterTracks, newTrack(channel, i))
 	}
 	pe.doNewEditAction(ea)
 }
@@ -387,10 +381,7 @@ func (pe *patternEditor) setTrackChannel(channel uint8) {
 func (pe *patternEditor) insertTrack() {
 	_, trackMax, _, _ := pe.getSelection()
 	pe.doNewEditAction(&editAction{
-		afterTracks: []*track{&track{
-			Channel: pe.song.Tracks[trackMax].Channel,
-			index:   trackMax,
-		}},
+		afterTracks: []*track{newTrack(pe.song.Tracks[trackMax].Channel, trackMax)},
 	})
 }
 
@@ -400,7 +391,7 @@ func (pe *patternEditor) deleteTrack() {
 	ea := &editAction{}
 	for i := trackMin; i <= trackMax; i++ {
 		t := pe.song.Tracks[i]
-		ea.beforeTracks = append(ea.beforeTracks, &track{Channel: t.Channel, index: i})
+		ea.beforeTracks = append(ea.beforeTracks, newTrack(t.Channel, i))
 		for _, te := range t.Events {
 			ea.beforeEvents = append(ea.beforeEvents, te.clone())
 		}
@@ -701,9 +692,7 @@ func (pe *patternEditor) removeTrack(t *track, offset int) {
 // add a copy of the track to the song
 func (pe *patternEditor) addTrack(t *track) {
 	pe.song.Tracks = append(pe.song.Tracks[:t.index+1], pe.song.Tracks[t.index:]...)
-	t2 := &track{}
-	*t2 = *t
-	pe.song.Tracks[t.index] = t2
+	pe.song.Tracks[t.index] = t.clone()
 }
 
 // do a new edit action and insert it at the history index, clearing the

@@ -37,10 +37,10 @@ type song struct {
 func newSong() *song {
 	return &song{
 		Tracks: []*track{
-			&track{},
-			&track{},
-			&track{},
-			&track{},
+			newTrack(0, 0),
+			newTrack(0, 1),
+			newTrack(0, 2),
+			newTrack(0, 3),
 		},
 	}
 }
@@ -101,6 +101,23 @@ type track struct {
 	// only used by player
 	activeNote  uint8
 	midiChannel uint8
+}
+
+// initialize a new track
+func newTrack(channel uint8, index int) *track {
+	return &track{
+		Channel:     channel,
+		index:       index,
+		activeNote:  byteNil,
+		midiChannel: byteNil,
+	}
+}
+
+// return a copy of the track with nil playback data
+func (t *track) clone() *track {
+	t2 := newTrack(t.Channel, t.index)
+	t2.Events = t.Events
+	return t2
 }
 
 // write an event to the track, overwriting any event at the same tick and

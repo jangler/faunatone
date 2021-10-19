@@ -41,7 +41,7 @@ func newKeymap(path string) (*keymap, error) {
 	k := &keymap{
 		keymap:   make(map[string]float64),
 		name:     strings.Replace(filepath.Base(path), ".csv", "", 1),
-		lastMidi: 0xff,
+		lastMidi: byteNil,
 	}
 	firstMidi, lastMidi := -1, -1
 	if records, err := readCSV(filepath.Join(keymapPath, path)); err == nil {
@@ -186,7 +186,7 @@ func (k *keymap) midiEvent(msg []byte, pe *patternEditor, p *player) {
 	} else if msg[0]&0xf0 == 0x80 || (msg[0]&0xf0 == 0x90 && msg[2] == 0) { // note off
 		if msg[1] == k.lastMidi {
 			pe.playSelectionNoteOff(p)
-			k.lastMidi = 0xff
+			k.lastMidi = byteNil
 		}
 	}
 }
