@@ -308,6 +308,8 @@ func (p *player) noteOff(i int, tick int64) {
 
 // set virtual channel states based on everything that happens from the start
 // of the song up to (but not including) a given tick
+// BUG: events in later tracks will overwrite chronologically later events from
+// earlier ones.
 func (p *player) determineVirtualChannelStates(tick int64) {
 	for _, t := range p.song.Tracks {
 		for _, te := range t.Events {

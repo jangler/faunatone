@@ -28,6 +28,8 @@ Ctrl+X, Edit, Cut
 Ctrl+C, Edit, Copy
 Ctrl+V, Edit, Paste
 Ctrl+M, Edit, Mix paste
+Insert, Edit, Insert division
+Backspace, Edit, Delete division
 Ctrl+T, Edit, Transpose...
 Ctrl+I, Edit, Interpolate
 Keypad /, Status, Decrease octave

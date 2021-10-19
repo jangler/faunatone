@@ -59,6 +59,7 @@ type editAction struct {
 	beforeEvents []*trackEvent
 	afterEvents  []*trackEvent
 	trackShift   *trackShift
+	tickShift    *tickShift
 	size         int
 }
 
@@ -67,12 +68,26 @@ type trackShift struct {
 	min, max, offset int
 }
 
+// substruct in editAction
+type tickShift struct {
+	trackMin, trackMax int
+	position, offset   int64
+}
+
 // return a new track shift that will undo this one
 func reverseTrackShift(ts *trackShift) *trackShift {
 	if ts == nil {
 		return nil
 	}
 	return &trackShift{ts.min + ts.offset, ts.max + ts.offset, -ts.offset}
+}
+
+// return a new tick shift that will undo this one
+func reverseTickShift(ts *tickShift) *tickShift {
+	if ts == nil {
+		return nil
+	}
+	return &tickShift{ts.trackMin, ts.trackMax, ts.position, -ts.offset}
 }
 
 // draw all components of the pattern editor interface
@@ -608,6 +623,7 @@ func (pe *patternEditor) undo() error {
 			beforeEvents: ea.afterEvents,
 			afterEvents:  ea.beforeEvents,
 			trackShift:   reverseTrackShift(ea.trackShift),
+			tickShift:    reverseTickShift(ea.tickShift),
 		})
 		return nil
 	}
@@ -656,6 +672,9 @@ func (pe *patternEditor) doEditAction(ea *editAction) {
 		} else {
 			pe.addTrack(t)
 		}
+	}
+	if ts := ea.tickShift; ts != nil {
+		pe.applyTickShift(ts)
 	}
 	for _, te := range ea.afterEvents {
 		pe.addEvent(te)
@@ -710,11 +729,12 @@ func (pe *patternEditor) doNewEditAction(ea *editAction) {
 	}
 }
 
-// returns the approximate size of the undo buffer in bytes
+// return the approximate size of the undo buffer in bytes
 func (pe *patternEditor) getHistorySize() int {
 	size := 0
 	for _, ea := range pe.history {
 		if ea.size == 0 {
+			ea.size += int(unsafe.Sizeof(ea))
 			for _, t := range ea.beforeTracks {
 				ea.size += int(unsafe.Sizeof(t))
 			}
@@ -732,4 +752,50 @@ func (pe *patternEditor) getHistorySize() int {
 		size += ea.size
 	}
 	return size
+}
+
+// insert time at the cursor
+func (pe *patternEditor) insertDivision() {
+	pe.doNewTickShift(1)
+}
+
+// delete time at the cursor
+func (pe *patternEditor) deleteDivision() {
+	pe.doNewTickShift(-1)
+}
+
+// insert/delete time at the cursor
+func (pe *patternEditor) doNewTickShift(factor int64) {
+	trackMin, trackMax, tickMin, _ := pe.getSelection()
+	offset := ticksPerBeat / int64(pe.division) * factor
+	beforeEvents := []*trackEvent{}
+	if factor < 0 {
+		for i := trackMin; i <= trackMax; i++ {
+			for _, te := range pe.song.Tracks[i].Events {
+				if te.Tick >= tickMin && te.Tick+offset < tickMin {
+					beforeEvents = append(beforeEvents, te)
+				}
+			}
+		}
+	}
+	pe.doNewEditAction(&editAction{
+		beforeEvents: beforeEvents,
+		tickShift: &tickShift{
+			trackMin: trackMin,
+			trackMax: trackMax,
+			position: tickMin,
+			offset:   offset,
+		},
+	})
+}
+
+// apply a tick shift edit action
+func (pe *patternEditor) applyTickShift(ts *tickShift) {
+	for i := ts.trackMin; i <= ts.trackMax; i++ {
+		for _, te := range pe.song.Tracks[i].Events {
+			if te.Tick >= ts.position {
+				te.Tick += ts.offset
+			}
+		}
+	}
 }

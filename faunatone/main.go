@@ -233,6 +233,8 @@ func main() {
 					{label: "Copy", action: func() { patedit.copy() }},
 					{label: "Paste", action: func() { patedit.paste(false) }},
 					{label: "Mix paste", action: func() { patedit.paste(true) }},
+					{label: "Insert division", action: func() { patedit.insertDivision() }},
+					{label: "Delete division", action: func() { patedit.deleteDivision() }},
 					{label: "Transpose...", action: func() { dialogTranpose(dia, patedit, km) }},
 					{label: "Interpolate", action: func() { patedit.interpolateSelection() }},
 				},
