@@ -27,11 +27,12 @@ Ctrl+Shift+Z, Edit, Redo
 Ctrl+X, Edit, Cut
 Ctrl+C, Edit, Copy
 Ctrl+V, Edit, Paste
-Ctrl+M, Edit, Mix paste
+Ctrl+Shift+V, Edit, Mix paste
 Insert, Edit, Insert division
 Backspace, Edit, Delete division
 Ctrl+T, Edit, Transpose...
 Ctrl+I, Edit, Interpolate
+Ctrl+M, Edit, Multiply...
 Keypad /, Status, Decrease octave
 Keypad *, Status, Increase octave
 Space, Status, Capture root pitch

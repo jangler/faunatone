@@ -815,3 +815,37 @@ func (pe *patternEditor) applyTickShift(ts *tickShift) {
 		}
 	}
 }
+
+// multiply the second data value of selected events by a constant factor
+func (pe *patternEditor) multiplySelection(f float64) {
+	ea := &editAction{}
+	pe.forEventsInSelection(func(t *track, te *trackEvent) {
+		switch te.Type {
+		case noteOnEvent, drumNoteOnEvent, controllerEvent:
+			ea.beforeEvents = append(ea.beforeEvents, te.clone())
+			te2 := te.clone()
+			switch te2.Type {
+			case noteOnEvent:
+				te2.ByteData1 = byte(math.Min(127, math.Round(float64(te.ByteData1)*f)))
+			case drumNoteOnEvent, controllerEvent:
+				te2.ByteData2 = byte(math.Min(127, math.Round(float64(te.ByteData2)*f)))
+			}
+			te2.setUiString()
+			ea.afterEvents = append(ea.afterEvents, te2)
+		}
+	})
+	pe.doNewEditAction(ea)
+}
+
+// call a function on every event in the current selection
+func (pe *patternEditor) forEventsInSelection(fn func(*track, *trackEvent)) {
+	trackMin, trackMax, tickMin, tickMax := pe.getSelection()
+	for i := trackMin; i <= trackMax; i++ {
+		t := pe.song.Tracks[i]
+		for _, te := range t.Events {
+			if te.Tick >= tickMin && te.Tick <= tickMax {
+				fn(t, te)
+			}
+		}
+	}
+}

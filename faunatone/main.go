@@ -239,6 +239,7 @@ func main() {
 					{label: "Delete division", action: func() { patedit.deleteDivision() }},
 					{label: "Transpose...", action: func() { dialogTranpose(dia, patedit, km) }},
 					{label: "Interpolate", action: func() { patedit.interpolateSelection() }},
+					{label: "Multiply...", action: func() { dialogMultiply(dia, patedit) }},
 				},
 			},
 			{
@@ -555,6 +556,17 @@ func dialogTranpose(d *dialog, pe *patternEditor, k *keymap) {
 		}
 	})
 	d.mode = noteInput
+}
+
+// set d to an input dialog
+func dialogMultiply(d *dialog, pe *patternEditor) {
+	*d = *newDialog("Multiply selection by:", 5, func(s string) {
+		if f, err := strconv.ParseFloat(s, 64); err == nil {
+			pe.multiplySelection(f)
+		} else {
+			dialogMsg(d, err.Error())
+		}
+	})
 }
 
 // set d to an input dialog
