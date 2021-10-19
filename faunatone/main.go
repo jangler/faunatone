@@ -84,6 +84,7 @@ func main() {
 	must(out.Open())
 	defer out.Close()
 	wr := writer.New(out)
+	sendGMSystemOn(wr)
 
 	err = sdl.Init(sdl.INIT_VIDEO | sdl.INIT_EVENTS)
 	must(err)
@@ -743,4 +744,9 @@ func setColorSDL(c *sdl.Color, v uint32) {
 	a := make([]uint8, 4)
 	setColorArray(a, v)
 	*c = sdl.Color{a[0], a[1], a[2], a[3]}
+}
+
+// send the "GM system on" sysex message
+func sendGMSystemOn(wr *writer.Writer) {
+	writer.SysEx(wr, []byte{0x7e, 0x7f, 0x09, 0x01})
 }
