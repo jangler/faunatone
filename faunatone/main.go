@@ -20,15 +20,15 @@ import (
 
 const (
 	appName       = "Faunatone"
-	fileExt       = ".fna"
+	fileExt       = ".faun"
 	defaultFps    = 60
 	bendSemitones = 24
+	configPath    = "config"
+	assetsPath    = "assets"
+	savesPath     = "saves"
 )
 
 var (
-	configPath = "config"
-	assetsPath = "assets"
-
 	colorBg1Array     = make([]uint8, 4)
 	colorBg2Array     = make([]uint8, 4)
 	colorFgArray      = make([]uint8, 4)
@@ -640,12 +640,13 @@ func dialogNew(d *dialog, sng *song, pe *patternEditor, p *player) {
 func dialogOpen(d *dialog, sng *song, pe *patternEditor, p *player) {
 	*d = *newDialog("Open:", 50, func(s string) {
 		s = addSuffixIfMissing(s, fileExt)
-		if f, err := os.Open(s); err == nil {
+		if f, err := os.Open(filepath.Join(savesPath, s)); err == nil {
 			defer f.Close()
 			p.stop(true)
 			if err := sng.read(f); err == nil {
 				pe.reset()
 				saveAutofill = s
+				exportAutofill = replaceSuffix(s, fileExt, ".mid")
 			} else {
 				dialogMsg(d, err.Error())
 			}
@@ -660,7 +661,11 @@ func dialogSaveAs(d *dialog, sng *song) {
 	*d = *newDialog("Save as:", 50, func(s string) {
 		s = addSuffixIfMissing(s, fileExt)
 		saveAutofill = s
-		if f, err := os.Create(s); err == nil {
+		if exportAutofill == "" {
+			exportAutofill = replaceSuffix(s, fileExt, ".mid")
+		}
+		os.MkdirAll(savesPath, 0755)
+		if f, err := os.Create(filepath.Join(savesPath, s)); err == nil {
 			defer f.Close()
 			if err := sng.write(f); err != nil {
 				dialogMsg(d, err.Error())
@@ -677,8 +682,12 @@ func dialogExportMIDI(d *dialog, sng *song, p *player) {
 	*d = *newDialog("Export as:", 50, func(s string) {
 		s = addSuffixIfMissing(s, ".mid")
 		exportAutofill = s
+		if saveAutofill == "" {
+			saveAutofill = replaceSuffix(s, ".mid", fileExt)
+		}
 		p.stop(true) // avoid race condition
-		if err := sng.exportSMF(s); err != nil {
+		os.MkdirAll(savesPath, 0755)
+		if err := sng.exportSMF(filepath.Join(savesPath, s)); err != nil {
 			dialogMsg(d, err.Error())
 		}
 	})
@@ -732,7 +741,7 @@ func getRefreshRate() int {
 	return defaultFps
 }
 
-// sets an array to the bytes of an int, MSB to LSB
+// set an array to the bytes of an int, MSB to LSB
 func setColorArray(a []uint8, v uint32) {
 	for i := range a {
 		a[i] = uint8(v >> ((len(a) - i - 1) * 8))
@@ -749,4 +758,12 @@ func setColorSDL(c *sdl.Color, v uint32) {
 // send the "GM system on" sysex message
 func sendGMSystemOn(wr *writer.Writer) {
 	writer.SysEx(wr, []byte{0x7e, 0x7f, 0x09, 0x01})
+}
+
+// replaces the suffix of a string, if present
+func replaceSuffix(s, old, new_ string) string {
+	if strings.HasSuffix(s, old) {
+		return s[:len(s)-len(old)] + new_
+	}
+	return s
 }
