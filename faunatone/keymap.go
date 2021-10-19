@@ -1,8 +1,8 @@
 package main
 
 import (
+	"errors"
 	"fmt"
-	"log"
 	"math"
 	"path/filepath"
 	"regexp"
@@ -39,6 +39,7 @@ type keymap struct {
 
 // load a keymap from a file
 func newKeymap(path string) (*keymap, error) {
+	errs := []string{}
 	k := &keymap{
 		keymap:   make(map[string]float64),
 		isMod:    make(map[string]bool),
@@ -72,7 +73,7 @@ func newKeymap(path string) (*keymap, error) {
 				}
 			}
 			if !ok {
-				log.Printf("bad keymap record: %q", rec)
+				errs = append(errs, fmt.Sprintf("bad keymap record: %q", rec))
 			}
 		}
 	} else {
@@ -80,6 +81,9 @@ func newKeymap(path string) (*keymap, error) {
 		return k, err
 	}
 	k.repeatMidiPattern(firstMidi, lastMidi)
+	if len(errs) > 0 {
+		return k, errors.New(strings.Join(errs, "\n"))
+	}
 	return k, nil
 }
 

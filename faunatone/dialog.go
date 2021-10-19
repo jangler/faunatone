@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"time"
 
 	"github.com/veandco/go-sdl2/sdl"
@@ -13,7 +14,7 @@ const (
 
 // modal dialog that displays a message or prompts for input
 type dialog struct {
-	prompt string
+	prompt []string
 	input  string
 	size   int          // text box will have room for this many chars
 	action func(string) // run if dialog is closed with K_RETURN
@@ -33,7 +34,7 @@ const (
 
 // create a new dialog
 func newDialog(prompt string, size int, action func(string)) *dialog {
-	return &dialog{prompt: prompt, size: size, action: action, shown: true}
+	return &dialog{prompt: strings.Split(prompt, "\n"), size: size, action: action, shown: true}
 }
 
 // draw the dialog
@@ -44,15 +45,20 @@ func (d *dialog) draw(p *printer, r *sdl.Renderer) {
 
 	// get displayed position and size
 	viewport := r.GetViewport()
-	promptWidth := p.rect.W * int32(len(d.prompt))
+	promptWidth := int32(0)
+	for _, line := range d.prompt {
+		if p.rect.W*int32(len(line)) > promptWidth {
+			promptWidth = p.rect.W * int32(len(line))
+		}
+	}
 	inputWidth := p.rect.W * int32(d.size)
 	w := promptWidth + padding*2
 	if inputWidth > promptWidth {
 		w = inputWidth + padding*2
 	}
-	h := p.rect.H + padding*2
+	h := (p.rect.H+padding)*int32(len(d.prompt)) + padding
 	if d.size > 0 {
-		h *= 2
+		h += p.rect.H + padding*2
 	}
 	rect := &sdl.Rect{viewport.W/2 - w/2, viewport.H/2 - h/2, w, h}
 
@@ -61,12 +67,16 @@ func (d *dialog) draw(p *printer, r *sdl.Renderer) {
 	r.FillRect(&sdl.Rect{rect.X - border, rect.Y - border, rect.W + border*2, rect.H + border*2})
 	r.SetDrawColorArray(colorBg1Array...)
 	r.FillRect(rect)
-	p.draw(r, d.prompt, viewport.W/2-promptWidth/2, rect.Y+padding)
+	y := rect.Y + padding
+	for _, line := range d.prompt {
+		p.draw(r, line, viewport.W/2-promptWidth/2, y)
+		y += p.rect.H + padding
+	}
 
 	// draw input
 	if d.size > 0 {
 		r.SetDrawColorArray(colorBg2Array...)
-		r.FillRect(&sdl.Rect{viewport.W/2 - inputWidth/2 - padding/2, rect.Y + p.rect.H + padding*2,
+		r.FillRect(&sdl.Rect{viewport.W/2 - inputWidth/2 - padding/2, y,
 			inputWidth + padding, p.rect.H + padding})
 		s := d.input
 		if len(d.input) < d.size && (time.Now().UnixMilli()/inputCursorBlinkMs)%2 == 0 {

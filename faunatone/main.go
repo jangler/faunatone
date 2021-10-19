@@ -394,27 +394,18 @@ func main() {
 
 // set d to an input dialog
 func dialogGoToBeat(d *dialog, pe *patternEditor) {
-	*d = dialog{
-		prompt: "Go to beat:",
-		size:   5,
-		action: func(s string) {
-			if f, err := strconv.ParseFloat(s, 64); err == nil {
-				pe.goToBeat(f)
-			} else {
-				dialogMsg(d, err.Error())
-			}
-		},
-		shown: true,
-	}
+	*d = *newDialog("Go to beat:", 5, func(s string) {
+		if f, err := strconv.ParseFloat(s, 64); err == nil {
+			pe.goToBeat(f)
+		} else {
+			dialogMsg(d, err.Error())
+		}
+	})
 }
 
 // set d to a message dialog
 func dialogMsg(d *dialog, s string) {
-	*d = dialog{
-		prompt: s,
-		size:   0,
-		shown:  true,
-	}
+	*d = *newDialog(s, 0, nil)
 }
 
 // set d to a message dialog if err is non-nil
@@ -426,27 +417,22 @@ func dialogIfErr(d *dialog, err error) {
 
 // set d to an input dialog
 func dialogInsertNote(d *dialog, pe *patternEditor, p *player) {
-	*d = dialog{
-		prompt: "Insert note:",
-		size:   7,
-		action: func(s string) {
-			if f, err := strconv.ParseFloat(s, 64); err == nil {
-				if f >= minPitch && f <= maxPitch {
-					pe.writeEvent(newTrackEvent(&trackEvent{
-						Type:      noteOnEvent,
-						FloatData: f,
-						ByteData1: pe.velocity,
-					}), p)
-				} else {
-					dialogMsg(d, fmt.Sprintf("Note must be in the range [%d, %d].",
-						minPitch, maxPitch))
-				}
+	*d = *newDialog("Insert note:", 7, func(s string) {
+		if f, err := strconv.ParseFloat(s, 64); err == nil {
+			if f >= minPitch && f <= maxPitch {
+				pe.writeEvent(newTrackEvent(&trackEvent{
+					Type:      noteOnEvent,
+					FloatData: f,
+					ByteData1: pe.velocity,
+				}), p)
 			} else {
-				dialogMsg(d, err.Error())
+				dialogMsg(d, fmt.Sprintf("Note must be in the range [%d, %d].",
+					minPitch, maxPitch))
 			}
-		},
-		shown: true,
-	}
+		} else {
+			dialogMsg(d, err.Error())
+		}
+	})
 }
 
 // return note and pitch wheel values required to play a pitch in MIDI,
