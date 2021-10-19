@@ -6,23 +6,23 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-const messageDuration = time.Second * 3
-
 // type that draws a series of string function results in a line
 type statusBar struct {
-	rect    *sdl.Rect
-	funcs   []func() string
-	msg     string
-	msgTime time.Time
-	msgChan chan string
+	rect        *sdl.Rect
+	funcs       []func() string
+	msg         string
+	msgTime     time.Time
+	msgChan     chan string
+	msgDuration time.Duration
 }
 
 // initialize a new status bar
-func newStatusBar(funcs ...func() string) *statusBar {
+func newStatusBar(msgSeconds int, funcs ...func() string) *statusBar {
 	return &statusBar{
-		rect:    &sdl.Rect{},
-		funcs:   funcs,
-		msgChan: make(chan string),
+		rect:        &sdl.Rect{},
+		funcs:       funcs,
+		msgChan:     make(chan string),
+		msgDuration: time.Second * time.Duration(msgSeconds),
 	}
 }
 
@@ -49,7 +49,7 @@ func (sb *statusBar) draw(pr *printer, r *sdl.Renderer) {
 	}
 
 	// draw
-	if time.Now().Sub(sb.msgTime) < messageDuration {
+	if time.Now().Sub(sb.msgTime) < sb.msgDuration {
 		pr.draw(r, sb.msg, r.GetViewport().W-padding-pr.rect.W*int32(len(sb.msg)), y)
 	}
 }
@@ -61,7 +61,7 @@ func (sb *statusBar) showMessage(s string, redraw chan bool) {
 		if redraw != nil {
 			redraw <- true
 		}
-		time.Sleep(messageDuration)
+		time.Sleep(sb.msgDuration)
 		if redraw != nil {
 			redraw <- true
 		}

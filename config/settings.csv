@@ -1,2 +1,9 @@
-midiOutPortNumber, 0
-fontSize, 12
+DefaultKeymap, 12edo.csv
+Font, RobotoMono-Regular-BasicLatin.ttf
+FontSize, 12
+MessageDuration, 3
+MidiInPortNumber, -1
+MidiOutPortNumber, 0
+UndoBufferSize, 10000000
+WindowHeight, 720
+WindowWidth, 1280

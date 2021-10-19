@@ -19,8 +19,6 @@ import (
 )
 
 const (
-	windowWidth   = 1280
-	windowHeight  = 720
 	appName       = "Faunatone"
 	fileExt       = ".fna"
 	defaultFps    = 60
@@ -35,12 +33,11 @@ var (
 	colorFg             = sdl.Color{0x10, 0x10, 0x10, 0xff}
 	colorFgArray        = []uint8{0x10, 0x10, 0x10, 0xff}
 
-	configPath   = "config"
-	settingsPath = filepath.Join("config", "settings.csv")
-	fontPath     = filepath.Join("assets", "RobotoMono-Regular-BasicLatin.ttf")
+	configPath = "config"
+	assetsPath = "assets"
 
-	fontSize = int32(12)
-	padding  = fontSize / 2
+	// based on loaded settings (yeah global whatever)
+	padding = int32(0)
 
 	saveAutofill   string
 	exportAutofill string
@@ -53,18 +50,15 @@ func must(err error) {
 }
 
 func main() {
-	settings := loadSettings()
-	if v, ok := settings["fontSize"]; ok {
-		fontSize = int32(v)
-		padding = fontSize / 2
-	}
+	settings := loadSettings(func(s string) { println(s) })
+	padding = int32(settings.FontSize) / 2
 
 	drv, err := driver.New()
 	must(err)
 	defer drv.Close()
 
 	midiIn := make(chan midi.Message, 100)
-	if n, ok := settings["midiInPortNumber"]; ok {
+	if n := settings.MidiInPortNumber; n >= 0 {
 		ins, err := drv.Ins()
 		must(err)
 		in := ins[n]
@@ -84,7 +78,7 @@ func main() {
 
 	outs, err := drv.Outs()
 	must(err)
-	out := outs[settings["midiOutPortNumber"]]
+	out := outs[settings.MidiOutPortNumber]
 	must(out.Open())
 	defer out.Close()
 	wr := writer.New(out)
@@ -93,7 +87,8 @@ func main() {
 	must(err)
 	defer sdl.Quit()
 	window, err := sdl.CreateWindow(appName, sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
-		windowWidth, windowHeight, sdl.WINDOW_SHOWN|sdl.WINDOW_RESIZABLE|sdl.WINDOW_ALLOW_HIGHDPI)
+		int32(settings.WindowWidth), int32(settings.WindowHeight),
+		sdl.WINDOW_SHOWN|sdl.WINDOW_RESIZABLE|sdl.WINDOW_ALLOW_HIGHDPI)
 	must(err)
 	defer window.Destroy()
 	renderer, err := sdl.CreateRenderer(window, -1,
@@ -104,7 +99,8 @@ func main() {
 	err = ttf.Init()
 	must(err)
 	defer ttf.Quit()
-	font, err := ttf.OpenFont(fontPath, int(fontSize))
+	fontPath := filepath.Join(assetsPath, settings.Font)
+	font, err := ttf.OpenFont(fontPath, settings.FontSize)
 	must(err)
 	defer font.Close()
 	pr, err := newPrinter(font)
@@ -122,19 +118,20 @@ func main() {
 
 	sng := newSong()
 	patedit := &patternEditor{
-		printer:      pr,
-		song:         sng,
-		division:     defaultDivision,
-		velocity:     defaultVelocity,
-		controller:   defaultController,
-		refPitch:     defaultRefPitch,
-		historyIndex: -1,
+		printer:          pr,
+		song:             sng,
+		division:         defaultDivision,
+		velocity:         defaultVelocity,
+		controller:       defaultController,
+		refPitch:         defaultRefPitch,
+		historyIndex:     -1,
+		historySizeLimit: settings.UndoBufferSize,
 	}
 	pl := newPlayer(sng, wr, true)
 	pl.redrawChan = redrawChan
 	go pl.run()
 	defer pl.cleanup()
-	km, _ := newKeymap(defaultKeymapPath)
+	km, _ := newKeymap(settings.DefaultKeymap)
 	dia := &dialog{}
 
 	// required for cursor blink
@@ -282,7 +279,7 @@ func main() {
 	}
 	mb.init(pr)
 
-	sb := newStatusBar(
+	sb := newStatusBar(settings.MessageDuration,
 		func() string { return fmt.Sprintf("Root: %.2f", patedit.refPitch) },
 		func() string { return fmt.Sprintf("Division: %d", patedit.division) },
 		func() string { return fmt.Sprintf("Velocity: %d", patedit.velocity) },
@@ -731,19 +728,4 @@ func getRefreshRate() int {
 		return int(dm.RefreshRate)
 	}
 	return defaultFps
-}
-
-// load settings from config/settings.csv
-func loadSettings() map[string]int {
-	m := make(map[string]int)
-	if records, err := readCSV(settingsPath); err == nil {
-		for _, rec := range records {
-			if len(rec) == 2 {
-				if i, err := strconv.Atoi(rec[1]); err == nil {
-					m[rec[0]] = i
-				}
-			}
-		}
-	}
-	return m
 }

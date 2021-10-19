@@ -13,8 +13,7 @@ import (
 )
 
 var (
-	keymapPath        = filepath.Join(configPath, "keymaps")
-	defaultKeymapPath = "12edo.csv"
+	keymapPath = filepath.Join(configPath, "keymaps")
 
 	qwertyLayout = [][]string{
 		{"1", "2", "3", "4", "5", "6", "7", "8", "9", "0"},

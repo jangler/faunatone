@@ -22,8 +22,6 @@ const (
 	// widest range achievable with pitch wheel
 	minPitch = -bendSemitones
 	maxPitch = 127 + bendSemitones
-
-	historySizeLimit = 10000000 // 10 MB
 )
 
 // user interface structure for song editing
@@ -49,6 +47,7 @@ type patternEditor struct {
 	refPitch         float64
 	history          []*editAction
 	historyIndex     int // index of action that undo will undo
+	historySizeLimit int
 	followSong       bool
 	prevPlayPos      int64
 }
@@ -715,7 +714,7 @@ func (pe *patternEditor) doNewEditAction(ea *editAction) {
 	pe.history = append(pe.history, ea)
 	pe.doEditAction(ea)
 	size := pe.getHistorySize()
-	for size > historySizeLimit {
+	for size > pe.historySizeLimit {
 		size -= pe.history[0].size
 		pe.history = pe.history[1:]
 		pe.historyIndex--
