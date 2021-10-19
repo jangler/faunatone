@@ -26,6 +26,7 @@ const (
 	configPath    = "config"
 	assetsPath    = "assets"
 	savesPath     = "saves"
+	exportsPath   = "exports"
 )
 
 var (
@@ -686,8 +687,8 @@ func dialogExportMIDI(d *dialog, sng *song, p *player) {
 			saveAutofill = replaceSuffix(s, ".mid", fileExt)
 		}
 		p.stop(true) // avoid race condition
-		os.MkdirAll(savesPath, 0755)
-		if err := sng.exportSMF(filepath.Join(savesPath, s)); err != nil {
+		os.MkdirAll(exportsPath, 0755)
+		if err := sng.exportSMF(filepath.Join(exportsPath, s)); err != nil {
 			dialogMsg(d, err.Error())
 		}
 	})
