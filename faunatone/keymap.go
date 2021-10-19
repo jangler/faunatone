@@ -30,6 +30,7 @@ var (
 // turns key events into note events
 type keymap struct {
 	keymap   map[string]float64
+	isMod    map[string]bool
 	midimap  [128]float64
 	name     string
 	lastKey  string
@@ -40,6 +41,7 @@ type keymap struct {
 func newKeymap(path string) (*keymap, error) {
 	k := &keymap{
 		keymap:   make(map[string]float64),
+		isMod:    make(map[string]bool),
 		name:     strings.Replace(filepath.Base(path), ".csv", "", 1),
 		lastMidi: byteNil,
 	}
@@ -50,6 +52,9 @@ func newKeymap(path string) (*keymap, error) {
 			if len(rec) == 2 {
 				if pitch, err := parsePitch(rec[1], k); err == nil {
 					k.keymap[rec[0]] = pitch
+					if strings.HasPrefix(rec[1], "*") {
+						k.isMod[rec[0]] = true
+					}
 					if midiRegexp.MatchString(rec[0]) {
 						if i, err := strconv.ParseUint(rec[0][1:], 10, 8); err == nil && i < 128 {
 							k.midimap[i] = pitch
@@ -109,13 +114,16 @@ func genIsoKeymap(interval1, interval2 float64) *keymap {
 }
 
 var (
-	ratioRegexp   = regexp.MustCompile(`([0-9.]+)/([0-9.]+)`)
-	edoStepRegexp = regexp.MustCompile(`(-?[0-9.]+)\\([0-9.]+)`)
-	keyRefRegexp  = regexp.MustCompile(`@(.+)`)
+	ratioRegexp   = regexp.MustCompile(`^([0-9.]+)/([0-9.]+)$`)
+	edoStepRegexp = regexp.MustCompile(`^(-?[0-9.]+)\\([0-9.]+)$`)
+	keyRefRegexp  = regexp.MustCompile(`^@(.+)$`)
 )
 
 // convert a string to a floating-point midi pitch offset
 func parsePitch(s string, k *keymap) (float64, error) {
+	if strings.HasPrefix(s, "*") {
+		s = s[1:]
+	}
 	if m := ratioRegexp.FindAllStringSubmatch(s, 1); m != nil {
 		num, _ := strconv.ParseFloat(m[0][1], 64)
 		den, _ := strconv.ParseFloat(m[0][2], 64)
@@ -141,22 +149,26 @@ func (k *keymap) keyboardEvent(e *sdl.KeyboardEvent, pe *patternEditor, p *playe
 		return
 	}
 	s := strings.Replace(formatKeyEvent(e), "Shift+", "", 1)
-	if pitch, ok := k.pitchFromString(s, pe.refPitch); ok {
+	if pitch, ok := k.pitchFromString(s, 0); ok {
 		if e.State == sdl.PRESSED {
 			k.lastKey = s
-			note, _ := pitchToMIDI(pitch)
-			if e.Keysym.Mod&sdl.KMOD_SHIFT == 0 {
-				pe.writeEvent(newTrackEvent(&trackEvent{
-					Type:      noteOnEvent,
-					FloatData: pitch,
-					ByteData1: pe.velocity,
-				}), p)
+			if k.isMod[s] {
+				pe.transposeSelection(pitch)
 			} else {
-				pe.writeEvent(newTrackEvent(&trackEvent{
-					Type:      drumNoteOnEvent,
-					ByteData1: note,
-					ByteData2: pe.velocity,
-				}), p)
+				if e.Keysym.Mod&sdl.KMOD_SHIFT == 0 {
+					pe.writeEvent(newTrackEvent(&trackEvent{
+						Type:      noteOnEvent,
+						FloatData: pitch + pe.refPitch,
+						ByteData1: pe.velocity,
+					}), p)
+				} else {
+					note, _ := pitchToMIDI(pitch + pe.refPitch)
+					pe.writeEvent(newTrackEvent(&trackEvent{
+						Type:      drumNoteOnEvent,
+						ByteData1: note,
+						ByteData2: pe.velocity,
+					}), p)
+				}
 			}
 		} else if s == k.lastKey {
 			k.lastKey = ""
