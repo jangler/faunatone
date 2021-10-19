@@ -30,7 +30,7 @@ func newStatusBar(msgSeconds int, funcs ...func() string) *statusBar {
 func (sb *statusBar) draw(pr *printer, r *sdl.Renderer) {
 	x := int32(padding)
 	y := r.GetViewport().H - pr.rect.H - padding
-	r.SetDrawColorArray(colorHighlightArray...)
+	r.SetDrawColorArray(colorBg2Array...)
 	*sb.rect = sdl.Rect{x - padding, y - padding, r.GetViewport().W, pr.rect.H + padding*2}
 	r.FillRect(sb.rect)
 	for _, f := range sb.funcs {

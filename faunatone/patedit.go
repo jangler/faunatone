@@ -114,7 +114,7 @@ func (pe *patternEditor) draw(r *sdl.Renderer, dst *sdl.Rect, playPos int64) {
 	h = int32(tickMax-tickMin)*pe.beatHeight/ticksPerBeat + pe.beatHeight/rowsPerBeat
 	if x+w > dst.X && x < dst.X+dst.W &&
 		y+h > dst.Y && y < dst.Y+dst.H {
-		r.SetDrawColorArray(colorHighlightArray...)
+		r.SetDrawColorArray(colorBg2Array...)
 		r.FillRect(&sdl.Rect{x, y, w, h})
 	}
 	dst.X -= pe.beatWidth
@@ -124,7 +124,7 @@ func (pe *patternEditor) draw(r *sdl.Renderer, dst *sdl.Rect, playPos int64) {
 
 	// draw track headers
 	x = dst.X + pe.beatWidth - pe.scrollX
-	r.SetDrawColorArray(colorBgArray...)
+	r.SetDrawColorArray(colorBg1Array...)
 	r.FillRect(&sdl.Rect{x, dst.Y, dst.W, pe.headerHeight})
 	for _, t := range pe.song.Tracks {
 		if x+pe.trackWidth > dst.X && x < dst.X+dst.W {
@@ -134,7 +134,7 @@ func (pe *patternEditor) draw(r *sdl.Renderer, dst *sdl.Rect, playPos int64) {
 	}
 
 	// draw beat numbers
-	r.SetDrawColorArray(colorBgArray...)
+	r.SetDrawColorArray(colorBg1Array...)
 	r.FillRect(&sdl.Rect{dst.X, dst.Y, pe.beatWidth, dst.H})
 	for i := (pe.scrollY / pe.beatHeight); i < (pe.scrollY+dst.H)/pe.beatHeight+2; i++ {
 		y := dst.Y + int32(i-1)*pe.beatHeight + pe.headerHeight - pe.scrollY

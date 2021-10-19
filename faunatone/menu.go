@@ -59,7 +59,7 @@ func (mb *menuBar) init(p *printer) {
 // draw the menu bar and its children
 func (mb *menuBar) draw(p *printer, r *sdl.Renderer) {
 	if len(mb.menus) > 0 {
-		r.SetDrawColorArray(colorHighlightArray...)
+		r.SetDrawColorArray(colorBg2Array...)
 		r.FillRect(&sdl.Rect{0, 0, r.GetViewport().W, mb.menus[0].rect.H})
 		for _, m := range mb.menus {
 			m.draw(p, r)

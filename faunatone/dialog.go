@@ -59,13 +59,13 @@ func (d *dialog) draw(p *printer, r *sdl.Renderer) {
 	// draw box and prompt
 	r.SetDrawColorArray(colorFgArray...)
 	r.FillRect(&sdl.Rect{rect.X - border, rect.Y - border, rect.W + border*2, rect.H + border*2})
-	r.SetDrawColorArray(colorBgArray...)
+	r.SetDrawColorArray(colorBg1Array...)
 	r.FillRect(rect)
 	p.draw(r, d.prompt, viewport.W/2-promptWidth/2, rect.Y+padding)
 
 	// draw input
 	if d.size > 0 {
-		r.SetDrawColorArray(colorHighlightArray...)
+		r.SetDrawColorArray(colorBg2Array...)
 		r.FillRect(&sdl.Rect{viewport.W/2 - inputWidth/2 - padding/2, rect.Y + p.rect.H + padding*2,
 			inputWidth + padding, p.rect.H + padding})
 		s := d.input

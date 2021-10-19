@@ -26,18 +26,15 @@ const (
 )
 
 var (
-	colorBg             = sdl.Color{0xf0, 0xf0, 0xf0, 0xff}
-	colorBgArray        = []uint8{0xf0, 0xf0, 0xf0, 0xff}
-	colorHighlightArray = []uint8{0xe0, 0xe0, 0xe0, 0xff}
-	colorPlayPosArray   = []uint8{0xe8, 0xe8, 0xe8, 0xff}
-	colorFg             = sdl.Color{0x10, 0x10, 0x10, 0xff}
-	colorFgArray        = []uint8{0x10, 0x10, 0x10, 0xff}
-
 	configPath = "config"
 	assetsPath = "assets"
 
-	// based on loaded settings (yeah global whatever)
-	padding = int32(0)
+	colorBg1Array     = make([]uint8, 4)
+	colorBg2Array     = make([]uint8, 4)
+	colorFgArray      = make([]uint8, 4)
+	colorFg           = sdl.Color{}
+	colorPlayPosArray = make([]uint8, 4)
+	padding           = int32(0)
 
 	saveAutofill   string
 	exportAutofill string
@@ -51,6 +48,11 @@ func must(err error) {
 
 func main() {
 	settings := loadSettings(func(s string) { println(s) })
+	setColorArray(colorBg1Array, settings.ColorBg1)
+	setColorArray(colorBg2Array, settings.ColorBg2)
+	setColorArray(colorFgArray, settings.ColorFg)
+	setColorSDL(&colorFg, settings.ColorFg)
+	setColorArray(colorPlayPosArray, settings.ColorPlayPos)
 	padding = int32(settings.FontSize) / 2
 
 	drv, err := driver.New()
@@ -371,9 +373,8 @@ func main() {
 
 		if redraw {
 			redrawChan <- false
-			renderer.SetDrawColorArray(colorBgArray...)
+			renderer.SetDrawColorArray(colorBg1Array...)
 			renderer.Clear()
-			renderer.SetDrawColorArray(colorFgArray...)
 			viewport := renderer.GetViewport()
 			y := mb.menus[0].rect.H
 			patedit.draw(renderer, &sdl.Rect{0, y, viewport.W, viewport.H - y - sb.rect.H},
@@ -728,4 +729,18 @@ func getRefreshRate() int {
 		return int(dm.RefreshRate)
 	}
 	return defaultFps
+}
+
+// sets an array to the bytes of an int, MSB to LSB
+func setColorArray(a []uint8, v uint32) {
+	for i := range a {
+		a[i] = uint8(v >> ((len(a) - i - 1) * 8))
+	}
+}
+
+// same idea as setColorArray
+func setColorSDL(c *sdl.Color, v uint32) {
+	a := make([]uint8, 4)
+	setColorArray(a, v)
+	*c = sdl.Color{a[0], a[1], a[2], a[3]}
 }

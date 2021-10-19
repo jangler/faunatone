@@ -12,6 +12,10 @@ var (
 )
 
 type settings struct {
+	ColorBg1          uint32
+	ColorBg2          uint32
+	ColorFg           uint32
+	ColorPlayPos      uint32
 	DefaultKeymap     string
 	Font              string
 	FontSize          int
@@ -33,6 +37,13 @@ func loadSettings(warn func(string)) *settings {
 			if len(rec) == 2 {
 				if field := v.FieldByName(rec[0]); field.IsValid() {
 					switch field.Kind() {
+					case reflect.Uint32:
+						if len(rec[1]) > 1 {
+							if i, err := strconv.ParseUint(rec[1][1:], 16, 32); err == nil {
+								field.SetUint(uint64(i))
+								success = true
+							}
+						}
 					case reflect.Int:
 						if i, err := strconv.Atoi(rec[1]); err == nil {
 							field.SetInt(int64(i))
