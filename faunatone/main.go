@@ -557,13 +557,14 @@ func dialogSetController(d *dialog, pe *patternEditor) {
 
 // set d to an input dialog
 func dialogTranpose(d *dialog, pe *patternEditor, k *keymap) {
-	*d = *newDialog("Transpose selection by:", 7, func(s string) {
-		if f, err := parsePitch(s, k); err == nil {
+	*d = *newDialog("Transpose selection by...", 0, func(s string) {
+		if f, ok := k.pitchFromString(s, 0); ok {
 			pe.transposeSelection(f)
 		} else {
-			dialogMsg(d, err.Error())
+			dialogMsg(d, "Key not in keymap.")
 		}
 	})
+	d.mode = noteInput
 }
 
 // set d to an input dialog
