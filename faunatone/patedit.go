@@ -556,8 +556,11 @@ func (pe *patternEditor) interpolateSelection() {
 				startEvt = te
 			} else if te.Tick == tickMax {
 				endEvt = te
+			} else if te.Tick > tickMin && te.Tick < tickMax {
+				ea.beforeEvents = append(ea.beforeEvents, te.clone())
 			}
 		}
+		prevEvent := startEvt
 		if startEvt != nil && endEvt != nil && startEvt.Type == endEvt.Type {
 			increment := ticksPerBeat / int64(pe.division)
 			for tick := startEvt.Tick + increment; tick < endEvt.Tick; tick += increment {
@@ -565,25 +568,25 @@ func (pe *patternEditor) interpolateSelection() {
 				te.Tick = tick
 				switch te.Type {
 				case controllerEvent:
-					te.ByteData2 = byte(math.Round(interpolateValue(tick, startEvt.Tick,
-						endEvt.Tick, float64(startEvt.ByteData2), float64(endEvt.ByteData2))))
+					te.ByteData2 = byte(interpolateValue(tick, startEvt.Tick,
+						endEvt.Tick, float64(startEvt.ByteData2), float64(endEvt.ByteData2)))
 				case noteOnEvent:
 					te.FloatData = interpolateValue(tick,
 						startEvt.Tick, endEvt.Tick, startEvt.FloatData, endEvt.FloatData)
-					te.ByteData1 = byte(math.Round(interpolateValue(tick, startEvt.Tick,
-						endEvt.Tick, float64(startEvt.ByteData1), float64(endEvt.ByteData1))))
+					te.ByteData1 = byte(interpolateValue(tick, startEvt.Tick,
+						endEvt.Tick, float64(startEvt.ByteData1), float64(endEvt.ByteData1)))
 				case pitchBendEvent, tempoEvent:
 					te.FloatData = interpolateValue(tick,
 						startEvt.Tick, endEvt.Tick, startEvt.FloatData, endEvt.FloatData)
 				case programEvent:
-					te.ByteData1 = byte(math.Round(interpolateValue(tick, startEvt.Tick,
-						endEvt.Tick, float64(startEvt.ByteData1), float64(endEvt.ByteData1))))
+					te.ByteData1 = byte(interpolateValue(tick, startEvt.Tick,
+						endEvt.Tick, float64(startEvt.ByteData1), float64(endEvt.ByteData1)))
 				}
 				te.setUiString()
-				if te2 := pe.song.Tracks[i].getEventAtTick(te.Tick); te2 != nil {
-					ea.beforeEvents = append(ea.beforeEvents, te2.clone())
+				if !eventDataEqual(te, prevEvent) && !eventDataEqual(te, endEvt) {
+					ea.afterEvents = append(ea.afterEvents, te)
+					prevEvent = te
 				}
-				ea.afterEvents = append(ea.afterEvents, te)
 			}
 		}
 	}
@@ -594,6 +597,12 @@ func (pe *patternEditor) interpolateSelection() {
 func interpolateValue(pos, start, end int64, a, b float64) float64 {
 	coeff := float64(pos-start) / float64(end-start)
 	return a*(1-coeff) + b*coeff
+}
+
+// return true if data for two events are equal
+func eventDataEqual(e1, e2 *trackEvent) bool {
+	return e1.FloatData == e2.FloatData && e1.ByteData1 == e2.ByteData1 &&
+		e1.ByteData2 == e2.ByteData2
 }
 
 // play note offs for selected tracks
