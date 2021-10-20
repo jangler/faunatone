@@ -18,6 +18,7 @@ type settings struct {
 	ColorFg           uint32
 	ColorPlayPos      uint32
 	DefaultKeymap     string
+	PercussionKeymap  string
 	Font              string
 	FontSize          int
 	MessageDuration   int

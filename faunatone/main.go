@@ -138,6 +138,8 @@ func main() {
 	go pl.run()
 	defer pl.cleanup()
 	sng.Keymap, _ = newKeymap(settings.DefaultKeymap)
+	percKeymap, _ := newKeymap(settings.PercussionKeymap)
+	percKeymap.isPerc = true
 	dia := &dialog{}
 
 	// required for cursor blink
@@ -344,6 +346,7 @@ func main() {
 					dia.keyboardEvent(event)
 				} else if !mb.keyboardEvent(event) {
 					sng.Keymap.keyboardEvent(event, patedit, pl)
+					percKeymap.keyboardEvent(event, patedit, pl)
 				}
 			case *sdl.TextInputEvent:
 				if dia.shown {

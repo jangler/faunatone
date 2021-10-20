@@ -33,6 +33,7 @@ type keymap struct {
 	Items []*keyInfo
 
 	midimap [128]float64
+	isPerc  bool
 }
 
 // an entry in a keymap
@@ -184,7 +185,7 @@ func (k *keymap) getByKey(key string) *keyInfo {
 
 // respond to keyboard events
 func (k *keymap) keyboardEvent(e *sdl.KeyboardEvent, pe *patternEditor, p *player) {
-	if e.Repeat != 0 {
+	if e.Repeat != 0 || (e.Keysym.Mod&sdl.KMOD_SHIFT != 0) != (k.isPerc) {
 		return
 	}
 	s := strings.Replace(formatKeyEvent(e), "Shift+", "", 1)
@@ -193,7 +194,7 @@ func (k *keymap) keyboardEvent(e *sdl.KeyboardEvent, pe *patternEditor, p *playe
 			if k.getByKey(s).IsMod {
 				pe.transposeSelection(pitch - pe.refPitch)
 			} else {
-				if e.Keysym.Mod&sdl.KMOD_SHIFT == 0 {
+				if !k.isPerc {
 					pe.writeEvent(newTrackEvent(&trackEvent{
 						Type:      noteOnEvent,
 						FloatData: pitch,
