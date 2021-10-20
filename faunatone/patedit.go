@@ -693,6 +693,8 @@ func (pe *patternEditor) doEditAction(ea *editAction) {
 	}
 	if ts := ea.trackShift; ts != nil {
 		pe.applyTrackShift(ts.min, ts.max, ts.offset)
+	}
+	if ea.trackShift != nil || len(ea.beforeTracks) > 0 || len(ea.afterTracks) > 0 {
 		for i, t := range pe.song.Tracks {
 			for _, te := range t.Events {
 				te.track = i
