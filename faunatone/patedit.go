@@ -563,10 +563,11 @@ func (pe *patternEditor) interpolateSelection() {
 			}
 		}
 		prevEvent := startEvt
-		if startEvt != nil && endEvt != nil && startEvt.Type == endEvt.Type {
+		if startEvt != nil && endEvt != nil && (startEvt.Type == endEvt.Type ||
+			startEvt.Type == noteOnEvent && endEvt.Type == pitchBendEvent) {
 			increment := ticksPerBeat / int64(pe.division)
 			for tick := startEvt.Tick + increment; tick < endEvt.Tick; tick += increment {
-				te := startEvt.clone()
+				te := endEvt.clone()
 				te.Tick = tick
 				switch te.Type {
 				case controllerEvent:
