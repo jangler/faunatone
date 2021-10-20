@@ -524,25 +524,22 @@ func (pe *patternEditor) captureRefPitch() {
 
 // add to pitch of selected notes
 func (pe *patternEditor) transposeSelection(delta float64) {
-	trackMin, trackMax, tickMin, tickMax := pe.getSelection()
 	ea := &editAction{}
-	for i := trackMin; i <= trackMax; i++ {
-		for _, te := range pe.song.Tracks[i].Events {
-			if te.Type == noteOnEvent && te.Tick >= tickMin && te.Tick <= tickMax {
-				f := te.FloatData + delta
-				if f < minPitch {
-					f = minPitch
-				} else if f > maxPitch {
-					f = maxPitch
-				}
-				ea.beforeEvents = append(ea.beforeEvents, te.clone())
-				te2 := te.clone()
-				te2.FloatData = f
-				te2.setUiString()
-				ea.afterEvents = append(ea.afterEvents, te2)
+	pe.forEventsInSelection(func(t *track, te *trackEvent) {
+		if te.Type == noteOnEvent || te.Type == pitchBendEvent {
+			f := te.FloatData + delta
+			if f < minPitch {
+				f = minPitch
+			} else if f > maxPitch {
+				f = maxPitch
 			}
+			ea.beforeEvents = append(ea.beforeEvents, te.clone())
+			te2 := te.clone()
+			te2.FloatData = f
+			te2.setUiString()
+			ea.afterEvents = append(ea.afterEvents, te2)
 		}
-	}
+	})
 	pe.doNewEditAction(ea)
 }
 
