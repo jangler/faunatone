@@ -232,7 +232,7 @@ func (te *trackEvent) renameNoteWithMods(k *keymap, mods ...*keyInfo) bool {
 		f -= mod.interval
 		modString += mod.name
 	}
-	target := math.Mod(f, 12)
+	target := posMod(f, 12)
 	for _, ki := range k.keymap {
 		if !ki.isMod && ki.name != "" && math.Abs(ki.class-target) < 0.01 {
 			if te.Type == noteOnEvent {

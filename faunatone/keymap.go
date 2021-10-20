@@ -181,20 +181,20 @@ func (k *keymap) keyboardEvent(e *sdl.KeyboardEvent, pe *patternEditor, p *playe
 		return
 	}
 	s := strings.Replace(formatKeyEvent(e), "Shift+", "", 1)
-	if pitch, ok := k.pitchFromString(s, 0); ok {
+	if pitch, ok := k.pitchFromString(s, pe.refPitch); ok {
 		if e.State == sdl.PRESSED {
 			k.lastKey = s
 			if k.keymap[s].isMod {
-				pe.transposeSelection(pitch, k)
+				pe.transposeSelection(pitch-pe.refPitch, k)
 			} else {
 				if e.Keysym.Mod&sdl.KMOD_SHIFT == 0 {
 					pe.writeEvent(newTrackEvent(&trackEvent{
 						Type:      noteOnEvent,
-						FloatData: pitch + pe.refPitch,
+						FloatData: pitch,
 						ByteData1: pe.velocity,
 					}, k), p)
 				} else {
-					note, _ := pitchToMIDI(pitch + pe.refPitch)
+					note, _ := pitchToMIDI(pitch)
 					pe.writeEvent(newTrackEvent(&trackEvent{
 						Type:      drumNoteOnEvent,
 						ByteData1: note,
