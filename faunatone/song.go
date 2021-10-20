@@ -33,7 +33,7 @@ const (
 type song struct {
 	Title  string
 	Tracks []*track
-	Keymap []*keyInfo
+	Keymap *keymap
 }
 
 func newSong() *song {
@@ -62,7 +62,10 @@ func (s *song) read(r io.Reader) error {
 		return err
 	}
 	*s = *newSong
-	for _, ki := range s.Keymap {
+	if s.Keymap == nil {
+		s.Keymap = &keymap{Name: "none"}
+	}
+	for _, ki := range s.Keymap.Items {
 		ki.class = posMod(ki.Interval, 12)
 	}
 	for i, t := range s.Tracks {
@@ -99,11 +102,11 @@ func (s *song) exportSMF(path string) error {
 }
 
 // change UI strings for notes based on keymap
-func (s *song) renameNotes(k []*keyInfo) {
+func (s *song) renameNotes() {
 	for _, t := range s.Tracks {
 		for _, te := range t.Events {
 			if te.Type == noteOnEvent || te.Type == pitchBendEvent {
-				te.setUiString(k)
+				te.setUiString(s.Keymap)
 			}
 		}
 	}
@@ -168,12 +171,12 @@ type trackEvent struct {
 	track     int // only used by undo/redo
 }
 
-func newTrackEvent(te *trackEvent, k []*keyInfo) *trackEvent {
+func newTrackEvent(te *trackEvent, k *keymap) *trackEvent {
 	te.setUiString(k)
 	return te
 }
 
-func (te *trackEvent) setUiString(k []*keyInfo) {
+func (te *trackEvent) setUiString(k *keymap) {
 	switch te.Type {
 	case noteOnEvent:
 		if k != nil && !te.renameNote(k) {
@@ -206,16 +209,16 @@ func (te *trackEvent) clone() *trackEvent {
 }
 
 // reset UI string based on keymap, returning true if successful
-func (te *trackEvent) renameNote(k []*keyInfo) bool {
+func (te *trackEvent) renameNote(k *keymap) bool {
 	if te.renameNoteWithMods(k) {
 		return true
 	}
-	for _, mod1 := range k {
+	for _, mod1 := range k.Items {
 		if mod1.IsMod {
 			if te.renameNoteWithMods(k, mod1) {
 				return true
 			}
-			for _, mod2 := range k {
+			for _, mod2 := range k.Items {
 				if mod2.IsMod {
 					if te.renameNoteWithMods(k, mod1, mod2) {
 						return true
@@ -228,7 +231,7 @@ func (te *trackEvent) renameNote(k []*keyInfo) bool {
 }
 
 // helper function for renameNote
-func (te *trackEvent) renameNoteWithMods(k []*keyInfo, mods ...*keyInfo) bool {
+func (te *trackEvent) renameNoteWithMods(k *keymap, mods ...*keyInfo) bool {
 	f := te.FloatData
 	modString := ""
 	for _, mod := range mods {
@@ -236,7 +239,7 @@ func (te *trackEvent) renameNoteWithMods(k []*keyInfo, mods ...*keyInfo) bool {
 		modString += mod.Name
 	}
 	target := posMod(f, 12)
-	for _, ki := range k {
+	for _, ki := range k.Items {
 		if !ki.IsMod && ki.Name != "" && math.Abs(ki.class-target) < 0.01 {
 			if te.Type == noteOnEvent {
 				te.uiString = fmt.Sprintf("%s%s%d %d", ki.Name, modString, int(te.FloatData)/12,

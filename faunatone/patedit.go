@@ -527,7 +527,7 @@ func (pe *patternEditor) captureRefPitch() {
 }
 
 // add to pitch of selected notes
-func (pe *patternEditor) transposeSelection(delta float64, k *keymap) {
+func (pe *patternEditor) transposeSelection(delta float64) {
 	ea := &editAction{}
 	pe.forEventsInSelection(func(t *track, te *trackEvent) {
 		if te.Type == noteOnEvent || te.Type == pitchBendEvent {
@@ -540,7 +540,7 @@ func (pe *patternEditor) transposeSelection(delta float64, k *keymap) {
 			ea.beforeEvents = append(ea.beforeEvents, te.clone())
 			te2 := te.clone()
 			te2.FloatData = f
-			te2.setUiString(k.keymap)
+			te2.setUiString(pe.song.Keymap)
 			ea.afterEvents = append(ea.afterEvents, te2)
 		}
 	})
@@ -549,7 +549,7 @@ func (pe *patternEditor) transposeSelection(delta float64, k *keymap) {
 
 // insert interpolated events at each division between events of same type at
 // each end of selection
-func (pe *patternEditor) interpolateSelection(k *keymap) {
+func (pe *patternEditor) interpolateSelection() {
 	trackMin, trackMax, tickMin, tickMax := pe.getSelection()
 	ea := &editAction{}
 	for i := trackMin; i <= trackMax; i++ {
@@ -586,7 +586,7 @@ func (pe *patternEditor) interpolateSelection(k *keymap) {
 					te.ByteData1 = byte(interpolateValue(tick, startEvt.Tick,
 						endEvt.Tick, float64(startEvt.ByteData1), float64(endEvt.ByteData1)))
 				}
-				te.setUiString(k.keymap)
+				te.setUiString(pe.song.Keymap)
 				if !eventDataEqual(te, prevEvent) && !eventDataEqual(te, endEvt) {
 					ea.afterEvents = append(ea.afterEvents, te)
 					prevEvent = te
@@ -821,7 +821,7 @@ func (pe *patternEditor) applyTickShift(ts *tickShift) {
 }
 
 // multiply the second data value of selected events by a constant factor
-func (pe *patternEditor) multiplySelection(f float64, k *keymap) {
+func (pe *patternEditor) multiplySelection(f float64) {
 	ea := &editAction{}
 	pe.forEventsInSelection(func(t *track, te *trackEvent) {
 		switch te.Type {
@@ -834,7 +834,7 @@ func (pe *patternEditor) multiplySelection(f float64, k *keymap) {
 			case drumNoteOnEvent, controllerEvent:
 				te2.ByteData2 = byte(math.Min(127, math.Round(float64(te.ByteData2)*f)))
 			}
-			te2.setUiString(k.keymap)
+			te2.setUiString(pe.song.Keymap)
 			ea.afterEvents = append(ea.afterEvents, te2)
 		}
 	})

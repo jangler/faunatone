@@ -29,11 +29,10 @@ var (
 
 // turns key events into note events
 type keymap struct {
-	keymap   []*keyInfo
-	midimap  [128]float64
-	name     string
-	lastKey  string
-	lastMidi byte
+	Name  string
+	Items []*keyInfo
+
+	midimap [128]float64
 }
 
 // an entry in a keymap
@@ -70,8 +69,7 @@ func posMod(x, y float64) float64 {
 func newKeymap(path string) (*keymap, error) {
 	errs := []string{}
 	k := &keymap{
-		name:     strings.Replace(filepath.Base(path), ".csv", "", 1),
-		lastMidi: byteNil,
+		Name: strings.Replace(filepath.Base(path), ".csv", "", 1),
 	}
 	firstMidi, lastMidi := -1, -1
 	if records, err := readCSV(filepath.Join(keymapPath, path)); err == nil {
@@ -79,7 +77,7 @@ func newKeymap(path string) (*keymap, error) {
 			ok := false
 			if len(rec) == 3 {
 				if pitch, err := parsePitch(rec[2], k); err == nil {
-					k.keymap = append(k.keymap, newKeyInfo(
+					k.Items = append(k.Items, newKeyInfo(
 						rec[0], strings.HasPrefix(rec[2], "*"), pitch, rec[1]))
 					if midiRegexp.MatchString(rec[0]) {
 						if i, err := strconv.ParseUint(rec[0][1:], 10, 8); err == nil && i < 128 {
@@ -102,7 +100,7 @@ func newKeymap(path string) (*keymap, error) {
 			}
 		}
 	} else {
-		k.name = "none"
+		k.Name = "none"
 		return k, err
 	}
 	k.repeatMidiPattern(firstMidi, lastMidi)
@@ -131,11 +129,11 @@ func (k *keymap) repeatMidiPattern(firstIndex, lastIndex int) {
 // generate a two-dimensional isomorphic keyboard keymap from two intervals
 func genIsoKeymap(interval1, interval2 float64) *keymap {
 	k := &keymap{
-		name: "gen-iso",
+		Name: "gen-iso",
 	}
 	for y, row := range qwertyLayout {
 		for x, key := range row {
-			k.keymap = append(k.keymap, newKeyInfo(key, false,
+			k.Items = append(k.Items, newKeyInfo(key, false,
 				interval1*float64(x-isoCenterX+y-2)+interval2*float64(isoCenterY-y),
 				fmt.Sprintf("(%d,%d)", x-isoCenterX+y-2, isoCenterY-y),
 			))
@@ -176,7 +174,7 @@ func parsePitch(s string, k *keymap) (float64, error) {
 
 // return a keyInfo with a matching key, if any
 func (k *keymap) getByKey(key string) *keyInfo {
-	for _, ki := range k.keymap {
+	for _, ki := range k.Items {
 		if ki.Key == key {
 			return ki
 		}
@@ -192,27 +190,25 @@ func (k *keymap) keyboardEvent(e *sdl.KeyboardEvent, pe *patternEditor, p *playe
 	s := strings.Replace(formatKeyEvent(e), "Shift+", "", 1)
 	if pitch, ok := k.pitchFromString(s, pe.refPitch); ok {
 		if e.State == sdl.PRESSED {
-			k.lastKey = s
 			if k.getByKey(s).IsMod {
-				pe.transposeSelection(pitch-pe.refPitch, k)
+				pe.transposeSelection(pitch - pe.refPitch)
 			} else {
 				if e.Keysym.Mod&sdl.KMOD_SHIFT == 0 {
 					pe.writeEvent(newTrackEvent(&trackEvent{
 						Type:      noteOnEvent,
 						FloatData: pitch,
 						ByteData1: pe.velocity,
-					}, k.keymap), p)
+					}, k), p)
 				} else {
 					note, _ := pitchToMIDI(pitch)
 					pe.writeEvent(newTrackEvent(&trackEvent{
 						Type:      drumNoteOnEvent,
 						ByteData1: note,
 						ByteData2: pe.velocity,
-					}, k.keymap), p)
+					}, k), p)
 				}
 			}
-		} else if s == k.lastKey {
-			k.lastKey = ""
+		} else {
 			pe.playSelectionNoteOff(p)
 		}
 	}
@@ -221,26 +217,22 @@ func (k *keymap) keyboardEvent(e *sdl.KeyboardEvent, pe *patternEditor, p *playe
 // respond to midi input events
 func (k *keymap) midiEvent(msg []byte, pe *patternEditor, p *player) {
 	if msg[0]&0xf0 == 0x90 && msg[2] > 0 { // note on
-		k.lastMidi = msg[1]
 		if sdl.GetModState()&sdl.KMOD_SHIFT == 0 {
 			pitch := k.midimap[msg[1]] + pe.refPitch
 			pe.writeEvent(newTrackEvent(&trackEvent{
 				Type:      noteOnEvent,
 				FloatData: pitch,
 				ByteData1: msg[2],
-			}, k.keymap), p)
+			}, k), p)
 		} else {
 			pe.writeEvent(newTrackEvent(&trackEvent{
 				Type:      drumNoteOnEvent,
 				ByteData1: msg[1],
 				ByteData2: msg[2],
-			}, k.keymap), p)
+			}, k), p)
 		}
 	} else if msg[0]&0xf0 == 0x80 || (msg[0]&0xf0 == 0x90 && msg[2] == 0) { // note off
-		if msg[1] == k.lastMidi {
-			pe.playSelectionNoteOff(p)
-			k.lastMidi = byteNil
-		}
+		pe.playSelectionNoteOff(p)
 	}
 }
 
