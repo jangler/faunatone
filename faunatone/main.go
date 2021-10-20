@@ -158,7 +158,7 @@ func main() {
 				label: "File",
 				items: []*menuItem{
 					{label: "New", action: func() { dialogNew(dia, sng, patedit, pl) }},
-					{label: "Open...", action: func() { dialogOpen(dia, sng, patedit, pl) }},
+					{label: "Open...", action: func() { dialogOpen(dia, sng, patedit, pl, km) }},
 					{label: "Save as...", action: func() { dialogSaveAs(dia, sng) }},
 					{label: "Export MIDI...", action: func() { dialogExportMIDI(dia, sng, pl) }},
 					{label: "Quit", action: func() { running = false }},
@@ -199,13 +199,13 @@ func main() {
 				label: "Insert",
 				items: []*menuItem{
 					{label: "Note...", action: func() {
-						dialogInsertNote(dia, patedit, pl)
+						dialogInsertNote(dia, patedit, km, pl)
 					}},
 					{label: "Drum note...", action: func() {
 						dialogInsertDrumNote(dia, patedit, pl)
 					}},
 					{label: "Note off", action: func() {
-						patedit.writeEvent(newTrackEvent(&trackEvent{Type: noteOffEvent}), pl)
+						patedit.writeEvent(newTrackEvent(&trackEvent{Type: noteOffEvent}, nil), pl)
 					}},
 					{label: "Pitch bend...", action: func() {
 						dialogInsertPitchBend(dia, km, patedit, pl)
@@ -238,8 +238,8 @@ func main() {
 					{label: "Insert division", action: func() { patedit.insertDivision() }},
 					{label: "Delete division", action: func() { patedit.deleteDivision() }},
 					{label: "Transpose...", action: func() { dialogTranpose(dia, patedit, km) }},
-					{label: "Interpolate", action: func() { patedit.interpolateSelection() }},
-					{label: "Multiply...", action: func() { dialogMultiply(dia, patedit) }},
+					{label: "Interpolate", action: func() { patedit.interpolateSelection(km) }},
+					{label: "Multiply...", action: func() { dialogMultiply(dia, patedit, km) }},
 				},
 			},
 			{
@@ -261,7 +261,7 @@ func main() {
 					{label: "Halve division", action: func() { patedit.multiplyDivision(0.5) }},
 					{label: "Double division", action: func() { patedit.multiplyDivision(2) }},
 					{label: "Remap key...", action: func() { dialogRemapKey(dia, km) }},
-					{label: "Load keymap...", action: func() { dialogLoadKeymap(dia, km) }},
+					{label: "Load keymap...", action: func() { dialogLoadKeymap(dia, km, sng) }},
 					{label: "Make isomorphic keymap...", action: func() {
 						dialogMakeIsoKeymap(dia, km)
 					}},
@@ -305,7 +305,7 @@ func main() {
 	// attempt to load save file specified by first CLI arg
 	if len(os.Args) > 1 {
 		if f, err := os.Open(os.Args[1]); err == nil {
-			if err := sng.read(f); err == nil {
+			if err := sng.read(f, km); err == nil {
 				sb.showMessage(fmt.Sprintf("Loaded %s.", os.Args[1]), redrawChan)
 			} else {
 				sb.showMessage(err.Error(), redrawChan)
@@ -419,7 +419,7 @@ func dialogIfErr(d *dialog, err error) {
 }
 
 // set d to an input dialog
-func dialogInsertNote(d *dialog, pe *patternEditor, p *player) {
+func dialogInsertNote(d *dialog, pe *patternEditor, k *keymap, p *player) {
 	*d = *newDialog("Insert note:", 7, func(s string) {
 		if f, err := strconv.ParseFloat(s, 64); err == nil {
 			if f >= minPitch && f <= maxPitch {
@@ -427,7 +427,7 @@ func dialogInsertNote(d *dialog, pe *patternEditor, p *player) {
 					Type:      noteOnEvent,
 					FloatData: f,
 					ByteData1: pe.velocity,
-				}), p)
+				}, k), p)
 			} else {
 				dialogMsg(d, fmt.Sprintf("Note must be in the range [%d, %d].",
 					minPitch, maxPitch))
@@ -455,7 +455,7 @@ func dialogInsertDrumNote(d *dialog, pe *patternEditor, p *player) {
 					Type:      drumNoteOnEvent,
 					ByteData1: uint8(i),
 					ByteData2: pe.velocity,
-				}), p)
+				}, nil), p)
 			} else {
 				dialogMsg(d, "Note must be in the range [0, 127].")
 			}
@@ -472,7 +472,7 @@ func dialogInsertPitchBend(d *dialog, k *keymap, pe *patternEditor, p *player) {
 			pe.writeEvent(newTrackEvent(&trackEvent{
 				Type:      pitchBendEvent,
 				FloatData: f,
-			}), p)
+			}, k), p)
 		} else {
 			dialogMsg(d, "Key not in keymap.")
 		}
@@ -488,7 +488,7 @@ func dialogInsertProgramChange(d *dialog, pe *patternEditor, p *player) {
 				pe.writeEvent(newTrackEvent(&trackEvent{
 					Type:      programEvent,
 					ByteData1: byte(i - 1),
-				}), p)
+				}, nil), p)
 			} else {
 				dialogMsg(d, "Program must be in the range [1, 128].")
 			}
@@ -506,7 +506,7 @@ func dialogInsertTempoChange(d *dialog, pe *patternEditor, p *player) {
 				pe.writeEvent(newTrackEvent(&trackEvent{
 					Type:      tempoEvent,
 					FloatData: f,
-				}), p)
+				}, nil), p)
 			} else {
 				dialogMsg(d, "Tempo must be above zero.")
 			}
@@ -524,7 +524,7 @@ func dialogInsertControlChange(d *dialog, pe *patternEditor, p *player) {
 				Type:      controllerEvent,
 				ByteData1: pe.controller,
 				ByteData2: byte(i),
-			}), p)
+			}, nil), p)
 		} else {
 			dialogMsg(d, err.Error())
 		}
@@ -550,7 +550,7 @@ func dialogSetController(d *dialog, pe *patternEditor) {
 func dialogTranpose(d *dialog, pe *patternEditor, k *keymap) {
 	*d = *newDialog("Transpose selection by...", 0, func(s string) {
 		if f, ok := k.pitchFromString(s, 0); ok {
-			pe.transposeSelection(f)
+			pe.transposeSelection(f, k)
 		} else {
 			dialogMsg(d, "Key not in keymap.")
 		}
@@ -559,10 +559,10 @@ func dialogTranpose(d *dialog, pe *patternEditor, k *keymap) {
 }
 
 // set d to an input dialog
-func dialogMultiply(d *dialog, pe *patternEditor) {
+func dialogMultiply(d *dialog, pe *patternEditor, k *keymap) {
 	*d = *newDialog("Multiply selection by:", 5, func(s string) {
 		if f, err := strconv.ParseFloat(s, 64); err == nil {
-			pe.multiplySelection(f)
+			pe.multiplySelection(f, k)
 		} else {
 			dialogMsg(d, err.Error())
 		}
@@ -589,8 +589,7 @@ func dialogRemapKey(d *dialog, k *keymap) {
 	*d = *newDialog("Press key to remap...", 0, func(s1 string) {
 		*d = *newDialog("Remap to interval:", 7, func(s2 string) {
 			if f, err := parsePitch(s2, k); err == nil {
-				k.keymap[s1] = f
-				k.isMod[s1] = strings.HasPrefix(s2, "*")
+				k.keymap[s1] = newKeyInfo(s1, strings.HasPrefix(s2, "*"), f, "")
 				k.name = addSuffixIfMissing(k.name, "*")
 			} else {
 				dialogMsg(d, err.Error())
@@ -601,11 +600,12 @@ func dialogRemapKey(d *dialog, k *keymap) {
 }
 
 // set d to an input dialog
-func dialogLoadKeymap(d *dialog, k *keymap) {
+func dialogLoadKeymap(d *dialog, k *keymap, sng *song) {
 	*d = *newDialog("Load keymap:", 50, func(s string) {
 		s = addSuffixIfMissing(s, ".csv")
 		if k2, err := newKeymap(s); err == nil {
 			*k = *k2
+			sng.renameNotes(k)
 		} else {
 			dialogMsg(d, err.Error())
 		}
@@ -642,13 +642,13 @@ func dialogNew(d *dialog, sng *song, pe *patternEditor, p *player) {
 }
 
 // set d to an input dialog
-func dialogOpen(d *dialog, sng *song, pe *patternEditor, p *player) {
+func dialogOpen(d *dialog, sng *song, pe *patternEditor, p *player, k *keymap) {
 	*d = *newDialog("Open:", 50, func(s string) {
 		s = addSuffixIfMissing(s, fileExt)
 		if f, err := os.Open(filepath.Join(savesPath, s)); err == nil {
 			defer f.Close()
 			p.stop(true)
-			if err := sng.read(f); err == nil {
+			if err := sng.read(f, k); err == nil {
 				pe.reset()
 				saveAutofill = s
 				exportAutofill = replaceSuffix(s, fileExt, ".mid")
