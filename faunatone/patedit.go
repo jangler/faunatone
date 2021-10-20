@@ -103,11 +103,7 @@ func (pe *patternEditor) draw(r *sdl.Renderer, dst *sdl.Rect, playPos int64) {
 	dst.Y += pe.headerHeight
 	dst.H -= pe.headerHeight
 	if pe.followSong && playPos != pe.prevPlayPos {
-		pe.scrollY = int32(playPos*int64(pe.beatHeight)/ticksPerBeat) -
-			dst.H/2 + pe.beatHeight/rowsPerBeat/2
-		if pe.scrollY < 0 {
-			pe.scrollY = 0
-		}
+		pe.scrollToTick(playPos)
 	}
 	pe.prevPlayPos = playPos
 
@@ -258,14 +254,22 @@ func (pe *patternEditor) mouseWheel(e *sdl.MouseWheelEvent) {
 	}
 }
 
-// move the cursor and scroll to a specific beat number
+// move scroll to a specific beat number
 func (pe *patternEditor) goToBeat(beat float64) {
 	tick := pe.roundTickToDivision(int64(math.Round((beat - 1) * ticksPerBeat)))
 	if tick < 0 {
 		tick = 0
 	}
-	pe.cursorTickClick, pe.cursorTickDrag = tick, tick
-	pe.scrollToCursorIfOffscreen()
+	pe.scrollToTick(tick)
+}
+
+// scroll to a tick
+func (pe *patternEditor) scrollToTick(tick int64) {
+	pe.scrollY = int32(tick*int64(pe.beatHeight)/ticksPerBeat) -
+		pe.viewport.H/2 + pe.beatHeight/rowsPerBeat
+	if pe.scrollY < 0 {
+		pe.scrollY = 0
+	}
 }
 
 // if cursor y is outside the viewport, center it in the viewport
