@@ -33,6 +33,7 @@ const (
 type song struct {
 	Title  string
 	Tracks []*track
+	Keymap []*keyInfo
 }
 
 func newSong() *song {
@@ -47,7 +48,7 @@ func newSong() *song {
 }
 
 // decode song data; if successful, the current song data is replaced
-func (s *song) read(r io.Reader, k *keymap) error {
+func (s *song) read(r io.Reader) error {
 	comp, err := zlib.NewReader(r)
 	if err != nil {
 		return err
@@ -61,11 +62,14 @@ func (s *song) read(r io.Reader, k *keymap) error {
 		return err
 	}
 	*s = *newSong
+	for _, ki := range s.Keymap {
+		ki.class = posMod(ki.Interval, 12)
+	}
 	for i, t := range s.Tracks {
 		t.index = i
 		for _, te := range t.Events {
 			te.track = i
-			te.setUiString(k)
+			te.setUiString(s.Keymap)
 		}
 	}
 	return nil
@@ -95,7 +99,7 @@ func (s *song) exportSMF(path string) error {
 }
 
 // change UI strings for notes based on keymap
-func (s *song) renameNotes(k *keymap) {
+func (s *song) renameNotes(k []*keyInfo) {
 	for _, t := range s.Tracks {
 		for _, te := range t.Events {
 			if te.Type == noteOnEvent || te.Type == pitchBendEvent {
@@ -164,12 +168,12 @@ type trackEvent struct {
 	track     int // only used by undo/redo
 }
 
-func newTrackEvent(te *trackEvent, k *keymap) *trackEvent {
+func newTrackEvent(te *trackEvent, k []*keyInfo) *trackEvent {
 	te.setUiString(k)
 	return te
 }
 
-func (te *trackEvent) setUiString(k *keymap) {
+func (te *trackEvent) setUiString(k []*keyInfo) {
 	switch te.Type {
 	case noteOnEvent:
 		if k != nil && !te.renameNote(k) {
@@ -202,18 +206,17 @@ func (te *trackEvent) clone() *trackEvent {
 }
 
 // reset UI string based on keymap, returning true if successful
-// TODO traverse accidentals in a specific order
-func (te *trackEvent) renameNote(k *keymap) bool {
+func (te *trackEvent) renameNote(k []*keyInfo) bool {
 	if te.renameNoteWithMods(k) {
 		return true
 	}
-	for _, mod1 := range k.keymap {
-		if mod1.isMod {
+	for _, mod1 := range k {
+		if mod1.IsMod {
 			if te.renameNoteWithMods(k, mod1) {
 				return true
 			}
-			for _, mod2 := range k.keymap {
-				if mod2.isMod {
+			for _, mod2 := range k {
+				if mod2.IsMod {
 					if te.renameNoteWithMods(k, mod1, mod2) {
 						return true
 					}
@@ -225,21 +228,21 @@ func (te *trackEvent) renameNote(k *keymap) bool {
 }
 
 // helper function for renameNote
-func (te *trackEvent) renameNoteWithMods(k *keymap, mods ...*keyInfo) bool {
+func (te *trackEvent) renameNoteWithMods(k []*keyInfo, mods ...*keyInfo) bool {
 	f := te.FloatData
 	modString := ""
 	for _, mod := range mods {
-		f -= mod.interval
-		modString += mod.name
+		f -= mod.Interval
+		modString += mod.Name
 	}
 	target := posMod(f, 12)
-	for _, ki := range k.keymap {
-		if !ki.isMod && ki.name != "" && math.Abs(ki.class-target) < 0.01 {
+	for _, ki := range k {
+		if !ki.IsMod && ki.Name != "" && math.Abs(ki.class-target) < 0.01 {
 			if te.Type == noteOnEvent {
-				te.uiString = fmt.Sprintf("%s%s%d %d", ki.name, modString, int(te.FloatData)/12,
+				te.uiString = fmt.Sprintf("%s%s%d %d", ki.Name, modString, int(te.FloatData)/12,
 					te.ByteData1)
 			} else if te.Type == pitchBendEvent {
-				te.uiString = fmt.Sprintf("bend %s%s%d", ki.name, modString, int(te.FloatData)/12)
+				te.uiString = fmt.Sprintf("bend %s%s%d", ki.Name, modString, int(te.FloatData)/12)
 			}
 			return true
 		}

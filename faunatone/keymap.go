@@ -29,7 +29,7 @@ var (
 
 // turns key events into note events
 type keymap struct {
-	keymap   map[string]*keyInfo
+	keymap   []*keyInfo
 	midimap  [128]float64
 	name     string
 	lastKey  string
@@ -38,21 +38,22 @@ type keymap struct {
 
 // an entry in a keymap
 type keyInfo struct {
-	key      string
-	isMod    bool
-	interval float64
-	class    float64 // like pitch class
-	name     string
+	Key      string
+	IsMod    bool
+	Interval float64
+	Name     string
+
+	class float64 // like pitch class; derived from Interval
 }
 
 // initialize a new key
 func newKeyInfo(key string, isMod bool, interval float64, name string) *keyInfo {
 	return &keyInfo{
-		key:      key,
-		isMod:    isMod,
-		interval: interval,
+		Key:      key,
+		IsMod:    isMod,
+		Interval: interval,
+		Name:     name,
 		class:    posMod(interval, 12),
-		name:     name,
 	}
 }
 
@@ -69,7 +70,6 @@ func posMod(x, y float64) float64 {
 func newKeymap(path string) (*keymap, error) {
 	errs := []string{}
 	k := &keymap{
-		keymap:   make(map[string]*keyInfo),
 		name:     strings.Replace(filepath.Base(path), ".csv", "", 1),
 		lastMidi: byteNil,
 	}
@@ -79,8 +79,8 @@ func newKeymap(path string) (*keymap, error) {
 			ok := false
 			if len(rec) == 3 {
 				if pitch, err := parsePitch(rec[2], k); err == nil {
-					k.keymap[rec[0]] = newKeyInfo(
-						rec[0], strings.HasPrefix(rec[2], "*"), pitch, rec[1])
+					k.keymap = append(k.keymap, newKeyInfo(
+						rec[0], strings.HasPrefix(rec[2], "*"), pitch, rec[1]))
 					if midiRegexp.MatchString(rec[0]) {
 						if i, err := strconv.ParseUint(rec[0][1:], 10, 8); err == nil && i < 128 {
 							k.midimap[i] = pitch
@@ -131,15 +131,14 @@ func (k *keymap) repeatMidiPattern(firstIndex, lastIndex int) {
 // generate a two-dimensional isomorphic keyboard keymap from two intervals
 func genIsoKeymap(interval1, interval2 float64) *keymap {
 	k := &keymap{
-		keymap: make(map[string]*keyInfo),
-		name:   "gen-iso",
+		name: "gen-iso",
 	}
 	for y, row := range qwertyLayout {
 		for x, key := range row {
-			k.keymap[key] = newKeyInfo(key, false,
+			k.keymap = append(k.keymap, newKeyInfo(key, false,
 				interval1*float64(x-isoCenterX+y-2)+interval2*float64(isoCenterY-y),
 				fmt.Sprintf("(%d,%d)", x-isoCenterX+y-2, isoCenterY-y),
-			)
+			))
 		}
 	}
 	return k
@@ -165,14 +164,24 @@ func parsePitch(s string, k *keymap) (float64, error) {
 		edo, _ := strconv.ParseFloat(m[0][2], 64)
 		return 12 / edo * step, nil
 	} else if m := keyRefRegexp.FindAllStringSubmatch(s, 1); m != nil {
-		if f, ok := k.keymap[m[0][1]]; ok {
-			return f.interval, nil
+		if ki := k.getByKey(m[0][1]); ki != nil {
+			return ki.Interval, nil
 		}
 		return 0, fmt.Errorf("no key \"%s\" in keymap", m[0][1])
 	} else if f, err := strconv.ParseFloat(s, 64); err == nil {
 		return f, nil
 	}
 	return 0, fmt.Errorf("invalid pitch syntax")
+}
+
+// return a keyInfo with a matching key, if any
+func (k *keymap) getByKey(key string) *keyInfo {
+	for _, ki := range k.keymap {
+		if ki.Key == key {
+			return ki
+		}
+	}
+	return nil
 }
 
 // respond to keyboard events
@@ -184,7 +193,7 @@ func (k *keymap) keyboardEvent(e *sdl.KeyboardEvent, pe *patternEditor, p *playe
 	if pitch, ok := k.pitchFromString(s, pe.refPitch); ok {
 		if e.State == sdl.PRESSED {
 			k.lastKey = s
-			if k.keymap[s].isMod {
+			if k.getByKey(s).IsMod {
 				pe.transposeSelection(pitch-pe.refPitch, k)
 			} else {
 				if e.Keysym.Mod&sdl.KMOD_SHIFT == 0 {
@@ -192,14 +201,14 @@ func (k *keymap) keyboardEvent(e *sdl.KeyboardEvent, pe *patternEditor, p *playe
 						Type:      noteOnEvent,
 						FloatData: pitch,
 						ByteData1: pe.velocity,
-					}, k), p)
+					}, k.keymap), p)
 				} else {
 					note, _ := pitchToMIDI(pitch)
 					pe.writeEvent(newTrackEvent(&trackEvent{
 						Type:      drumNoteOnEvent,
 						ByteData1: note,
 						ByteData2: pe.velocity,
-					}, k), p)
+					}, k.keymap), p)
 				}
 			}
 		} else if s == k.lastKey {
@@ -219,13 +228,13 @@ func (k *keymap) midiEvent(msg []byte, pe *patternEditor, p *player) {
 				Type:      noteOnEvent,
 				FloatData: pitch,
 				ByteData1: msg[2],
-			}, k), p)
+			}, k.keymap), p)
 		} else {
 			pe.writeEvent(newTrackEvent(&trackEvent{
 				Type:      drumNoteOnEvent,
 				ByteData1: msg[1],
 				ByteData2: msg[2],
-			}, k), p)
+			}, k.keymap), p)
 		}
 	} else if msg[0]&0xf0 == 0x80 || (msg[0]&0xf0 == 0x90 && msg[2] == 0) { // note off
 		if msg[1] == k.lastMidi {
@@ -237,8 +246,8 @@ func (k *keymap) midiEvent(msg []byte, pe *patternEditor, p *player) {
 
 // convert a key string to an absolute pitch
 func (k *keymap) pitchFromString(s string, refPitch float64) (float64, bool) {
-	if ki, ok := k.keymap[s]; ok {
-		pitch := ki.interval + refPitch
+	if ki := k.getByKey(s); ki != nil {
+		pitch := ki.Interval + refPitch
 		if pitch < minPitch {
 			pitch = minPitch
 		} else if pitch > maxPitch {

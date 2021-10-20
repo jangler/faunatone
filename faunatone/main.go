@@ -138,6 +138,7 @@ func main() {
 	go pl.run()
 	defer pl.cleanup()
 	km, _ := newKeymap(settings.DefaultKeymap)
+	sng.Keymap = km.keymap
 	dia := &dialog{}
 
 	// required for cursor blink
@@ -159,7 +160,7 @@ func main() {
 				items: []*menuItem{
 					{label: "New", action: func() { dialogNew(dia, sng, patedit, pl) }},
 					{label: "Open...", action: func() { dialogOpen(dia, sng, patedit, pl, km) }},
-					{label: "Save as...", action: func() { dialogSaveAs(dia, sng) }},
+					{label: "Save as...", action: func() { dialogSaveAs(dia, sng, km) }},
 					{label: "Export MIDI...", action: func() { dialogExportMIDI(dia, sng, pl) }},
 					{label: "Quit", action: func() { running = false }},
 				},
@@ -305,8 +306,9 @@ func main() {
 	// attempt to load save file specified by first CLI arg
 	if len(os.Args) > 1 {
 		if f, err := os.Open(os.Args[1]); err == nil {
-			if err := sng.read(f, km); err == nil {
+			if err := sng.read(f); err == nil {
 				sb.showMessage(fmt.Sprintf("Loaded %s.", os.Args[1]), redrawChan)
+				km.keymap = sng.Keymap
 			} else {
 				sb.showMessage(err.Error(), redrawChan)
 			}
@@ -427,7 +429,7 @@ func dialogInsertNote(d *dialog, pe *patternEditor, k *keymap, p *player) {
 					Type:      noteOnEvent,
 					FloatData: f,
 					ByteData1: pe.velocity,
-				}, k), p)
+				}, k.keymap), p)
 			} else {
 				dialogMsg(d, fmt.Sprintf("Note must be in the range [%d, %d].",
 					minPitch, maxPitch))
@@ -472,7 +474,7 @@ func dialogInsertPitchBend(d *dialog, k *keymap, pe *patternEditor, p *player) {
 			pe.writeEvent(newTrackEvent(&trackEvent{
 				Type:      pitchBendEvent,
 				FloatData: f,
-			}, k), p)
+			}, k.keymap), p)
 		} else {
 			dialogMsg(d, "Key not in keymap.")
 		}
@@ -589,7 +591,7 @@ func dialogRemapKey(d *dialog, k *keymap) {
 	*d = *newDialog("Press key to remap...", 0, func(s1 string) {
 		*d = *newDialog("Remap to interval:", 7, func(s2 string) {
 			if f, err := parsePitch(s2, k); err == nil {
-				k.keymap[s1] = newKeyInfo(s1, strings.HasPrefix(s2, "*"), f, "")
+				k.keymap = append(k.keymap, newKeyInfo(s1, strings.HasPrefix(s2, "*"), f, ""))
 				k.name = addSuffixIfMissing(k.name, "*")
 			} else {
 				dialogMsg(d, err.Error())
@@ -605,7 +607,8 @@ func dialogLoadKeymap(d *dialog, k *keymap, sng *song) {
 		s = addSuffixIfMissing(s, ".csv")
 		if k2, err := newKeymap(s); err == nil {
 			*k = *k2
-			sng.renameNotes(k)
+			sng.Keymap = k.keymap
+			sng.renameNotes(k.keymap)
 		} else {
 			dialogMsg(d, err.Error())
 		}
@@ -648,7 +651,9 @@ func dialogOpen(d *dialog, sng *song, pe *patternEditor, p *player, k *keymap) {
 		if f, err := os.Open(filepath.Join(savesPath, s)); err == nil {
 			defer f.Close()
 			p.stop(true)
-			if err := sng.read(f, k); err == nil {
+			if err := sng.read(f); err == nil {
+				k.keymap = sng.Keymap
+				k.name = s
 				pe.reset()
 				saveAutofill = s
 				exportAutofill = replaceSuffix(s, fileExt, ".mid")
@@ -662,7 +667,7 @@ func dialogOpen(d *dialog, sng *song, pe *patternEditor, p *player, k *keymap) {
 }
 
 // set d to an input dialog
-func dialogSaveAs(d *dialog, sng *song) {
+func dialogSaveAs(d *dialog, sng *song, k *keymap) {
 	*d = *newDialog("Save as:", 50, func(s string) {
 		s = addSuffixIfMissing(s, fileExt)
 		saveAutofill = s
@@ -672,6 +677,7 @@ func dialogSaveAs(d *dialog, sng *song) {
 		os.MkdirAll(savesPath, 0755)
 		if f, err := os.Create(filepath.Join(savesPath, s)); err == nil {
 			defer f.Close()
+			sng.Keymap = k.keymap
 			if err := sng.write(f); err != nil {
 				dialogMsg(d, err.Error())
 			}
