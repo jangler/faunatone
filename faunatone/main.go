@@ -590,6 +590,7 @@ func dialogRemapKey(d *dialog, k *keymap) {
 		*d = *newDialog("Remap to interval:", 7, func(s2 string) {
 			if f, err := parsePitch(s2, k); err == nil {
 				k.keymap[s1] = f
+				k.isMod[s1] = strings.HasPrefix(s2, "*")
 				k.name = addSuffixIfMissing(k.name, "*")
 			} else {
 				dialogMsg(d, err.Error())
