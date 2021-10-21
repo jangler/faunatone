@@ -290,6 +290,7 @@ func main() {
 					{label: "Set controller...", action: func() {
 						dialogSetController(dia, patedit)
 					}},
+					{label: "Set division...", action: func() { dialogSetDivision(dia, patedit) }},
 					{label: "Decrease division", action: func() { patedit.addDivision(-1) },
 						repeat: true},
 					{label: "Increase division", action: func() { patedit.addDivision(1) },
@@ -578,6 +579,22 @@ func dialogSetController(d *dialog, pe *patternEditor) {
 			} else {
 				dialogMsg(d, "Controller must be in the range [0, 127].")
 			}
+		} else {
+			dialogMsg(d, err.Error())
+		}
+	})
+}
+
+// set d to an input dialog
+func dialogSetDivision(d *dialog, pe *patternEditor) {
+	*d = *newDialog("Division:", 3, func(s string) {
+		if i, err := strconv.ParseUint(s, 10, 16); err == nil {
+			if i > ticksPerBeat {
+				i = ticksPerBeat
+			} else if i < 1 {
+				i = 1
+			}
+			pe.division = int(i)
 		} else {
 			dialogMsg(d, err.Error())
 		}
