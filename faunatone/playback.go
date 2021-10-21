@@ -2,6 +2,7 @@ package main
 
 import (
 	"math"
+	"sort"
 	"time"
 
 	"gitlab.com/gomidi/midi/writer"
@@ -308,21 +309,34 @@ func (p *player) noteOff(i int, tick int64) {
 
 // set virtual channel states based on everything that happens from the start
 // of the song up to (but not including) a given tick
-// BUG: events in later tracks will overwrite chronologically later events from
-// earlier ones.
+// TODO this seems expensive to do every time play needs to happen; it's
+// probably worth looking into keeping events sorted in the first place
 func (p *player) determineVirtualChannelStates(tick int64) {
+	events := []*trackEvent{}
 	for _, t := range p.song.Tracks {
 		for _, te := range t.Events {
 			if te.Tick < tick {
-				switch te.Type {
-				case controllerEvent:
-					p.virtChannels[t.Channel].controllers[te.ByteData1] = te.ByteData2
-				case programEvent:
-					p.virtChannels[t.Channel].program = te.ByteData1
-				case tempoEvent:
-					p.bpm = te.FloatData
-				}
+				events = append(events, te)
 			}
+		}
+	}
+	sort.Slice(events, func(i, j int) bool {
+		if events[i].Tick < events[j].Tick {
+			return true
+		} else if events[i].Tick == events[j].Tick && events[i].track < events[j].track {
+			return true
+		}
+		return false
+	})
+	for _, te := range events {
+		t := p.song.Tracks[te.track]
+		switch te.Type {
+		case controllerEvent:
+			p.virtChannels[t.Channel].controllers[te.ByteData1] = te.ByteData2
+		case programEvent:
+			p.virtChannels[t.Channel].program = te.ByteData1
+		case tempoEvent:
+			p.bpm = te.FloatData
 		}
 	}
 }
