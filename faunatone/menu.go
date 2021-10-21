@@ -72,7 +72,7 @@ func (mb *menuBar) keyboardEvent(e *sdl.KeyboardEvent) bool {
 	if e.State != sdl.PRESSED {
 		return false
 	}
-	if item, ok := mb.shortcuts[formatKeyEvent(e)]; ok && item.action != nil {
+	if item, ok := mb.shortcuts[formatKeyEvent(e, false)]; ok && item.action != nil {
 		if item.repeat || e.Repeat == 0 {
 			item.action()
 			return true
@@ -82,7 +82,7 @@ func (mb *menuBar) keyboardEvent(e *sdl.KeyboardEvent) bool {
 }
 
 // convert a keyboard event into a shortcut string
-func formatKeyEvent(e *sdl.KeyboardEvent) string {
+func formatKeyEvent(e *sdl.KeyboardEvent, useScancode bool) string {
 	keys := []string{}
 	if e.Keysym.Mod&sdl.KMOD_GUI != 0 {
 		keys = append(keys, "Win")
@@ -96,7 +96,11 @@ func formatKeyEvent(e *sdl.KeyboardEvent) string {
 	if e.Keysym.Mod&sdl.KMOD_SHIFT != 0 {
 		keys = append(keys, "Shift")
 	}
-	keys = append(keys, sdl.GetKeyName(e.Keysym.Sym))
+	if useScancode {
+		keys = append(keys, sdl.GetScancodeName(e.Keysym.Scancode))
+	} else {
+		keys = append(keys, sdl.GetKeyName(e.Keysym.Sym))
+	}
 	return strings.Join(keys, "+")
 }
 

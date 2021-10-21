@@ -126,7 +126,7 @@ func (d *dialog) keyboardEvent(e *sdl.KeyboardEvent) {
 		default:
 			d.shown = false
 			if d.action != nil {
-				d.action(formatKeyEvent(e))
+				d.action(formatKeyEvent(e, false))
 			}
 		}
 	case yesNoInput:

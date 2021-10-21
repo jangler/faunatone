@@ -193,7 +193,7 @@ func (k *keymap) keyboardEvent(e *sdl.KeyboardEvent, pe *patternEditor, p *playe
 	if e.Repeat != 0 || (e.Keysym.Mod&sdl.KMOD_SHIFT != 0) != (k.isPerc) {
 		return
 	}
-	s := strings.Replace(formatKeyEvent(e), "Shift+", "", 1)
+	s := strings.Replace(formatKeyEvent(e, true), "Shift+", "", 1)
 	if pitch, ok := k.pitchFromString(s, pe.refPitch); ok {
 		if e.State == sdl.PRESSED {
 			if k.getByKey(s).IsMod {
