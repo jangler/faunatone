@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/csv"
 	"fmt"
+	"io"
 	"math"
 	"os"
 	"path/filepath"
@@ -60,6 +61,8 @@ func main() {
 	setColorArray(colorSelectArray, settings.ColorSelect)
 	padding = int32(settings.FontSize) / 2
 
+	dia := &dialog{}
+
 	drv, err := driver.New()
 	must(err)
 	defer drv.Close()
@@ -68,28 +71,44 @@ func main() {
 	if n := settings.MidiInPortNumber; n >= 0 {
 		ins, err := drv.Ins()
 		must(err)
-		in := ins[n]
-		must(in.Open())
-		defer in.Close()
-		rd := reader.New(reader.NoLogger(),
-			reader.Each(func(pos *reader.Position, msg midi.Message) {
-				select {
-				case midiIn <- msg:
-				default:
-				}
-			}),
-		)
-		err = rd.ListenTo(in)
-		must(err)
+		if n < len(ins) {
+			in := ins[n]
+			must(in.Open())
+			defer in.Close()
+			rd := reader.New(reader.NoLogger(),
+				reader.Each(func(pos *reader.Position, msg midi.Message) {
+					select {
+					case midiIn <- msg:
+					default:
+					}
+				}),
+			)
+			err = rd.ListenTo(in)
+			must(err)
+		} else {
+			dialogMsg(dia, fmt.Sprintf("MIDI input port index %d out of range [%d, %d].",
+				n, 0, len(ins)))
+		}
 	}
 
-	outs, err := drv.Outs()
-	must(err)
-	out := outs[settings.MidiOutPortNumber]
-	must(out.Open())
-	defer out.Close()
-	wr := writer.New(out)
-	sendGMSystemOn(wr)
+	var wr *writer.Writer
+	if n := settings.MidiOutPortNumber; n >= 0 {
+		outs, err := drv.Outs()
+		must(err)
+		if settings.MidiOutPortNumber < len(outs) {
+			out := outs[settings.MidiOutPortNumber]
+			must(out.Open())
+			defer out.Close()
+			wr = writer.New(out)
+			sendGMSystemOn(wr)
+		} else {
+			dialogMsg(dia, fmt.Sprintf("MIDI output port index %d out of range [%d, %d].",
+				n, 0, len(outs)))
+		}
+	}
+	if wr == nil {
+		wr = writer.New(io.Discard) // dummy output
+	}
 
 	err = sdl.Init(sdl.INIT_VIDEO | sdl.INIT_EVENTS)
 	must(err)
@@ -142,7 +161,6 @@ func main() {
 	sng.Keymap, _ = newKeymap(settings.DefaultKeymap)
 	percKeymap, _ := newKeymap(settings.PercussionKeymap)
 	percKeymap.isPerc = true
-	dia := &dialog{}
 
 	// required for cursor blink
 	go func() {
