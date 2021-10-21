@@ -572,19 +572,19 @@ func (pe *patternEditor) interpolateSelection() {
 				te.Tick = tick
 				switch te.Type {
 				case controllerEvent:
-					te.ByteData2 = byte(interpolateValue(tick, startEvt.Tick,
-						endEvt.Tick, float64(startEvt.ByteData2), float64(endEvt.ByteData2)))
+					te.ByteData2 = byte(interpolateValue(tick, startEvt.Tick, endEvt.Tick,
+						float64(startEvt.ByteData2), float64(endEvt.ByteData2), true))
 				case noteOnEvent:
-					te.FloatData = interpolateValue(tick,
-						startEvt.Tick, endEvt.Tick, startEvt.FloatData, endEvt.FloatData)
-					te.ByteData1 = byte(interpolateValue(tick, startEvt.Tick,
-						endEvt.Tick, float64(startEvt.ByteData1), float64(endEvt.ByteData1)))
+					te.FloatData = interpolateValue(tick, startEvt.Tick, endEvt.Tick,
+						startEvt.FloatData, endEvt.FloatData, false)
+					te.ByteData1 = byte(interpolateValue(tick, startEvt.Tick, endEvt.Tick,
+						float64(startEvt.ByteData1), float64(endEvt.ByteData1), true))
 				case pitchBendEvent, tempoEvent:
-					te.FloatData = interpolateValue(tick,
-						startEvt.Tick, endEvt.Tick, startEvt.FloatData, endEvt.FloatData)
+					te.FloatData = interpolateValue(tick, startEvt.Tick, endEvt.Tick,
+						startEvt.FloatData, endEvt.FloatData, false)
 				case programEvent:
-					te.ByteData1 = byte(interpolateValue(tick, startEvt.Tick,
-						endEvt.Tick, float64(startEvt.ByteData1), float64(endEvt.ByteData1)))
+					te.ByteData1 = byte(interpolateValue(tick, startEvt.Tick, endEvt.Tick,
+						float64(startEvt.ByteData1), float64(endEvt.ByteData1), true))
 				}
 				te.setUiString(pe.song.Keymap)
 				if !eventDataEqual(te, prevEvent) && !eventDataEqual(te, endEvt) {
@@ -598,12 +598,20 @@ func (pe *patternEditor) interpolateSelection() {
 }
 
 // linearly interpolate a value
-func interpolateValue(pos, start, end int64, a, b float64) float64 {
+func interpolateValue(pos, start, end int64, a, b float64, round bool) float64 {
 	coeff := float64(pos-start) / float64(end-start)
-	return a*(1-coeff) + b*coeff
+	result := a*(1-coeff) + b*coeff
+	if round {
+		if a < b {
+			result = math.Floor(result)
+		} else {
+			result = math.Ceil(result)
+		}
+	}
+	return result
 }
 
-// return true if data for two events are equal
+// return true if data for two events have equal data
 func eventDataEqual(e1, e2 *trackEvent) bool {
 	return e1.FloatData == e2.FloatData && e1.ByteData1 == e2.ByteData1 &&
 		e1.ByteData2 == e2.ByteData2
