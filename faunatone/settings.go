@@ -17,6 +17,7 @@ type settings struct {
 	ColorBg2          uint32
 	ColorFg           uint32
 	ColorPlayPos      uint32
+	ColorSelect       uint32
 	DefaultKeymap     string
 	PercussionKeymap  string
 	Font              string

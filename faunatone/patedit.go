@@ -113,33 +113,17 @@ func (pe *patternEditor) draw(r *sdl.Renderer, dst *sdl.Rect, playPos int64) {
 	}
 	pe.prevPlayPos = playPos
 
-	// draw selection
-	dst.X += pe.beatWidth
-	dst.W -= pe.beatWidth
-	trackMin, trackMax, tickMin, tickMax := pe.getSelection()
-	x := dst.X + int32(trackMin)*pe.trackWidth - pe.scrollX
-	y := dst.Y + int32(tickMin*int64(pe.beatHeight)/ticksPerBeat) - pe.scrollY
-	w := int32(trackMax-trackMin+1) * pe.trackWidth
-	h := int32(tickMax-tickMin)*pe.beatHeight/ticksPerBeat + pe.beatHeight/rowsPerBeat
-	if x+w > dst.X && x < dst.X+dst.W &&
-		y+h > dst.Y && y < dst.Y+dst.H {
-		r.SetDrawColorArray(colorBg2Array...)
-		r.FillRect(&sdl.Rect{x, y, w, h})
-	}
-	dst.X -= pe.beatWidth
-	dst.W += pe.beatWidth
+	// draw vertical beat sidebar
 	dst.Y -= pe.headerHeight
 	dst.H += pe.headerHeight
-
-	// draw vertical beat sidebar
 	r.SetDrawColorArray(colorBg1Array...)
 	r.FillRect(&sdl.Rect{dst.X, dst.Y, pe.beatWidth, dst.H})
 
 	// draw play position
 	dst.Y += pe.headerHeight
 	dst.H -= pe.headerHeight
-	y = dst.Y + int32(playPos*int64(pe.beatHeight)/ticksPerBeat) - pe.scrollY
-	h = pe.beatHeight / rowsPerBeat
+	y := dst.Y + int32(playPos*int64(pe.beatHeight)/ticksPerBeat) - pe.scrollY
+	h := pe.beatHeight / rowsPerBeat
 	if y+h > dst.Y && y < dst.Y+dst.H {
 		r.SetDrawBlendMode(sdl.BLENDMODE_BLEND)
 		r.SetDrawColorArray(colorPlayPosArray...)
@@ -158,10 +142,33 @@ func (pe *patternEditor) draw(r *sdl.Renderer, dst *sdl.Rect, playPos int64) {
 			if len(s) > beatDigits {
 				s = s[len(s)-beatDigits:]
 			}
+			lineY := y + padding/2 + pe.printer.rect.H/2
+			r.DrawLine(dst.X, lineY, dst.X+dst.W, lineY)
 			pe.printer.draw(r, s, dst.X+padding, y+padding/2)
-			r.DrawLine(dst.X, y, dst.X+dst.W, y)
 		}
 	}
+
+	// draw selection
+	dst.X += pe.beatWidth
+	dst.W -= pe.beatWidth
+	dst.Y += pe.headerHeight
+	dst.H -= pe.headerHeight
+	trackMin, trackMax, tickMin, tickMax := pe.getSelection()
+	x := dst.X + int32(trackMin)*pe.trackWidth - pe.scrollX
+	y = dst.Y + int32(tickMin*int64(pe.beatHeight)/ticksPerBeat) - pe.scrollY
+	w := int32(trackMax-trackMin+1) * pe.trackWidth
+	h = int32(tickMax-tickMin)*pe.beatHeight/ticksPerBeat + pe.beatHeight/rowsPerBeat
+	if x+w > dst.X && x < dst.X+dst.W &&
+		y+h > dst.Y && y < dst.Y+dst.H {
+		r.SetDrawBlendMode(sdl.BLENDMODE_BLEND)
+		r.SetDrawColorArray(colorSelectArray...)
+		r.FillRect(&sdl.Rect{x, y, w, h})
+		r.SetDrawBlendMode(sdl.BLENDMODE_NONE)
+	}
+	dst.Y -= pe.headerHeight
+	dst.H += pe.headerHeight
+	dst.X -= pe.beatWidth
+	dst.W += pe.beatWidth
 
 	// draw track headers
 	x = dst.X + pe.beatWidth - pe.scrollX

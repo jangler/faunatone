@@ -36,6 +36,7 @@ var (
 	colorFgArray      = make([]uint8, 4)
 	colorFg           = sdl.Color{}
 	colorPlayPosArray = make([]uint8, 4)
+	colorSelectArray  = make([]uint8, 4)
 	padding           = int32(0)
 
 	saveAutofill   string
@@ -56,6 +57,7 @@ func main() {
 	setColorArray(colorFgArray, settings.ColorFg)
 	setColorSDL(&colorFg, settings.ColorFg)
 	setColorArray(colorPlayPosArray, settings.ColorPlayPos)
+	setColorArray(colorSelectArray, settings.ColorSelect)
 	padding = int32(settings.FontSize) / 2
 
 	drv, err := driver.New()
