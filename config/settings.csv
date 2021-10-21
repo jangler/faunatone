@@ -2,7 +2,7 @@ ColorBeat, #d0d0d0ff
 ColorBg1, #f0f0f0ff
 ColorBg2, #e0e0e0ff
 ColorFg, #101010ff
-ColorPlayPos, #e8e8e8ff
+ColorPlayPos, #10101008
 DefaultKeymap, 12edo.csv
 PercussionKeymap, 12edo.csv
 Font, RobotoMono-Regular-BasicLatin.ttf

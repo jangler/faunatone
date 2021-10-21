@@ -113,22 +113,14 @@ func (pe *patternEditor) draw(r *sdl.Renderer, dst *sdl.Rect, playPos int64) {
 	}
 	pe.prevPlayPos = playPos
 
-	// draw play position
-	y := dst.Y + int32(playPos*int64(pe.beatHeight)/ticksPerBeat) - pe.scrollY
-	h := pe.beatHeight / rowsPerBeat
-	if y+h > dst.Y && y < dst.Y+dst.H {
-		r.SetDrawColorArray(colorPlayPosArray...)
-		r.FillRect(&sdl.Rect{0, y, pe.viewport.W, h})
-	}
-
 	// draw selection
 	dst.X += pe.beatWidth
 	dst.W -= pe.beatWidth
 	trackMin, trackMax, tickMin, tickMax := pe.getSelection()
 	x := dst.X + int32(trackMin)*pe.trackWidth - pe.scrollX
-	y = dst.Y + int32(tickMin*int64(pe.beatHeight)/ticksPerBeat) - pe.scrollY
+	y := dst.Y + int32(tickMin*int64(pe.beatHeight)/ticksPerBeat) - pe.scrollY
 	w := int32(trackMax-trackMin+1) * pe.trackWidth
-	h = int32(tickMax-tickMin)*pe.beatHeight/ticksPerBeat + pe.beatHeight/rowsPerBeat
+	h := int32(tickMax-tickMin)*pe.beatHeight/ticksPerBeat + pe.beatHeight/rowsPerBeat
 	if x+w > dst.X && x < dst.X+dst.W &&
 		y+h > dst.Y && y < dst.Y+dst.H {
 		r.SetDrawColorArray(colorBg2Array...)
@@ -139,9 +131,25 @@ func (pe *patternEditor) draw(r *sdl.Renderer, dst *sdl.Rect, playPos int64) {
 	dst.Y -= pe.headerHeight
 	dst.H += pe.headerHeight
 
-	// draw beat numbers and lines
+	// draw vertical beat sidebar
 	r.SetDrawColorArray(colorBg1Array...)
 	r.FillRect(&sdl.Rect{dst.X, dst.Y, pe.beatWidth, dst.H})
+
+	// draw play position
+	dst.Y += pe.headerHeight
+	dst.H -= pe.headerHeight
+	y = dst.Y + int32(playPos*int64(pe.beatHeight)/ticksPerBeat) - pe.scrollY
+	h = pe.beatHeight / rowsPerBeat
+	if y+h > dst.Y && y < dst.Y+dst.H {
+		r.SetDrawBlendMode(sdl.BLENDMODE_BLEND)
+		r.SetDrawColorArray(colorPlayPosArray...)
+		r.FillRect(&sdl.Rect{0, y, pe.viewport.W, h})
+		r.SetDrawBlendMode(sdl.BLENDMODE_NONE)
+	}
+	dst.Y -= pe.headerHeight
+	dst.H += pe.headerHeight
+
+	// draw beat numbers and lines
 	r.SetDrawColorArray(colorBeatArray...)
 	for i := (pe.scrollY / pe.beatHeight); i < (pe.scrollY+dst.H)/pe.beatHeight+2; i++ {
 		y := dst.Y + int32(i-1)*pe.beatHeight + pe.headerHeight - pe.scrollY
