@@ -10,9 +10,13 @@ F6, Play, From top of screen
 F7, Play, From cursor
 F8, Play, Stop
 Up, Cursor, Previous division
+Shift+Up, Cursor, Previous division
 Down, Cursor, Next division
+Shift+Down, Cursor, Next division
 Left, Cursor, Previous track
+Shift+Left, Cursor, Previous track
 Right, Cursor, Next track
+Shift+Right, Cursor, Next track
 Shift+Tab, Cursor, Previous track
 Tab, Cursor, Next track
 Ctrl+G, Cursor, Go to beat...
