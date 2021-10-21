@@ -20,6 +20,8 @@ const (
 	tempoEvent
 	drumNoteOnEvent
 	pitchBendEvent
+	keyPressureEvent
+	channelPressureEvent
 )
 
 const (
@@ -121,6 +123,7 @@ type track struct {
 	// only used by player
 	activeNote  uint8
 	midiChannel uint8
+	pressure    uint8
 }
 
 // initialize a new track
@@ -193,6 +196,10 @@ func (te *trackEvent) setUiString(k *keymap) {
 		if k != nil && !te.renameNote(k) {
 			te.uiString = fmt.Sprintf("bend %.2f", te.FloatData)
 		}
+	case channelPressureEvent:
+		te.uiString = fmt.Sprintf("af %d", te.ByteData1)
+	case keyPressureEvent:
+		te.uiString = fmt.Sprintf("kp %d", te.ByteData1)
 	case programEvent:
 		te.uiString = fmt.Sprintf("prog %d", te.ByteData1+1)
 	case tempoEvent:

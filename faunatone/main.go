@@ -213,7 +213,8 @@ func main() {
 						dialogInsertPitchBend(dia, patedit, pl)
 					}},
 					{label: "Program change...", action: func() {
-						dialogInsertProgramChange(dia, patedit, pl)
+						dialogInsertUint8Event(dia, patedit, pl,
+							"Insert program change:", programEvent, 1)
 					}},
 					{label: "Tempo change...", action: func() {
 						dialogInsertTempoChange(dia, patedit, pl)
@@ -221,6 +222,16 @@ func main() {
 					{label: "Control change...", action: func() {
 						dialogInsertControlChange(dia, patedit, pl)
 					}},
+					{label: "Aftertouch...", action: func() {
+						dialogInsertUint8Event(dia, patedit, pl,
+							"Insert channel pressure:", channelPressureEvent, 0)
+					}},
+					/* this is not part of GM level 1
+					{label: "Polyphonic aftertouch...", action: func() {
+						dialogInsertUint8Event(dia, patedit, pl,
+							"Insert key pressure:", keyPressureEvent, 0)
+					}},
+					*/
 				},
 			},
 			{
@@ -485,24 +496,6 @@ func dialogInsertPitchBend(d *dialog, pe *patternEditor, p *player) {
 }
 
 // set d to an input dialog
-func dialogInsertProgramChange(d *dialog, pe *patternEditor, p *player) {
-	*d = *newDialog("Insert program change:", 3, func(s string) {
-		if i, err := strconv.ParseUint(s, 10, 8); err == nil {
-			if i >= 1 && i <= 128 {
-				pe.writeEvent(newTrackEvent(&trackEvent{
-					Type:      programEvent,
-					ByteData1: byte(i - 1),
-				}, nil), p)
-			} else {
-				dialogMsg(d, "Program must be in the range [1, 128].")
-			}
-		} else {
-			dialogMsg(d, err.Error())
-		}
-	})
-}
-
-// set d to an input dialog
 func dialogInsertTempoChange(d *dialog, pe *patternEditor, p *player) {
 	*d = *newDialog("Insert tempo change:", 7, func(s string) {
 		if f, err := strconv.ParseFloat(s, 64); err == nil {
@@ -529,6 +522,26 @@ func dialogInsertControlChange(d *dialog, pe *patternEditor, p *player) {
 				ByteData1: pe.controller,
 				ByteData2: byte(i),
 			}, nil), p)
+		} else {
+			dialogMsg(d, err.Error())
+		}
+	})
+}
+
+// set d to an input dialog
+func dialogInsertUint8Event(d *dialog, pe *patternEditor, p *player, prompt string,
+	et trackEventType, offset int) {
+	*d = *newDialog(prompt, 3, func(s string) {
+		if i, err := strconv.ParseUint(s, 10, 8); err == nil {
+			if int(i) >= offset && int(i) <= 127+offset {
+				pe.writeEvent(newTrackEvent(&trackEvent{
+					Type:      et,
+					ByteData1: byte(int(i) - offset),
+				}, nil), p)
+			} else {
+				dialogMsg(d, fmt.Sprintf("Value must be in the range [%d, %d].",
+					offset, 127+offset))
+			}
 		} else {
 			dialogMsg(d, err.Error())
 		}

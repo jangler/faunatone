@@ -588,7 +588,7 @@ func (pe *patternEditor) interpolateSelection() {
 				case pitchBendEvent, tempoEvent:
 					te.FloatData = interpolateValue(tick, startEvt.Tick, endEvt.Tick,
 						startEvt.FloatData, endEvt.FloatData, false)
-				case programEvent:
+				case programEvent, channelPressureEvent, keyPressureEvent:
 					te.ByteData1 = byte(interpolateValue(tick, startEvt.Tick, endEvt.Tick,
 						float64(startEvt.ByteData1), float64(endEvt.ByteData1), true))
 				}
@@ -834,16 +834,17 @@ func (pe *patternEditor) applyTickShift(ts *tickShift) {
 	}
 }
 
-// multiply the second data value of selected events by a constant factor
+// multiply the last data value of selected events by a constant factor
 func (pe *patternEditor) multiplySelection(f float64) {
 	ea := &editAction{}
 	pe.forEventsInSelection(func(t *track, te *trackEvent) {
 		switch te.Type {
-		case noteOnEvent, drumNoteOnEvent, controllerEvent:
+		case noteOnEvent, drumNoteOnEvent, controllerEvent,
+			channelPressureEvent, keyPressureEvent:
 			ea.beforeEvents = append(ea.beforeEvents, te.clone())
 			te2 := te.clone()
 			switch te2.Type {
-			case noteOnEvent:
+			case noteOnEvent, channelPressureEvent, keyPressureEvent:
 				te2.ByteData1 = byte(math.Min(127, math.Max(0,
 					math.Round(float64(te.ByteData1)*f))))
 			case drumNoteOnEvent, controllerEvent:
@@ -857,18 +858,19 @@ func (pe *patternEditor) multiplySelection(f float64) {
 	pe.doNewEditAction(ea)
 }
 
-// vary the second data value of selected events by a random amount up to the
+// vary the last data value of selected events by a random amount up to the
 // given magnitude
 func (pe *patternEditor) varySelection(magnitude float64) {
 	ea := &editAction{}
 	pe.forEventsInSelection(func(t *track, te *trackEvent) {
 		switch te.Type {
-		case noteOnEvent, drumNoteOnEvent, controllerEvent:
+		case noteOnEvent, drumNoteOnEvent, controllerEvent,
+			channelPressureEvent, keyPressureEvent:
 			ea.beforeEvents = append(ea.beforeEvents, te.clone())
 			te2 := te.clone()
 			f := rand.Float64()*magnitude*2 - magnitude
 			switch te2.Type {
-			case noteOnEvent:
+			case noteOnEvent, channelPressureEvent, keyPressureEvent:
 				te2.ByteData1 = byte(math.Min(127, math.Max(0,
 					math.Round(float64(te.ByteData1)+f))))
 			case drumNoteOnEvent, controllerEvent:

@@ -237,11 +237,19 @@ func (p *player) playEvent(te *trackEvent) {
 			writer.ProgramChange(p.writer, vcs.program)
 			mcs.program = vcs.program
 		}
+		if mcs.pressure != vcs.pressure {
+			writer.Aftertouch(p.writer, vcs.pressure)
+			mcs.pressure = vcs.pressure
+		}
 		note, bend := pitchToMIDI(te.FloatData)
 		vcs.bend = bend
 		if mcs.bend != bend {
 			writer.Pitchbend(p.writer, bend)
 			mcs.bend = bend
+		}
+		if mcs.keyPressure[note] != t.pressure {
+			writer.PolyAftertouch(p.writer, note, t.pressure)
+			mcs.keyPressure[note] = t.pressure
 		}
 		writer.NoteOn(p.writer, note, te.ByteData1)
 		t.activeNote = note
@@ -276,6 +284,22 @@ func (p *player) playEvent(te *trackEvent) {
 			p.writer.SetChannel(t.midiChannel)
 			writer.Pitchbend(p.writer, bend)
 			p.midiChannels[t.midiChannel].bend = bend
+		}
+	case channelPressureEvent:
+		p.virtChannels[t.Channel].pressure = te.ByteData1
+		for _, t2 := range p.song.Tracks {
+			if t2.Channel == t.Channel && t2.midiChannel != byteNil {
+				p.writer.SetChannel(t2.midiChannel)
+				writer.Aftertouch(p.writer, te.ByteData1)
+				p.midiChannels[t2.midiChannel].pressure = te.ByteData1
+			}
+		}
+	case keyPressureEvent:
+		t.pressure = te.ByteData1
+		if t.activeNote != byteNil {
+			p.writer.SetChannel(t.midiChannel)
+			writer.PolyAftertouch(p.writer, t.activeNote, t.pressure)
+			p.midiChannels[t.midiChannel].keyPressure[t.activeNote] = t.pressure
 		}
 	case programEvent:
 		p.virtChannels[t.Channel].program = te.ByteData1
@@ -355,6 +379,8 @@ type channelState struct {
 	program     uint8
 	controllers [128]uint8
 	bend        int16
+	pressure    uint8
+	keyPressure [128]uint8
 }
 
 // return an initialized channelState, using the default controller values from
