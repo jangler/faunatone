@@ -68,6 +68,7 @@ func (s *song) read(r io.Reader) error {
 	for _, ki := range s.Keymap.Items {
 		ki.class = posMod(ki.Interval, 12)
 	}
+	s.Keymap.setMidiPattern()
 	for i, t := range s.Tracks {
 		t.index = i
 		for _, te := range t.Events {

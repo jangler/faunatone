@@ -72,7 +72,6 @@ func newKeymap(path string) (*keymap, error) {
 	k := &keymap{
 		Name: strings.Replace(filepath.Base(path), ".csv", "", 1),
 	}
-	firstMidi, lastMidi := -1, -1
 	if records, err := readCSV(filepath.Join(keymapPath, path)); err == nil {
 		for _, rec := range records {
 			ok := false
@@ -80,20 +79,7 @@ func newKeymap(path string) (*keymap, error) {
 				if pitch, err := parsePitch(rec[2], k); err == nil {
 					k.Items = append(k.Items, newKeyInfo(
 						rec[0], strings.HasPrefix(rec[2], "*"), pitch, rec[1]))
-					if midiRegexp.MatchString(rec[0]) {
-						if i, err := strconv.ParseUint(rec[0][1:], 10, 8); err == nil && i < 128 {
-							k.midimap[i] = pitch
-							ok = true
-							if firstMidi == -1 || int(i) < firstMidi {
-								firstMidi = int(i)
-							}
-							if int(i) > lastMidi {
-								lastMidi = int(i)
-							}
-						}
-					} else {
-						ok = true
-					}
+					ok = true
 				}
 			}
 			if !ok {
@@ -104,11 +90,30 @@ func newKeymap(path string) (*keymap, error) {
 		k.Name = "none"
 		return k, err
 	}
-	k.repeatMidiPattern(firstMidi, lastMidi)
+	k.setMidiPattern()
 	if len(errs) > 0 {
 		return k, errors.New(strings.Join(errs, "\n"))
 	}
 	return k, nil
+}
+
+// generate the midi mappings from the existing keyInfo items
+func (k *keymap) setMidiPattern() {
+	firstMidi, lastMidi := -1, -1
+	for _, ki := range k.Items {
+		if midiRegexp.MatchString(ki.Key) {
+			if i, err := strconv.ParseUint(ki.Key[1:], 10, 8); err == nil && i < 128 {
+				k.midimap[i] = ki.Interval
+				if firstMidi == -1 || int(i) < firstMidi {
+					firstMidi = int(i)
+				}
+				if int(i) > lastMidi {
+					lastMidi = int(i)
+				}
+			}
+		}
+	}
+	k.repeatMidiPattern(firstMidi, lastMidi)
 }
 
 // repeats the pattern of midi notes already present in the keymap across the
