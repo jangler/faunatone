@@ -322,16 +322,27 @@ func (pe *patternEditor) writeEvent(te *trackEvent, p *player) {
 	trackMin, trackMax, tickMin, _ := pe.getSelection()
 	te.Tick = tickMin
 	ea := &editAction{}
-	for i := trackMin; i <= trackMax; i++ {
-		if te2 := pe.song.Tracks[i].getEventAtTick(te.Tick); te2 != nil {
-			ea.beforeEvents = append(ea.afterEvents, te2.clone())
+	if te.Type == noteOnEvent || te.Type == drumNoteOnEvent {
+		// allocate note on track dynamically
+		te.track = getVariableTrack(trackMin, trackMax, pe.song.Tracks)
+		pe.writeSingleEvent(te, te.track, ea, p)
+	} else {
+		for i := trackMin; i <= trackMax; i++ {
+			pe.writeSingleEvent(te, i, ea, p)
 		}
-		te3 := te.clone()
-		te3.track = i
-		ea.afterEvents = append(ea.afterEvents, te3)
-		p.signal <- playerSignal{typ: signalEvent, event: te3}
 	}
 	pe.doNewEditAction(ea)
+}
+
+// write an event at just one position
+func (pe *patternEditor) writeSingleEvent(te *trackEvent, i int, ea *editAction, p *player) {
+	if te2 := pe.song.Tracks[i].getEventAtTick(te.Tick); te2 != nil {
+		ea.beforeEvents = append(ea.afterEvents, te2.clone())
+	}
+	te3 := te.clone()
+	te3.track = i
+	ea.afterEvents = append(ea.afterEvents, te3)
+	p.signal <- playerSignal{typ: signalEvent, event: te3}
 }
 
 // delete selected track events

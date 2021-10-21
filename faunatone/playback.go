@@ -218,6 +218,9 @@ func (p *player) playTrackEvents(i int, tickMin, tickMax int64) {
 
 // play a single event; i is track index
 func (p *player) playEvent(te *trackEvent) {
+	if te.track == -1 {
+		te.track = getVariableTrack(te.trackMin, te.trackMax, p.song.Tracks)
+	}
 	i := te.track
 	t := p.song.Tracks[i]
 	switch te.Type {
@@ -318,6 +321,16 @@ func (p *player) playEvent(te *trackEvent) {
 	default:
 		println("unhandled event type in player.playTrackEvents")
 	}
+}
+
+// return a free track in the given range, or the last one if none are free
+func getVariableTrack(trackMin, trackMax int, tracks []*track) int {
+	for i := trackMin; i <= trackMax; i++ {
+		if tracks[i].activeNote == byteNil {
+			return i
+		}
+	}
+	return trackMax
 }
 
 // if a note is playing on the indexed track, play a note off

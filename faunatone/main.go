@@ -173,6 +173,7 @@ func main() {
 	}()
 
 	running := true
+	keyjazz := false
 
 	mb := &menuBar{
 		menus: []*menu{
@@ -281,6 +282,7 @@ func main() {
 			{
 				label: "Status",
 				items: []*menuItem{
+					{label: "Toggle keyjazz", action: func() { keyjazz = !keyjazz }},
 					{label: "Decrease octave", action: func() { patedit.modifyRefPitch(-12) },
 						repeat: true},
 					{label: "Increase octave", action: func() { patedit.modifyRefPitch(12) },
@@ -334,6 +336,9 @@ func main() {
 			if patedit.followSong {
 				return "Follow"
 			}
+			if keyjazz {
+				return "Keyjazz"
+			}
 			return ""
 		},
 	)
@@ -379,8 +384,8 @@ func main() {
 				if dia.shown {
 					dia.keyboardEvent(event)
 				} else if !mb.keyboardEvent(event) {
-					sng.Keymap.keyboardEvent(event, patedit, pl)
-					percKeymap.keyboardEvent(event, patedit, pl)
+					sng.Keymap.keyboardEvent(event, patedit, pl, keyjazz)
+					percKeymap.keyboardEvent(event, patedit, pl, keyjazz)
 				}
 			case *sdl.TextInputEvent:
 				if dia.shown {
@@ -404,7 +409,7 @@ func main() {
 				if !dia.shown {
 					switch msg.Raw()[0] & 0xf0 {
 					case 0x80, 0x90: // note off, note on
-						sng.Keymap.midiEvent(msg.Raw(), patedit, pl)
+						sng.Keymap.midiEvent(msg.Raw(), patedit, pl, keyjazz)
 					}
 				}
 			default:

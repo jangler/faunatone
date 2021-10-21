@@ -32,8 +32,10 @@ type keymap struct {
 	Name  string
 	Items []*keyInfo
 
-	midimap [128]float64
-	isPerc  bool
+	midimap   [128]float64
+	isPerc    bool
+	keyNotes  map[string]*trackEvent // map of keys to note on events
+	midiNotes [128]*trackEvent       // map of midi notes to note on events
 }
 
 // an entry in a keymap
@@ -71,9 +73,7 @@ func posMod(x, y float64) float64 {
 // load a keymap from a file
 func newKeymap(path string) (*keymap, error) {
 	errs := []string{}
-	k := &keymap{
-		Name: strings.Replace(filepath.Base(path), ".csv", "", 1),
-	}
+	k := newEmptyKeymap(strings.Replace(filepath.Base(path), ".csv", "", 1))
 	if records, err := readCSV(filepath.Join(keymapPath, path)); err == nil {
 		for _, rec := range records {
 			ok := false
@@ -97,6 +97,14 @@ func newKeymap(path string) (*keymap, error) {
 		return k, errors.New(strings.Join(errs, "\n"))
 	}
 	return k, nil
+}
+
+// initialize a new empty keymap
+func newEmptyKeymap(name string) *keymap {
+	return &keymap{
+		Name:     name,
+		keyNotes: make(map[string]*trackEvent),
+	}
 }
 
 // write a keymap to a file
@@ -149,9 +157,7 @@ func (k *keymap) repeatMidiPattern(firstIndex, lastIndex int) {
 
 // generate a two-dimensional isomorphic keyboard keymap from two intervals
 func genIsoKeymap(interval1, interval2 float64) *keymap {
-	k := &keymap{
-		Name: "gen-iso",
-	}
+	k := newEmptyKeymap("gen-iso")
 	for y, row := range qwertyLayout {
 		for x, key := range row {
 			k.Items = append(k.Items, newKeyInfo(key, false,
@@ -204,7 +210,7 @@ func (k *keymap) getByKey(key string) *keyInfo {
 }
 
 // respond to keyboard events
-func (k *keymap) keyboardEvent(e *sdl.KeyboardEvent, pe *patternEditor, p *player) {
+func (k *keymap) keyboardEvent(e *sdl.KeyboardEvent, pe *patternEditor, p *player, keyjazz bool) {
 	if e.Repeat != 0 || (e.Keysym.Mod&sdl.KMOD_SHIFT != 0) != (k.isPerc) {
 		return
 	}
@@ -214,46 +220,62 @@ func (k *keymap) keyboardEvent(e *sdl.KeyboardEvent, pe *patternEditor, p *playe
 			if k.getByKey(s).IsMod {
 				pe.transposeSelection(pitch - pe.refPitch)
 			} else {
+				var te *trackEvent
 				if !k.isPerc {
-					pe.writeEvent(newTrackEvent(&trackEvent{
+					te = newTrackEvent(&trackEvent{
 						Type:      noteOnEvent,
 						FloatData: pitch,
 						ByteData1: pe.velocity,
-					}, k), p)
+					}, k)
 				} else {
 					note, _ := pitchToMIDI(pitch)
-					pe.writeEvent(newTrackEvent(&trackEvent{
+					te = newTrackEvent(&trackEvent{
 						Type:      drumNoteOnEvent,
 						ByteData1: note,
 						ByteData2: pe.velocity,
-					}, k), p)
+					}, k)
 				}
+				processKeymapNoteOn(te, pe, p, keyjazz)
+				k.keyNotes[s] = te
 			}
-		} else {
-			pe.playSelectionNoteOff(p)
+		} else if te, ok := k.keyNotes[s]; ok {
+			p.signal <- playerSignal{typ: signalEvent, event: &trackEvent{
+				Type:  noteOffEvent,
+				track: te.track,
+			}}
+			delete(k.keyNotes, s)
 		}
 	}
 }
 
 // respond to midi input events
-func (k *keymap) midiEvent(msg []byte, pe *patternEditor, p *player) {
+func (k *keymap) midiEvent(msg []byte, pe *patternEditor, p *player, keyjazz bool) {
 	if msg[0]&0xf0 == 0x90 && msg[2] > 0 { // note on
+		var te *trackEvent
 		if sdl.GetModState()&sdl.KMOD_SHIFT == 0 {
 			pitch := k.midimap[msg[1]] + pe.refPitch
-			pe.writeEvent(newTrackEvent(&trackEvent{
+			te = newTrackEvent(&trackEvent{
 				Type:      noteOnEvent,
 				FloatData: pitch,
 				ByteData1: msg[2],
-			}, k), p)
+			}, k)
 		} else {
-			pe.writeEvent(newTrackEvent(&trackEvent{
+			te = newTrackEvent(&trackEvent{
 				Type:      drumNoteOnEvent,
 				ByteData1: msg[1],
 				ByteData2: msg[2],
-			}, k), p)
+			}, k)
 		}
+		processKeymapNoteOn(te, pe, p, keyjazz)
+		k.midiNotes[msg[1]] = te
 	} else if msg[0]&0xf0 == 0x80 || (msg[0]&0xf0 == 0x90 && msg[2] == 0) { // note off
-		pe.playSelectionNoteOff(p)
+		if te := k.midiNotes[msg[1]]; te != nil {
+			p.signal <- playerSignal{typ: signalEvent, event: &trackEvent{
+				Type:  noteOffEvent,
+				track: te.track,
+			}}
+			k.midiNotes[msg[1]] = nil
+		}
 	}
 }
 
@@ -269,4 +291,15 @@ func (k *keymap) pitchFromString(s string, refPitch float64) (float64, bool) {
 		return pitch, true
 	}
 	return 0, false
+}
+
+// set the track and write/play a note on / drum note on event as appropriate
+func processKeymapNoteOn(te *trackEvent, pe *patternEditor, p *player, keyjazz bool) {
+	te.track = -1
+	te.trackMin, te.trackMax, _, _ = pe.getSelection()
+	if keyjazz {
+		p.signal <- playerSignal{typ: signalEvent, event: te}
+	} else {
+		pe.writeEvent(te, p)
+	}
 }

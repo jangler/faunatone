@@ -65,7 +65,7 @@ func (s *song) read(r io.Reader) error {
 	}
 	*s = *newSong
 	if s.Keymap == nil {
-		s.Keymap = &keymap{Name: "none"}
+		s.Keymap = newEmptyKeymap("none")
 	}
 	for _, ki := range s.Keymap.Items {
 		ki.class = posMod(ki.Interval, 12)
@@ -172,7 +172,10 @@ type trackEvent struct {
 	ByteData1 byte    `json:",omitempty"`
 	ByteData2 byte    `json:",omitempty"`
 	uiString  string
-	track     int // only used by undo/redo
+	track     int
+
+	// only used by playback
+	trackMin, trackMax int
 }
 
 func newTrackEvent(te *trackEvent, k *keymap) *trackEvent {
