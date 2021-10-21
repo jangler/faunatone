@@ -163,6 +163,8 @@ func main() {
 					{label: "Open...", action: func() { dialogOpen(dia, sng, patedit, pl) }},
 					{label: "Save as...", action: func() { dialogSaveAs(dia, sng) }},
 					{label: "Export MIDI...", action: func() { dialogExportMIDI(dia, sng, pl) }},
+					{label: "Load keymap...", action: func() { dialogLoadKeymap(dia, sng) }},
+					{label: "Save keymap as...", action: func() { dialogSaveKeymap(dia, sng) }},
 					{label: "Quit", action: func() { running = false }},
 				},
 			},
@@ -275,7 +277,6 @@ func main() {
 					{label: "Halve division", action: func() { patedit.multiplyDivision(0.5) }},
 					{label: "Double division", action: func() { patedit.multiplyDivision(2) }},
 					{label: "Remap key...", action: func() { dialogRemapKey(dia, sng) }},
-					{label: "Load keymap...", action: func() { dialogLoadKeymap(dia, sng) }},
 					{label: "Make isomorphic keymap...", action: func() {
 						dialogMakeIsoKeymap(dia, sng)
 					}},
@@ -617,8 +618,8 @@ func dialogRemapKey(d *dialog, s *song) {
 	*d = *newDialog("Press key to remap...", 0, func(s1 string) {
 		*d = *newDialog("Remap to interval:", 7, func(s2 string) {
 			if f, err := parsePitch(s2, s.Keymap); err == nil {
-				s.Keymap.Items = append(s.Keymap.Items,
-					newKeyInfo(s1, strings.HasPrefix(s2, "*"), f, ""))
+				ki := newKeyInfo(s1, strings.HasPrefix(s2, "*"), f, "", s2)
+				s.Keymap.Items = append(s.Keymap.Items, ki)
 				s.Keymap.Name = addSuffixIfMissing(s.Keymap.Name, "*")
 			} else {
 				dialogMsg(d, err.Error())
@@ -639,6 +640,17 @@ func dialogLoadKeymap(d *dialog, sng *song) {
 			dialogMsg(d, err.Error())
 		}
 	})
+}
+
+// set d to an input dialog
+func dialogSaveKeymap(d *dialog, sng *song) {
+	*d = *newDialog("Save keymap as:", 50, func(s string) {
+		s = addSuffixIfMissing(s, ".csv")
+		if err := sng.Keymap.write(s); err != nil {
+			dialogMsg(d, err.Error())
+		}
+	})
+	d.input = addSuffixIfMissing(sng.Keymap.Name, ".csv")
 }
 
 // set d to an input dialog chain
@@ -756,6 +768,16 @@ func readCSV(path string) ([][]string, error) {
 	r.TrimLeadingSpace = true
 	r.Comment = '#'
 	return r.ReadAll()
+}
+
+// write records to a CSV file
+func writeCSV(path string, records [][]string) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return csv.NewWriter(f).WriteAll(records)
 }
 
 // return base+suffix if base does not already end with suffix, otherwise

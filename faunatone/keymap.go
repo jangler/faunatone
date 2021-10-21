@@ -42,17 +42,19 @@ type keyInfo struct {
 	IsMod    bool
 	Interval float64
 	Name     string
+	Origin   string // the way the interval was written originally
 
 	class float64 // like pitch class; derived from Interval
 }
 
 // initialize a new key
-func newKeyInfo(key string, isMod bool, interval float64, name string) *keyInfo {
+func newKeyInfo(key string, isMod bool, interval float64, name, origin string) *keyInfo {
 	return &keyInfo{
 		Key:      key,
 		IsMod:    isMod,
 		Interval: interval,
 		Name:     name,
+		Origin:   origin,
 		class:    posMod(interval, 12),
 	}
 }
@@ -78,7 +80,7 @@ func newKeymap(path string) (*keymap, error) {
 			if len(rec) == 3 {
 				if pitch, err := parsePitch(rec[2], k); err == nil {
 					k.Items = append(k.Items, newKeyInfo(
-						rec[0], strings.HasPrefix(rec[2], "*"), pitch, rec[1]))
+						rec[0], strings.HasPrefix(rec[2], "*"), pitch, rec[1], rec[2]))
 					ok = true
 				}
 			}
@@ -95,6 +97,19 @@ func newKeymap(path string) (*keymap, error) {
 		return k, errors.New(strings.Join(errs, "\n"))
 	}
 	return k, nil
+}
+
+// write a keymap to a file
+func (k *keymap) write(path string) error {
+	records := make([][]string, len(k.Items))
+	for i, ki := range k.Items {
+		pitchString := ki.Origin
+		if pitchString == "" {
+			pitchString = fmt.Sprintf("%f", ki.Interval)
+		}
+		records[i] = []string{ki.Key, ki.Name, pitchString}
+	}
+	return writeCSV(filepath.Join(keymapPath, path), records)
 }
 
 // generate the midi mappings from the existing keyInfo items
@@ -141,7 +156,7 @@ func genIsoKeymap(interval1, interval2 float64) *keymap {
 		for x, key := range row {
 			k.Items = append(k.Items, newKeyInfo(key, false,
 				interval1*float64(x-isoCenterX+y-2)+interval2*float64(isoCenterY-y),
-				fmt.Sprintf("(%d,%d)", x-isoCenterX+y-2, isoCenterY-y),
+				fmt.Sprintf("(%d,%d)", x-isoCenterX+y-2, isoCenterY-y), "",
 			))
 		}
 	}
