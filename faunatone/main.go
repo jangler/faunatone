@@ -242,6 +242,7 @@ func main() {
 					{label: "Transpose...", action: func() { dialogTranpose(dia, patedit) }},
 					{label: "Interpolate", action: func() { patedit.interpolateSelection() }},
 					{label: "Multiply...", action: func() { dialogMultiply(dia, patedit) }},
+					{label: "Vary...", action: func() { dialogVary(dia, patedit) }},
 				},
 			},
 			{
@@ -566,6 +567,17 @@ func dialogMultiply(d *dialog, pe *patternEditor) {
 	*d = *newDialog("Multiply selection by:", 5, func(s string) {
 		if f, err := strconv.ParseFloat(s, 64); err == nil {
 			pe.multiplySelection(f)
+		} else {
+			dialogMsg(d, err.Error())
+		}
+	})
+}
+
+// set d to an input dialog
+func dialogVary(d *dialog, pe *patternEditor) {
+	*d = *newDialog("Vary selection by:", 5, func(s string) {
+		if f, err := strconv.ParseFloat(s, 64); err == nil {
+			pe.varySelection(f)
 		} else {
 			dialogMsg(d, err.Error())
 		}

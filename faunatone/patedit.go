@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"math"
+	"math/rand"
 	"strconv"
+	"time"
 	"unsafe"
 
 	"github.com/veandco/go-sdl2/sdl"
@@ -23,6 +25,10 @@ const (
 	minPitch = -bendSemitones
 	maxPitch = 127 + bendSemitones
 )
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
 
 // user interface structure for song editing
 type patternEditor struct {
@@ -838,9 +844,36 @@ func (pe *patternEditor) multiplySelection(f float64) {
 			te2 := te.clone()
 			switch te2.Type {
 			case noteOnEvent:
-				te2.ByteData1 = byte(math.Min(127, math.Round(float64(te.ByteData1)*f)))
+				te2.ByteData1 = byte(math.Min(127, math.Max(0,
+					math.Round(float64(te.ByteData1)*f))))
 			case drumNoteOnEvent, controllerEvent:
-				te2.ByteData2 = byte(math.Min(127, math.Round(float64(te.ByteData2)*f)))
+				te2.ByteData2 = byte(math.Min(127, math.Max(0,
+					math.Round(float64(te.ByteData2)*f))))
+			}
+			te2.setUiString(pe.song.Keymap)
+			ea.afterEvents = append(ea.afterEvents, te2)
+		}
+	})
+	pe.doNewEditAction(ea)
+}
+
+// vary the second data value of selected events by a random amount up to the
+// given magnitude
+func (pe *patternEditor) varySelection(magnitude float64) {
+	ea := &editAction{}
+	pe.forEventsInSelection(func(t *track, te *trackEvent) {
+		switch te.Type {
+		case noteOnEvent, drumNoteOnEvent, controllerEvent:
+			ea.beforeEvents = append(ea.beforeEvents, te.clone())
+			te2 := te.clone()
+			f := rand.Float64()*magnitude*2 - magnitude
+			switch te2.Type {
+			case noteOnEvent:
+				te2.ByteData1 = byte(math.Min(127, math.Max(0,
+					math.Round(float64(te.ByteData1)+f))))
+			case drumNoteOnEvent, controllerEvent:
+				te2.ByteData2 = byte(math.Min(127, math.Max(0,
+					math.Round(float64(te.ByteData2)+f))))
 			}
 			te2.setUiString(pe.song.Keymap)
 			ea.afterEvents = append(ea.afterEvents, te2)
