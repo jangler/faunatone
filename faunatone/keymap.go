@@ -92,6 +92,7 @@ func newKeymap(path string) (*keymap, error) {
 		k.Name = "none"
 		return k, err
 	}
+	k.duplicateOctave()
 	k.setMidiPattern()
 	if len(errs) > 0 {
 		return k, errors.New(strings.Join(errs, "\n"))
@@ -118,6 +119,23 @@ func (k *keymap) write(path string) error {
 		records[i] = []string{ki.Key, ki.Name, pitchString}
 	}
 	return writeCSV(filepath.Join(keymapPath, path), records)
+}
+
+// duplicate Q-0 keys in Z-; if Z-; are empty
+func (k *keymap) duplicateOctave() {
+	for i := 0; i < 19; i++ {
+		x, y := (i+1)/2, 3-(i%2)
+		if k.getByKey(qwertyLayout[y][x]) != nil {
+			return // Z-; not empty
+		}
+	}
+	for i := 0; i < 19; i++ {
+		x, y := (i+1)/2, 1-(i%2)
+		if ki := k.getByKey(qwertyLayout[y][x]); ki != nil {
+			k.Items = append(k.Items, newKeyInfo(
+				qwertyLayout[y+2][x], ki.IsMod, ki.Interval-12, ki.Name, ""))
+		}
+	}
 }
 
 // generate the midi mappings from the existing keyInfo items
