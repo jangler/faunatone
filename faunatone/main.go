@@ -332,15 +332,8 @@ func main() {
 		func() string { return fmt.Sprintf("Velocity: %d", patedit.velocity) },
 		func() string { return fmt.Sprintf("Controller: %d", patedit.controller) },
 		func() string { return fmt.Sprintf("Keymap: %s", sng.Keymap.Name) },
-		func() string {
-			if patedit.followSong {
-				return "Follow"
-			}
-			if keyjazz {
-				return "Keyjazz"
-			}
-			return ""
-		},
+		func() string { return conditionalString(patedit.followSong, "Follow", "") },
+		func() string { return conditionalString(keyjazz, "Keyjazz", "") },
 	)
 
 	// attempt to load save file specified by first CLI arg
@@ -435,6 +428,14 @@ func main() {
 		}
 		sdl.Delay(uint32(1000 / fps))
 	}
+}
+
+// return a if cond, else b
+func conditionalString(cond bool, a, b string) string {
+	if cond {
+		return a
+	}
+	return b
 }
 
 // set d to an input dialog
