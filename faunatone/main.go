@@ -668,7 +668,7 @@ func dialogRemapKey(d *dialog, s *song) {
 	*d = *newDialog("Press key to remap...", 0, func(s1 string) {
 		*d = *newDialog("Remap to interval:", 7, func(s2 string) {
 			if f, err := parsePitch(s2, s.Keymap); err == nil {
-				ki := newKeyInfo(s1, strings.HasPrefix(s2, "*"), f, "", s2)
+				ki := newKeyInfo(s1, strings.HasPrefix(s2, "*"), f, s1, s2)
 				s.Keymap.Items = append(s.Keymap.Items, ki)
 				s.Keymap.Name = addSuffixIfMissing(s.Keymap.Name, "*")
 			} else {
