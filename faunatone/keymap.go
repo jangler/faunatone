@@ -79,8 +79,12 @@ func newKeymap(path string) (*keymap, error) {
 			ok := false
 			if len(rec) == 3 {
 				if pitch, err := parsePitch(rec[2], k); err == nil {
+					name := rec[1]
+					if name == "" {
+						name = rec[2] + "-" // use origin as name if name is absent
+					}
 					k.Items = append(k.Items, newKeyInfo(
-						rec[0], strings.HasPrefix(rec[2], "*"), pitch, rec[1], rec[2]))
+						rec[0], strings.HasPrefix(rec[2], "*"), pitch, name, rec[2]))
 					ok = true
 				}
 			}
@@ -121,12 +125,12 @@ func (k *keymap) write(path string) error {
 	return writeCSV(filepath.Join(keymapPath, path), records)
 }
 
-// duplicate Q-0 keys in Z-; if Z-; are empty
+// duplicate Q-0 keys in Z-; if matching Z-; keys are free
 func (k *keymap) duplicateOctave() {
 	for i := 0; i < 19; i++ {
-		x, y := (i+1)/2, 3-(i%2)
-		if k.getByKey(qwertyLayout[y][x]) != nil {
-			return // Z-; not empty
+		x, y := (i+1)/2, 1-(i%2)
+		if k.getByKey(qwertyLayout[y][x]) != nil && k.getByKey(qwertyLayout[y+2][x]) != nil {
+			return // Z-; equivalents not free
 		}
 	}
 	for i := 0; i < 19; i++ {
