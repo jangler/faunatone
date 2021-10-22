@@ -188,18 +188,16 @@ func genEdoKeymap(n int) *keymap {
 	for i := 0; i <= n && y >= 0; i++ {
 		// computer keyboard
 		if n <= w {
-			// two rows, Q-P and Z-/
+			// two rows, Q-P and Z-/ (second row set by duplicateOctave)
 			if x >= w {
 				break
 			}
 			k.Items = append(k.Items, newKeyInfo(qwertyLayout[y][x], false,
 				12/float64(n)*float64(i), fmt.Sprintf("%d'", (i%int(n))+1),
 				fmt.Sprintf("%d\\%d", i, n)))
-			k.Items = append(k.Items, newKeyInfo(qwertyLayout[y+2][x], false,
-				12/float64(n)*float64(i)-12, fmt.Sprintf("%d'", (i%int(n))+1),
-				fmt.Sprintf("%d\\%d", i-n, n)))
 		} else if n < w*h/2 {
 			// two sets of two alternating rows, Q2W3... and ZSXD...
+			// (second row set by duplicateOctave)
 			if x >= w*2-1 {
 				break
 			}
@@ -207,9 +205,6 @@ func genEdoKeymap(n int) *keymap {
 			k.Items = append(k.Items, newKeyInfo(qwertyLayout[y][(x+1)/2], false,
 				12/float64(n)*float64(i), fmt.Sprintf("%d'", (i%int(n))+1),
 				fmt.Sprintf("%d\\%d", i, n)))
-			k.Items = append(k.Items, newKeyInfo(qwertyLayout[y+2][(x+1)/2], false,
-				12/float64(n)*float64(i)-12, fmt.Sprintf("%d'", (i%int(n))+1),
-				fmt.Sprintf("%d\\%d", i-n, n)))
 		} else {
 			// Q2W3 same as above, then go backwards down /;.L
 			if x >= w*2-1 {
@@ -237,6 +232,7 @@ func genEdoKeymap(n int) *keymap {
 		12, "1'", fmt.Sprintf("%d\\%d", n, n)))
 	k.Items = append(k.Items, newKeyInfo("A", false,
 		-12, "1'", fmt.Sprintf("%d\\%d", -n, n)))
+	k.duplicateOctave()
 	k.setMidiPattern()
 	return k
 }
