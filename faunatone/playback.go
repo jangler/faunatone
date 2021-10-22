@@ -45,6 +45,7 @@ type player struct {
 	midiChannels []*channelState
 	virtChannels []*channelState
 	redrawChan   chan bool // send true on this when a signal is received
+	noteCutCount int       // # of times polyphony limit was exceeded
 
 	// ignore signalContinue messages with world < this.
 	// increment world when signalStop and signalStart are sent.
@@ -226,7 +227,11 @@ func (p *player) playEvent(te *trackEvent) {
 	switch te.Type {
 	case noteOnEvent:
 		p.noteOff(i, te.Tick)
-		t.midiChannel = pickInactiveChannel(p.midiChannels)
+		var stolen bool
+		t.midiChannel, stolen = pickInactiveChannel(p.midiChannels)
+		if stolen {
+			p.noteCutCount++
+		}
 		p.writer.SetChannel(t.midiChannel)
 		mcs := p.midiChannels[t.midiChannel]
 		vcs := p.virtChannels[t.Channel]
@@ -412,13 +417,14 @@ func newChannelState() *channelState {
 }
 
 // return the index of the channel which has had no active notes for the
-// longest time, aside from the percussion channel
-func pickInactiveChannel(a []*channelState) uint8 {
+// longest time, aside from the percussion channel; return true if voice was
+// stolen
+func pickInactiveChannel(a []*channelState) (uint8, bool) {
 	bestScore, bestIndex := int64(math.MaxInt64), 0
 	for i, cs := range a {
 		if i != percussionChannelIndex && cs.lastNoteOff != -1 && cs.lastNoteOff < bestScore {
 			bestScore, bestIndex = cs.lastNoteOff, i
 		}
 	}
-	return uint8(bestIndex)
+	return uint8(bestIndex), bestScore == int64(math.MaxInt64)
 }
