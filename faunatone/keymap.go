@@ -279,15 +279,20 @@ func (k *keymap) getByKey(key string) *keyInfo {
 
 // respond to keyboard events
 func (k *keymap) keyboardEvent(e *sdl.KeyboardEvent, pe *patternEditor, p *player, keyjazz bool) {
-	if e.Repeat != 0 || (e.Keysym.Mod&sdl.KMOD_SHIFT != 0) != (k.isPerc) {
+	shiftPressed := e.Keysym.Mod&sdl.KMOD_SHIFT != 0
+	if e.Repeat != 0 {
 		return
 	}
 	s := strings.Replace(formatKeyEvent(e, true), "Shift+", "", 1)
 	if pitch, ok := k.pitchFromString(s, pe.refPitch); ok {
 		if e.State == sdl.PRESSED {
 			if k.getByKey(s).IsMod {
-				pe.transposeSelection(pitch - pe.refPitch)
-			} else {
+				if shiftPressed {
+					pe.modifyRefPitch(pitch - pe.refPitch)
+				} else {
+					pe.transposeSelection(pitch - pe.refPitch)
+				}
+			} else if shiftPressed == k.isPerc {
 				var te *trackEvent
 				if !k.isPerc {
 					te = newTrackEvent(&trackEvent{
