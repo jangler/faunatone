@@ -301,6 +301,9 @@ func main() {
 					{label: "Halve division", action: func() { patedit.multiplyDivision(0.5) }},
 					{label: "Double division", action: func() { patedit.multiplyDivision(2) }},
 					{label: "Remap key...", action: func() { dialogRemapKey(dia, sng) }},
+					{label: "Make edo keymap...", action: func() {
+						dialogMakeEdoKeymap(dia, sng)
+					}},
 					{label: "Make isomorphic keymap...", action: func() {
 						dialogMakeIsoKeymap(dia, sng)
 					}},
@@ -695,6 +698,18 @@ func dialogSaveKeymap(d *dialog, sng *song) {
 		}
 	})
 	d.input = addSuffixIfMissing(sng.Keymap.Name, ".csv")
+}
+
+// set d to an input dialog
+func dialogMakeEdoKeymap(d *dialog, sng *song) {
+	*d = *newDialog("Enter number of equal divisions of octave:", 3, func(s string) {
+		if i, err := strconv.ParseUint(s, 10, 8); err == nil {
+			sng.Keymap = genEdoKeymap(int(i))
+			sng.renameNotes()
+		} else {
+			dialogMsg(d, err.Error())
+		}
+	})
 }
 
 // set d to an input dialog chain

@@ -4,8 +4,8 @@ ColorBg2, #e0e0e0ff
 ColorFg, #101010ff
 ColorPlayPos, #10101008
 ColorSelect, #10101010
-DefaultKeymap, 12edo.csv
-PercussionKeymap, 12edo.csv
+DefaultKeymap, 12edo-trad.csv
+PercussionKeymap, 12edo-trad.csv
 Font, RobotoMono-Regular-BasicLatin.ttf
 FontSize, 12
 MessageDuration, 3

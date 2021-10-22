@@ -18,8 +18,8 @@ var (
 	qwertyLayout = [][]string{
 		{"1", "2", "3", "4", "5", "6", "7", "8", "9", "0"},
 		{"Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"},
-		{"A", "S", "D", "F", "G", "H", "J", "K", "L"},
-		{"Z", "X", "C", "V", "B", "N", "M"},
+		{"A", "S", "D", "F", "G", "H", "J", "K", "L", ";"},
+		{"Z", "X", "C", "V", "B", "N", "M", ",", ".", "/"},
 	}
 	isoCenterX = 4
 	isoCenterY = 2
@@ -141,6 +141,7 @@ func (k *keymap) setMidiPattern() {
 
 // repeats the pattern of midi notes already present in the keymap across the
 // entire range
+// TODO restrict notes to allowable range
 func (k *keymap) repeatMidiPattern(firstIndex, lastIndex int) {
 	if firstIndex != -1 && lastIndex != -1 {
 		octave := k.midimap[lastIndex] - k.midimap[firstIndex]
@@ -153,6 +154,73 @@ func (k *keymap) repeatMidiPattern(firstIndex, lastIndex int) {
 			k.midimap[i] = k.midimap[index] + period*octave
 		}
 	}
+}
+
+// generate a keymap for an edo. this gets you full coverage on computer
+// keyboard for up to 38edo. (sorry, 41edo enthusiasts. there's not enough
+// keys. midi should work up to 127edo.)
+func genEdoKeymap(n int) *keymap {
+	k := newEmptyKeymap(fmt.Sprintf("%dedo", n))
+	w, h := len(qwertyLayout[0]), len(qwertyLayout)
+	x, y := 0, 1
+	midiRoot := 60
+	for i := n; i > 67; i -= 12 {
+		midiRoot -= 12
+	}
+	for i := 0; i <= n && y >= 0; i++ {
+		// computer keyboard
+		if n <= w {
+			// two rows, Q-P and Z-/
+			if x >= w {
+				break
+			}
+			k.Items = append(k.Items, newKeyInfo(qwertyLayout[y][x], false,
+				12/float64(n)*float64(i), fmt.Sprintf("%d'", (i%int(n))+1),
+				fmt.Sprintf("%d\\%d", i, n)))
+			k.Items = append(k.Items, newKeyInfo(qwertyLayout[y+2][x], false,
+				12/float64(n)*float64(i)-12, fmt.Sprintf("%d'", (i%int(n))+1),
+				fmt.Sprintf("%d\\%d", i-n, n)))
+		} else if n < w*h/2 {
+			// two sets of two alternating rows, Q2W3... and ZSXD...
+			if x >= w*2-1 {
+				break
+			}
+			y = 1 - (x % 2)
+			k.Items = append(k.Items, newKeyInfo(qwertyLayout[y][(x+1)/2], false,
+				12/float64(n)*float64(i), fmt.Sprintf("%d'", (i%int(n))+1),
+				fmt.Sprintf("%d\\%d", i, n)))
+			k.Items = append(k.Items, newKeyInfo(qwertyLayout[y+2][(x+1)/2], false,
+				12/float64(n)*float64(i)-12, fmt.Sprintf("%d'", (i%int(n))+1),
+				fmt.Sprintf("%d\\%d", i-n, n)))
+		} else {
+			// Q2W3 same as above, then go backwards down /;.L
+			if x >= w*2-1 {
+				break
+			}
+			y = 1 - (x % 2)
+			k.Items = append(k.Items, newKeyInfo(qwertyLayout[y][(x+1)/2], false,
+				12/float64(n)*float64(i), fmt.Sprintf("%d'", (i%int(n))+1),
+				fmt.Sprintf("%d\\%d", i, n)))
+			k.Items = append(k.Items, newKeyInfo(qwertyLayout[y+2][w-x/2-1], false,
+				-12/float64(n)*float64(i+1), fmt.Sprintf("%d'", ((n-i-1)%int(n))+1),
+				fmt.Sprintf("%d\\%d", n-i-1, n)))
+		}
+		// midi is simpler
+		if i <= n {
+			k.Items = append(k.Items, newKeyInfo(fmt.Sprintf("m%d", midiRoot+i), false,
+				12/float64(n)*float64(i), fmt.Sprintf("%d'", (i%int(n))+1),
+				fmt.Sprintf("%d\\%d", i, n)))
+		}
+		x++
+	}
+	// 1 and A are unused by these layouts, so map them to octaves. this is
+	// useful for edos 10 and >18
+	k.Items = append(k.Items, newKeyInfo("1", false,
+		12, "1'", fmt.Sprintf("%d\\%d", n, n)))
+	k.Items = append(k.Items, newKeyInfo("A", false,
+		-12, "1'", fmt.Sprintf("%d\\%d", -n, n)))
+	k.setMidiPattern()
+	return k
 }
 
 // generate a two-dimensional isomorphic keyboard keymap from two intervals
