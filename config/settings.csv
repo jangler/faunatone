@@ -11,6 +11,7 @@ FontSize, 12
 MessageDuration, 3
 MidiInPortNumber, -1
 MidiOutPortNumber, 0
+OffDivisionAlpha, 64
 UndoBufferSize, 10000000
 WindowHeight, 720
 WindowWidth, 1280

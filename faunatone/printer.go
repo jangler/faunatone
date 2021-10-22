@@ -36,6 +36,11 @@ func (p *printer) destroy() {
 
 // draw a string, rendering and caching new glpyhs if necessary
 func (p *printer) draw(r *sdl.Renderer, s string, x, y int32) {
+	p.drawAlpha(r, s, x, y, 255)
+}
+
+// like draw, but applies an alpha modifier to textures
+func (p *printer) drawAlpha(r *sdl.Renderer, s string, x, y int32, alpha uint8) {
 	dst := &sdl.Rect{x, y, p.rect.W, p.rect.H}
 	for _, c := range s {
 		if _, ok := p.textures[c]; !ok {
@@ -44,6 +49,7 @@ func (p *printer) draw(r *sdl.Renderer, s string, x, y int32) {
 			}
 		}
 		if t, ok := p.textures[c]; ok {
+			t.SetAlphaMod(alpha)
 			r.Copy(t, p.rect, dst)
 		}
 		dst.X += p.rect.W

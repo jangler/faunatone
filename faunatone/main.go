@@ -153,6 +153,7 @@ func main() {
 		refPitch:         defaultRefPitch,
 		historyIndex:     -1,
 		historySizeLimit: settings.UndoBufferSize,
+		offDivAlphaMod:   uint8(settings.OffDivisionAlpha),
 	}
 	pl := newPlayer(sng, wr, true)
 	pl.redrawChan = redrawChan

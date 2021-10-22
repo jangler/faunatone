@@ -25,6 +25,7 @@ type settings struct {
 	MessageDuration   int
 	MidiInPortNumber  int
 	MidiOutPortNumber int
+	OffDivisionAlpha  int
 	UndoBufferSize    int
 	WindowHeight      int
 	WindowWidth       int

@@ -56,6 +56,7 @@ type patternEditor struct {
 	historySizeLimit int
 	followSong       bool
 	prevPlayPos      int64
+	offDivAlphaMod   uint8
 }
 
 // used for undo/redo. the track structs have nil event slices.
@@ -192,7 +193,11 @@ func (pe *patternEditor) draw(r *sdl.Renderer, dst *sdl.Rect, playPos int64) {
 			for _, e := range t.Events {
 				y := dst.Y + int32(e.Tick*int64(pe.beatHeight)/ticksPerBeat) - pe.scrollY
 				if y >= dst.Y && y < dst.Y+dst.H {
-					pe.printer.draw(r, e.uiString, x+padding/2, y+padding/2)
+					alpha := uint8(255)
+					if e.Tick%(ticksPerBeat/int64(pe.division)) != 0 {
+						alpha = pe.offDivAlphaMod
+					}
+					pe.printer.drawAlpha(r, e.uiString, x+padding/2, y+padding/2, alpha)
 				}
 			}
 		}
