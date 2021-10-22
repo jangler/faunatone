@@ -376,3 +376,41 @@ func processKeymapNoteOn(te *trackEvent, pe *patternEditor, p *player, keyjazz b
 		pe.writeEvent(te, p)
 	}
 }
+
+// return a string with notation for a pitch, or empty if none matched
+func (k *keymap) notatePitch(f float64) string {
+	if s := k.notatePitchWithMods(f); s != "" {
+		return s
+	}
+	for _, mod1 := range k.Items {
+		if mod1.IsMod {
+			if s := k.notatePitchWithMods(f, mod1); s != "" {
+				return s
+			}
+			for _, mod2 := range k.Items {
+				if mod2.IsMod {
+					if s := k.notatePitchWithMods(f, mod1, mod2); s != "" {
+						return s
+					}
+				}
+			}
+		}
+	}
+	return ""
+}
+
+// helper function for notatePitch
+func (k *keymap) notatePitchWithMods(f float64, mods ...*keyInfo) string {
+	modString := ""
+	for _, mod := range mods {
+		f -= mod.Interval
+		modString += mod.Name
+	}
+	target := posMod(f, 12)
+	for _, ki := range k.Items {
+		if !ki.IsMod && ki.Name != "" && math.Abs(ki.class-target) < 0.01 {
+			return fmt.Sprintf("%s%s%d", ki.Name, modString, int(f)/12)
+		}
+	}
+	return ""
+}

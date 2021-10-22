@@ -160,6 +160,7 @@ func main() {
 	go pl.run()
 	defer pl.cleanup()
 	sng.Keymap, _ = newKeymap(settings.DefaultKeymap)
+	patedit.updateRefPitchDisplay()
 	percKeymap, _ := newKeymap(settings.PercussionKeymap)
 	percKeymap.isPerc = true
 
@@ -185,7 +186,9 @@ func main() {
 					{label: "Open...", action: func() { dialogOpen(dia, sng, patedit, pl) }},
 					{label: "Save as...", action: func() { dialogSaveAs(dia, sng) }},
 					{label: "Export MIDI...", action: func() { dialogExportMIDI(dia, sng, pl) }},
-					{label: "Load keymap...", action: func() { dialogLoadKeymap(dia, sng) }},
+					{label: "Load keymap...", action: func() {
+						dialogLoadKeymap(dia, sng, patedit)
+					}},
 					{label: "Save keymap as...", action: func() { dialogSaveKeymap(dia, sng) }},
 					{label: "Quit", action: func() { running = false }},
 				},
@@ -302,10 +305,10 @@ func main() {
 					{label: "Double division", action: func() { patedit.multiplyDivision(2) }},
 					{label: "Remap key...", action: func() { dialogRemapKey(dia, sng) }},
 					{label: "Make edo keymap...", action: func() {
-						dialogMakeEdoKeymap(dia, sng)
+						dialogMakeEdoKeymap(dia, sng, patedit)
 					}},
 					{label: "Make isomorphic keymap...", action: func() {
-						dialogMakeIsoKeymap(dia, sng)
+						dialogMakeIsoKeymap(dia, sng, patedit)
 					}},
 					{label: "Toggle song follow", action: func() {
 						patedit.followSong = !patedit.followSong
@@ -331,7 +334,7 @@ func main() {
 	mb.init(pr)
 
 	sb := newStatusBar(settings.MessageDuration,
-		func() string { return fmt.Sprintf("Root: %.2f", patedit.refPitch) },
+		func() string { return fmt.Sprintf("Root: %s", patedit.refPitchDisplay) },
 		func() string { return fmt.Sprintf("Division: %d", patedit.division) },
 		func() string { return fmt.Sprintf("Velocity: %d", patedit.velocity) },
 		func() string { return fmt.Sprintf("Controller: %d", patedit.controller) },
@@ -677,12 +680,13 @@ func dialogRemapKey(d *dialog, s *song) {
 }
 
 // set d to an input dialog
-func dialogLoadKeymap(d *dialog, sng *song) {
+func dialogLoadKeymap(d *dialog, sng *song, pe *patternEditor) {
 	*d = *newDialog("Load keymap:", 50, func(s string) {
 		s = addSuffixIfMissing(s, ".csv")
 		if k, err := newKeymap(s); err == nil {
 			sng.Keymap = k
 			sng.renameNotes()
+			pe.updateRefPitchDisplay()
 		} else {
 			dialogMsg(d, err.Error())
 		}
@@ -701,11 +705,12 @@ func dialogSaveKeymap(d *dialog, sng *song) {
 }
 
 // set d to an input dialog
-func dialogMakeEdoKeymap(d *dialog, sng *song) {
+func dialogMakeEdoKeymap(d *dialog, sng *song, pe *patternEditor) {
 	*d = *newDialog("Enter number of equal divisions of octave:", 3, func(s string) {
 		if i, err := strconv.ParseUint(s, 10, 8); err == nil {
 			sng.Keymap = genEdoKeymap(int(i))
 			sng.renameNotes()
+			pe.updateRefPitchDisplay()
 		} else {
 			dialogMsg(d, err.Error())
 		}
@@ -713,13 +718,14 @@ func dialogMakeEdoKeymap(d *dialog, sng *song) {
 }
 
 // set d to an input dialog chain
-func dialogMakeIsoKeymap(d *dialog, sng *song) {
+func dialogMakeIsoKeymap(d *dialog, sng *song, pe *patternEditor) {
 	*d = *newDialog("Enter first interval:", 7, func(s string) {
 		if f1, err := parsePitch(s, sng.Keymap); err == nil {
 			*d = *newDialog("Enter second interval:", 7, func(s string) {
 				if f2, err := parsePitch(s, sng.Keymap); err == nil {
 					sng.Keymap = genIsoKeymap(f1, f2)
 					sng.renameNotes()
+					pe.updateRefPitchDisplay()
 				} else {
 					dialogMsg(d, err.Error())
 				}

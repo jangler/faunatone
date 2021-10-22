@@ -51,6 +51,7 @@ type patternEditor struct {
 	velocity         uint8
 	controller       uint8
 	refPitch         float64
+	refPitchDisplay  string
 	history          []*editAction
 	historyIndex     int // index of action that undo will undo
 	historySizeLimit int
@@ -550,6 +551,7 @@ func (pe *patternEditor) modifyRefPitch(delta float64) {
 	} else if pe.refPitch > maxPitch {
 		pe.refPitch = maxPitch
 	}
+	pe.updateRefPitchDisplay()
 }
 
 // set ref pitch to the top-left corner of selection
@@ -558,9 +560,19 @@ func (pe *patternEditor) captureRefPitch() {
 	for _, te := range pe.song.Tracks[trackMin].Events {
 		if te.Type == noteOnEvent && te.Tick == tickMin {
 			pe.refPitch = te.FloatData
+			pe.updateRefPitchDisplay()
 			return
 		}
 	}
+}
+
+// update the displayed notation for the reference pitch
+func (pe *patternEditor) updateRefPitchDisplay() {
+	s := pe.song.Keymap.notatePitch(pe.refPitch)
+	if s == "" {
+		s = fmt.Sprintf("%.2f", pe.refPitch)
+	}
+	pe.refPitchDisplay = s
 }
 
 // add to pitch of selected notes

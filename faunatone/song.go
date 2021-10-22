@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math"
 
 	"gitlab.com/gomidi/midi/writer"
 )
@@ -224,45 +223,13 @@ func (te *trackEvent) clone() *trackEvent {
 
 // reset UI string based on keymap, returning true if successful
 func (te *trackEvent) renameNote(k *keymap) bool {
-	if te.renameNoteWithMods(k) {
+	if s := k.notatePitch(te.FloatData); s != "" {
+		if te.Type == noteOnEvent {
+			te.uiString = fmt.Sprintf("%s %d", s, te.ByteData1)
+		} else if te.Type == pitchBendEvent {
+			te.uiString = fmt.Sprintf("bend %s", s)
+		}
 		return true
-	}
-	for _, mod1 := range k.Items {
-		if mod1.IsMod {
-			if te.renameNoteWithMods(k, mod1) {
-				return true
-			}
-			for _, mod2 := range k.Items {
-				if mod2.IsMod {
-					if te.renameNoteWithMods(k, mod1, mod2) {
-						return true
-					}
-				}
-			}
-		}
-	}
-	return false
-}
-
-// helper function for renameNote
-func (te *trackEvent) renameNoteWithMods(k *keymap, mods ...*keyInfo) bool {
-	f := te.FloatData
-	modString := ""
-	for _, mod := range mods {
-		f -= mod.Interval
-		modString += mod.Name
-	}
-	target := posMod(f, 12)
-	for _, ki := range k.Items {
-		if !ki.IsMod && ki.Name != "" && math.Abs(ki.class-target) < 0.01 {
-			if te.Type == noteOnEvent {
-				te.uiString = fmt.Sprintf("%s%s%d %d", ki.Name, modString, int(te.FloatData)/12,
-					te.ByteData1)
-			} else if te.Type == pitchBendEvent {
-				te.uiString = fmt.Sprintf("bend %s%s%d", ki.Name, modString, int(te.FloatData)/12)
-			}
-			return true
-		}
 	}
 	return false
 }
