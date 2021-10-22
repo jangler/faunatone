@@ -321,8 +321,8 @@ func main() {
 					{label: "Set channel...", action: func() {
 						dialogTrackSetChannel(dia, sng, patedit)
 					}},
-					{label: "Insert", action: func() { patedit.insertTrack() }},
-					{label: "Delete", action: func() { patedit.deleteTrack() }},
+					{label: "Insert", action: func() { patedit.insertTracks() }},
+					{label: "Delete", action: func() { patedit.deleteTracks() }},
 					{label: "Move left", action: func() { patedit.shiftTracks(-1) },
 						repeat: true},
 					{label: "Move right", action: func() { patedit.shiftTracks(1) },

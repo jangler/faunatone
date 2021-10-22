@@ -436,16 +436,18 @@ func (pe *patternEditor) setTrackChannel(channel uint8) {
 	pe.doNewEditAction(ea)
 }
 
-// add a track to the right of the selection
-func (pe *patternEditor) insertTrack() {
-	_, trackMax, _, _ := pe.getSelection()
-	pe.doNewEditAction(&editAction{
-		afterTracks: []*track{newTrack(pe.song.Tracks[trackMax].Channel, trackMax)},
-	})
+// add a new track for each track in the selection
+func (pe *patternEditor) insertTracks() {
+	trackMin, trackMax, _, _ := pe.getSelection()
+	ea := &editAction{}
+	for i := trackMin; i <= trackMax; i++ {
+		ea.afterTracks = append(ea.afterTracks, newTrack(pe.song.Tracks[i].Channel, i))
+	}
+	pe.doNewEditAction(ea)
 }
 
 // delete selected tracks
-func (pe *patternEditor) deleteTrack() {
+func (pe *patternEditor) deleteTracks() {
 	trackMin, trackMax, _, _ := pe.getSelection()
 	ea := &editAction{}
 	for i := trackMin; i <= trackMax; i++ {
