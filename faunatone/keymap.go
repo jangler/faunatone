@@ -246,8 +246,7 @@ func genScaleKeymap(name string, scale []float64) *keymap {
 				break
 			}
 			k.Items = append(k.Items, newKeyInfo(qwertyLayout[y][x], false,
-				scale[i], fmt.Sprintf("%d'", (i%int(n))+1),
-				fmt.Sprintf("%d\\%d", i, n)))
+				scale[i], fmt.Sprintf("%d'", (i%int(n))+1), ""))
 		} else if n < w*h/2 {
 			// two sets of two alternating rows, Q2W3... and ZSXD...
 			// (second row set by duplicateOctave)
@@ -256,8 +255,7 @@ func genScaleKeymap(name string, scale []float64) *keymap {
 			}
 			y = 1 - (x % 2)
 			k.Items = append(k.Items, newKeyInfo(qwertyLayout[y][(x+1)/2], false,
-				scale[i], fmt.Sprintf("%d'", (i%int(n))+1),
-				fmt.Sprintf("%d\\%d", i, n)))
+				scale[i], fmt.Sprintf("%d'", (i%int(n))+1), ""))
 		} else {
 			// Q2W3 same as above, then go backwards down /;.L
 			if x >= w*2-1 {
@@ -265,26 +263,21 @@ func genScaleKeymap(name string, scale []float64) *keymap {
 			}
 			y = 1 - (x % 2)
 			k.Items = append(k.Items, newKeyInfo(qwertyLayout[y][(x+1)/2], false,
-				scale[i], fmt.Sprintf("%d'", (i%int(n))+1),
-				fmt.Sprintf("%d\\%d", i, n)))
+				scale[i], fmt.Sprintf("%d'", (i%int(n))+1), ""))
 			k.Items = append(k.Items, newKeyInfo(qwertyLayout[y+2][w-x/2-1], false,
-				-scale[i+1], fmt.Sprintf("%d'", ((n-i-1)%int(n))+1),
-				fmt.Sprintf("%d\\%d", n-i-1, n)))
+				-scale[i+1], fmt.Sprintf("%d'", ((n-i-1)%int(n))+1), ""))
 		}
 		// midi is simpler
 		if i <= n {
 			k.Items = append(k.Items, newKeyInfo(fmt.Sprintf("m%d", midiRoot+i), false,
-				scale[i], fmt.Sprintf("%d'", (i%int(n))+1),
-				fmt.Sprintf("%d\\%d", i, n)))
+				scale[i], fmt.Sprintf("%d'", (i%int(n))+1), ""))
 		}
 		x++
 	}
 	// 1 and A are unused by these layouts, so map them to octaves. this is
 	// useful for edos 10 and >18
-	k.Items = append(k.Items, newKeyInfo("1", false,
-		12, "1'", fmt.Sprintf("%d\\%d", n, n)))
-	k.Items = append(k.Items, newKeyInfo("A", false,
-		-12, "1'", fmt.Sprintf("%d\\%d", -n, n)))
+	k.Items = append(k.Items, newKeyInfo("1", false, 12, "1'", "2/1"))
+	k.Items = append(k.Items, newKeyInfo("A", false, -12, "1'", "1/2"))
 	return k
 }
 
