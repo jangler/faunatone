@@ -53,7 +53,8 @@ func (d *dialog) messageIfErr(err error) {
 }
 
 // set d to an integer dialog that checks for range and syntax errors
-func (d *dialog) getInt(prompt string, size int, min, max int64, action func(int64)) {
+func (d *dialog) getInt(prompt string, min, max int64, action func(int64)) {
+	size := intMax(len(fmt.Sprintf("%d", min)), len(fmt.Sprintf("%d", max)))
 	*d = *newDialog(prompt, size, func(s string) {
 		if i, err := strconv.ParseInt(s, 10, 64); err == nil && i >= min && i <= max {
 			action(i)
@@ -67,15 +68,34 @@ func (d *dialog) getInt(prompt string, size int, min, max int64, action func(int
 	})
 }
 
+// return the larger of two integers
+func intMax(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
 // set d to a float dialog that checks for range and syntax errors
-func (d *dialog) getFloat(prompt string, size int, min, max float64, action func(float64)) {
-	*d = *newDialog(prompt, size, func(s string) {
+func (d *dialog) getFloat(prompt string, min, max float64, action func(float64)) {
+	*d = *newDialog(prompt, 8, func(s string) {
 		if f, err := strconv.ParseFloat(s, 64); err == nil && f >= min && f <= max {
 			action(f)
 		} else if err != nil && errors.Is(err, strconv.ErrSyntax) {
 			d.message("Invalid syntax.")
 		} else if f < min || f > max || errors.Is(err, strconv.ErrRange) {
 			d.message(fmt.Sprintf("Value must be in range [%.2f, %.2f].", min, max))
+		} else {
+			d.message(err.Error())
+		}
+	})
+}
+
+// set d to an interval dialog that checks for syntax errors
+func (d *dialog) getInterval(prompt string, k *keymap, action func(float64)) {
+	*d = *newDialog(prompt, 10, func(s string) {
+		if f, err := parsePitch(s, k); err == nil {
+			action(f)
 		} else {
 			d.message(err.Error())
 		}

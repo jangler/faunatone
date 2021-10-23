@@ -187,10 +187,6 @@ func main() {
 					{label: "Open...", action: func() { dialogOpen(dia, sng, patedit, pl) }},
 					{label: "Save as...", action: func() { dialogSaveAs(dia, sng) }},
 					{label: "Export MIDI...", action: func() { dialogExportMIDI(dia, sng, pl) }},
-					{label: "Load keymap...", action: func() {
-						dialogLoadKeymap(dia, sng, patedit)
-					}},
-					{label: "Save keymap as...", action: func() { dialogSaveKeymap(dia, sng) }},
 					{label: "Quit", action: func() { running = false }},
 				},
 			},
@@ -304,15 +300,24 @@ func main() {
 						repeat: true},
 					{label: "Halve division", action: func() { patedit.multiplyDivision(0.5) }},
 					{label: "Double division", action: func() { patedit.multiplyDivision(2) }},
-					{label: "Remap key...", action: func() { dialogRemapKey(dia, sng) }},
-					{label: "Make edo keymap...", action: func() {
-						dialogMakeEdoKeymap(dia, sng, patedit)
-					}},
-					{label: "Make isomorphic keymap...", action: func() {
-						dialogMakeIsoKeymap(dia, sng, patedit)
-					}},
 					{label: "Toggle song follow", action: func() {
 						patedit.followSong = !patedit.followSong
+					}},
+				},
+			},
+			{
+				label: "Keymap",
+				items: []*menuItem{
+					{label: "Load...", action: func() {
+						dialogLoadKeymap(dia, sng, patedit)
+					}},
+					{label: "Save as...", action: func() { dialogSaveKeymap(dia, sng) }},
+					{label: "Remap key...", action: func() { dialogRemapKey(dia, sng) }},
+					{label: "Generate equal division...", action: func() {
+						dialogMakeEdoKeymap(dia, sng, patedit)
+					}},
+					{label: "Generate isomorphic...", action: func() {
+						dialogMakeIsoKeymap(dia, sng, patedit)
 					}},
 				},
 			},
@@ -448,14 +453,14 @@ func conditionalString(cond bool, a, b string) string {
 
 // set d to an input dialog
 func dialogGoToBeat(d *dialog, pe *patternEditor) {
-	d.getFloat("Go to beat:", 5, 1, posInf, func(f float64) {
+	d.getFloat("Go to beat:", 1, posInf, func(f float64) {
 		pe.goToBeat(f)
 	})
 }
 
 // set d to an input dialog
 func dialogInsertNote(d *dialog, pe *patternEditor, p *player) {
-	d.getFloat("Insert note:", 7, minPitch, maxPitch, func(f float64) {
+	d.getFloat("Insert note:", minPitch, maxPitch, func(f float64) {
 		pe.writeEvent(newTrackEvent(&trackEvent{
 			Type:      noteOnEvent,
 			FloatData: f,
@@ -474,7 +479,7 @@ func pitchToMIDI(p float64) (uint8, int16) {
 
 // set to d an input dialog
 func dialogInsertDrumNote(d *dialog, pe *patternEditor, p *player) {
-	d.getInt("Insert drum note:", 3, 0, 127, func(i int64) {
+	d.getInt("Insert drum note:", 0, 127, func(i int64) {
 		pe.writeEvent(newTrackEvent(&trackEvent{
 			Type:      drumNoteOnEvent,
 			ByteData1: uint8(i),
@@ -501,7 +506,7 @@ func dialogInsertPitchBend(d *dialog, pe *patternEditor, p *player) {
 // set d to an input dialog
 func dialogInsertTempoChange(d *dialog, pe *patternEditor, p *player) {
 	// using 0.01 here since the error msg only displays 2 decimal places
-	d.getFloat("Insert tempo change:", 7, 0.01, posInf, func(f float64) {
+	d.getFloat("Insert tempo change:", 0.01, posInf, func(f float64) {
 		pe.writeEvent(newTrackEvent(&trackEvent{
 			Type:      tempoEvent,
 			FloatData: f,
@@ -511,7 +516,7 @@ func dialogInsertTempoChange(d *dialog, pe *patternEditor, p *player) {
 
 // set d to an input dialog
 func dialogInsertControlChange(d *dialog, pe *patternEditor, p *player) {
-	d.getInt("Controller value:", 3, 0, 127, func(i int64) {
+	d.getInt("Controller value:", 0, 127, func(i int64) {
 		pe.writeEvent(newTrackEvent(&trackEvent{
 			Type:      controllerEvent,
 			ByteData1: pe.controller,
@@ -523,7 +528,7 @@ func dialogInsertControlChange(d *dialog, pe *patternEditor, p *player) {
 // set d to an input dialog
 func dialogInsertUint8Event(d *dialog, pe *patternEditor, p *player, prompt string,
 	et trackEventType, offset int64) {
-	d.getInt(prompt, 3, offset, 127+offset, func(i int64) {
+	d.getInt(prompt, offset, 127+offset, func(i int64) {
 		pe.writeEvent(newTrackEvent(&trackEvent{
 			Type:      et,
 			ByteData1: byte(i - offset),
@@ -533,14 +538,14 @@ func dialogInsertUint8Event(d *dialog, pe *patternEditor, p *player, prompt stri
 
 // set d to an input dialog
 func dialogSetController(d *dialog, pe *patternEditor) {
-	d.getInt("Controller index:", 3, 0, 127, func(i int64) {
+	d.getInt("Controller index:", 0, 127, func(i int64) {
 		pe.controller = uint8(i)
 	})
 }
 
 // set d to an input dialog
 func dialogSetDivision(d *dialog, pe *patternEditor) {
-	d.getInt("Division:", 3, 1, ticksPerBeat, func(i int64) {
+	d.getInt("Division:", 1, ticksPerBeat, func(i int64) {
 		pe.division = int(i)
 	})
 }
@@ -559,21 +564,21 @@ func dialogTranpose(d *dialog, pe *patternEditor) {
 
 // set d to an input dialog
 func dialogMultiply(d *dialog, pe *patternEditor) {
-	d.getFloat("Multiply selection by:", 5, 0, posInf, func(f float64) {
+	d.getFloat("Multiply selection by:", 0, posInf, func(f float64) {
 		pe.multiplySelection(f)
 	})
 }
 
 // set d to an input dialog
 func dialogVary(d *dialog, pe *patternEditor) {
-	d.getFloat("Vary selection by:", 5, 0, posInf, func(f float64) {
+	d.getFloat("Vary selection by:", 0, posInf, func(f float64) {
 		pe.varySelection(f)
 	})
 }
 
 // set d to an input dialog
 func dialogSetVelocity(d *dialog, pe *patternEditor) {
-	d.getInt("Set velocity:", 3, 0, 127, func(i int64) {
+	d.getInt("Set velocity:", 0, 127, func(i int64) {
 		pe.velocity = uint8(i)
 	})
 }
@@ -621,29 +626,23 @@ func dialogSaveKeymap(d *dialog, sng *song) {
 
 // set d to an input dialog
 func dialogMakeEdoKeymap(d *dialog, sng *song, pe *patternEditor) {
-	d.getInt("Enter number of equal divisions of octave:", 3, 1, 127, func(i int64) {
-		sng.Keymap = genEdoKeymap(int(i))
-		sng.renameNotes()
-		pe.updateRefPitchDisplay()
+	d.getInterval("Interval to divide:", sng.Keymap, func(f float64) {
+		d.getInt("Number of equal divisions:", 1, 127, func(i int64) {
+			sng.Keymap = genEqualDivisionKeymap(f, int(i))
+			sng.renameNotes()
+			pe.updateRefPitchDisplay()
+		})
 	})
 }
 
 // set d to an input dialog chain
 func dialogMakeIsoKeymap(d *dialog, sng *song, pe *patternEditor) {
-	*d = *newDialog("Enter first interval:", 7, func(s string) {
-		if f1, err := parsePitch(s, sng.Keymap); err == nil {
-			*d = *newDialog("Enter second interval:", 7, func(s string) {
-				if f2, err := parsePitch(s, sng.Keymap); err == nil {
-					sng.Keymap = genIsoKeymap(f1, f2)
-					sng.renameNotes()
-					pe.updateRefPitchDisplay()
-				} else {
-					d.message(err.Error())
-				}
-			})
-		} else {
-			d.message(err.Error())
-		}
+	d.getInterval("Enter first interval:", sng.Keymap, func(f1 float64) {
+		d.getInterval("Enter second interval:", sng.Keymap, func(f2 float64) {
+			sng.Keymap = genIsoKeymap(f1, f2)
+			sng.renameNotes()
+			pe.updateRefPitchDisplay()
+		})
 	})
 }
 
@@ -719,7 +718,7 @@ func dialogExportMIDI(d *dialog, sng *song, p *player) {
 
 // set d to an input dialog
 func dialogTrackSetChannel(d *dialog, sng *song, pe *patternEditor) {
-	d.getInt("Set channel:", 3, 1, numVirtualChannels, func(i int64) {
+	d.getInt("Set channel:", 1, numVirtualChannels, func(i int64) {
 		pe.setTrackChannel(uint8(i - 1))
 	})
 }

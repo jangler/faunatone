@@ -96,7 +96,7 @@ func newKeymap(path string) (*keymap, error) {
 		k.Name = "none"
 		return k, err
 	}
-	k.duplicateOctave()
+	k.duplicateOctave(12)
 	k.setMidiPattern()
 	if len(errs) > 0 {
 		return k, errors.New(strings.Join(errs, "\n"))
@@ -126,7 +126,7 @@ func (k *keymap) write(path string) error {
 }
 
 // duplicate Q-0 keys in Z-; if matching Z-; keys are free
-func (k *keymap) duplicateOctave() {
+func (k *keymap) duplicateOctave(interval float64) {
 	for i := 0; i < 19; i++ {
 		x, y := (i+1)/2, 1-(i%2)
 		if k.getByKey(qwertyLayout[y][x]) != nil && k.getByKey(qwertyLayout[y+2][x]) != nil {
@@ -137,7 +137,7 @@ func (k *keymap) duplicateOctave() {
 		x, y := (i+1)/2, 1-(i%2)
 		if ki := k.getByKey(qwertyLayout[y][x]); ki != nil {
 			k.Items = append(k.Items, newKeyInfo(
-				qwertyLayout[y+2][x], ki.IsMod, ki.Interval-12, ki.Name, ""))
+				qwertyLayout[y+2][x], ki.IsMod, ki.Interval-interval, ki.Name, ""))
 		}
 	}
 }
@@ -178,10 +178,10 @@ func (k *keymap) repeatMidiPattern(firstIndex, lastIndex int) {
 	}
 }
 
-// generate a keymap for an edo. this gets you full coverage on computer
-// keyboard for up to 38edo. (sorry, 41edo enthusiasts. there's not enough
-// keys. midi should work up to 127edo.)
-func genEdoKeymap(n int) *keymap {
+// generate a keymap for an equal division of an interval. this gets you full
+// coverage on computer keyboard for up to 38edo. (sorry, 41edo enthusiasts.
+// there's not enough keys. midi should work up to 127edo.)
+func genEqualDivisionKeymap(interval float64, n int) *keymap {
 	k := newEmptyKeymap(fmt.Sprintf("%dedo", n))
 	w, h := len(qwertyLayout[0]), len(qwertyLayout)
 	x, y := 0, 1
@@ -197,7 +197,7 @@ func genEdoKeymap(n int) *keymap {
 				break
 			}
 			k.Items = append(k.Items, newKeyInfo(qwertyLayout[y][x], false,
-				12/float64(n)*float64(i), fmt.Sprintf("%d'", (i%int(n))+1),
+				interval/float64(n)*float64(i), fmt.Sprintf("%d'", (i%int(n))+1),
 				fmt.Sprintf("%d\\%d", i, n)))
 		} else if n < w*h/2 {
 			// two sets of two alternating rows, Q2W3... and ZSXD...
@@ -207,7 +207,7 @@ func genEdoKeymap(n int) *keymap {
 			}
 			y = 1 - (x % 2)
 			k.Items = append(k.Items, newKeyInfo(qwertyLayout[y][(x+1)/2], false,
-				12/float64(n)*float64(i), fmt.Sprintf("%d'", (i%int(n))+1),
+				interval/float64(n)*float64(i), fmt.Sprintf("%d'", (i%int(n))+1),
 				fmt.Sprintf("%d\\%d", i, n)))
 		} else {
 			// Q2W3 same as above, then go backwards down /;.L
@@ -216,16 +216,16 @@ func genEdoKeymap(n int) *keymap {
 			}
 			y = 1 - (x % 2)
 			k.Items = append(k.Items, newKeyInfo(qwertyLayout[y][(x+1)/2], false,
-				12/float64(n)*float64(i), fmt.Sprintf("%d'", (i%int(n))+1),
+				interval/float64(n)*float64(i), fmt.Sprintf("%d'", (i%int(n))+1),
 				fmt.Sprintf("%d\\%d", i, n)))
 			k.Items = append(k.Items, newKeyInfo(qwertyLayout[y+2][w-x/2-1], false,
-				-12/float64(n)*float64(i+1), fmt.Sprintf("%d'", ((n-i-1)%int(n))+1),
+				-interval/float64(n)*float64(i+1), fmt.Sprintf("%d'", ((n-i-1)%int(n))+1),
 				fmt.Sprintf("%d\\%d", n-i-1, n)))
 		}
 		// midi is simpler
 		if i <= n {
 			k.Items = append(k.Items, newKeyInfo(fmt.Sprintf("m%d", midiRoot+i), false,
-				12/float64(n)*float64(i), fmt.Sprintf("%d'", (i%int(n))+1),
+				interval/float64(n)*float64(i), fmt.Sprintf("%d'", (i%int(n))+1),
 				fmt.Sprintf("%d\\%d", i, n)))
 		}
 		x++
@@ -236,7 +236,7 @@ func genEdoKeymap(n int) *keymap {
 		12, "1'", fmt.Sprintf("%d\\%d", n, n)))
 	k.Items = append(k.Items, newKeyInfo("A", false,
 		-12, "1'", fmt.Sprintf("%d\\%d", -n, n)))
-	k.duplicateOctave()
+	k.duplicateOctave(interval)
 	k.setMidiPattern()
 	return k
 }
