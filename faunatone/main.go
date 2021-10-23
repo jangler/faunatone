@@ -312,7 +312,10 @@ func main() {
 						dialogLoadKeymap(dia, sng, patedit)
 					}},
 					{label: "Save as...", action: func() { dialogSaveKeymap(dia, sng) }},
-					{label: "Remap key...", action: func() { dialogRemapKey(dia, sng) }},
+					{label: "Import Scala scale...", action: func() {
+						dialogImportScl(dia, sng, patedit)
+					}},
+					{label: "Remap key...", action: func() { dialogRemapKey(dia, sng, patedit) }},
 					{label: "Generate equal division...", action: func() {
 						dialogMakeEdoKeymap(dia, sng, patedit)
 					}},
@@ -587,7 +590,7 @@ func dialogSetVelocity(d *dialog, pe *patternEditor) {
 }
 
 // set d to a key dialog, then input dialog
-func dialogRemapKey(d *dialog, s *song) {
+func dialogRemapKey(d *dialog, s *song, pe *patternEditor) {
 	*d = *newDialog("Press key to remap...", 0, func(s1 string) {
 		*d = *newDialog("Remap to interval:", 7, func(s2 string) {
 			if f, err := parsePitch(s2, s.Keymap); err == nil {
@@ -598,6 +601,8 @@ func dialogRemapKey(d *dialog, s *song) {
 					*existing = *ki
 				}
 				s.Keymap.Name = addSuffixIfMissing(s.Keymap.Name, "*")
+				s.renameNotes()
+				pe.updateRefPitchDisplay()
 			} else {
 				d.message(err.Error())
 			}
@@ -629,6 +634,20 @@ func dialogSaveKeymap(d *dialog, sng *song) {
 		}
 	})
 	d.input = addSuffixIfMissing(sng.Keymap.Name, ".csv")
+}
+
+// set d to an input dialog
+func dialogImportScl(d *dialog, sng *song, pe *patternEditor) {
+	*d = *newDialog("Import Scala scale:", 50, func(s string) {
+		s = addSuffixIfMissing(s, ".scl")
+		if k, err := keymapFromSclFile(s); err == nil {
+			sng.Keymap = k
+			sng.renameNotes()
+			pe.updateRefPitchDisplay()
+		} else {
+			d.message(err.Error())
+		}
+	})
 }
 
 // set d to an input dialog chain

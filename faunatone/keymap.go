@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"math"
+	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -178,6 +180,52 @@ func (k *keymap) repeatMidiPattern(firstIndex, lastIndex int) {
 			k.midimap[i] = k.midimap[index] + period*octave
 		}
 	}
+}
+
+// convert a scala .scl file into a keymap
+func keymapFromSclFile(path string) (*keymap, error) {
+	f, err := os.Open(filepath.Join(keymapPath, path))
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	var scale []float64
+	scanner := bufio.NewScanner(f)
+	i := 0
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if !strings.HasPrefix(line, "!") {
+			if i == 1 {
+				if n, err := strconv.ParseUint(line, 10, 16); err == nil {
+					scale = make([]float64, n+1)
+				} else {
+					return nil, fmt.Errorf("Invalid scale file.")
+				}
+			} else if i > 1 && i-2 < len(scale) {
+				if pitch, err := parseScalaPitch(line); err == nil {
+					scale[i-1] = pitch
+				} else {
+					return nil, fmt.Errorf("Invalid scale file.")
+				}
+			}
+			i++
+		}
+	}
+	k := genScaleKeymap(strings.Replace(filepath.Base(path), ".scl", "", 1), scale)
+	k.duplicateOctave(scale[len(scale)-1])
+	k.setMidiPattern()
+	return k, err
+}
+
+// convert a scala pitch string into a midi interval
+func parseScalaPitch(s string) (float64, error) {
+	if m := ratioRegexp.FindAllStringSubmatch(s, 1); m != nil {
+		num, _ := strconv.ParseFloat(m[0][1], 64)
+		den, _ := strconv.ParseFloat(m[0][2], 64)
+		return 12 * math.Log(num/den) / math.Log(2), nil
+	}
+	f, err := strconv.ParseFloat(s, 64)
+	return f / 100, err
 }
 
 // generate a keymap for an equal division of an interval. this gets you full
