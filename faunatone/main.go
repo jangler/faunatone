@@ -243,7 +243,7 @@ func main() {
 					{label: "Tempo change...", action: func() {
 						dialogInsertTempoChange(dia, patedit, pl)
 					}},
-					{label: "Control change...", action: func() {
+					{label: "Controller change...", action: func() {
 						dialogInsertControlChange(dia, patedit, pl)
 					}},
 					{label: "Aftertouch...", action: func() {
