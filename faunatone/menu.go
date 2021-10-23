@@ -72,6 +72,12 @@ func (mb *menuBar) keyboardEvent(e *sdl.KeyboardEvent) bool {
 	if e.State != sdl.PRESSED {
 		return false
 	}
+	if mb.shown() && e.Keysym.Sym == sdl.K_ESCAPE {
+		for _, m := range mb.menus {
+			m.shown = false
+		}
+		return true
+	}
 	if item, ok := mb.shortcuts[formatKeyEvent(e, false)]; ok && item.action != nil {
 		if item.repeat || e.Repeat == 0 {
 			item.action()
