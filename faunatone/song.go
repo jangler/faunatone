@@ -175,9 +175,6 @@ type trackEvent struct {
 	ByteData2 byte    `json:",omitempty"`
 	uiString  string
 	track     int
-
-	// only used by playback
-	trackMin, trackMax int
 }
 
 func newTrackEvent(te *trackEvent, k *keymap) *trackEvent {

@@ -329,8 +329,6 @@ func (pe *patternEditor) writeEvent(te *trackEvent, p *player) {
 	te.Tick = tickMin
 	ea := &editAction{}
 	if te.Type == noteOnEvent || te.Type == drumNoteOnEvent {
-		// allocate note on track dynamically
-		te.track = getVariableTrack(trackMin, trackMax, pe.song.Tracks)
 		pe.writeSingleEvent(te, te.track, ea, p)
 	} else {
 		for i := trackMin; i <= trackMax; i++ {

@@ -33,10 +33,11 @@ type keymap struct {
 	Name  string
 	Items []*keyInfo
 
-	midimap   [128]float64
-	isPerc    bool
-	keyNotes  map[string]*trackEvent // map of keys to note on events
-	midiNotes [128]*trackEvent       // map of midi notes to note on events
+	midimap     [128]float64
+	isPerc      bool
+	keyNotes    map[string]*trackEvent // map of keys to note on events
+	midiNotes   [128]*trackEvent       // map of midi notes to note on events
+	activeNotes int
 }
 
 // an entry in a keymap
@@ -366,7 +367,7 @@ func (k *keymap) keyboardEvent(e *sdl.KeyboardEvent, pe *patternEditor, p *playe
 						ByteData2: pe.velocity,
 					}, k)
 				}
-				processKeymapNoteOn(te, pe, p, keyjazz)
+				k.processKeymapNoteOn(te, pe, p, keyjazz)
 				k.keyNotes[s] = te
 			}
 		} else if te, ok := k.keyNotes[s]; ok {
@@ -375,6 +376,7 @@ func (k *keymap) keyboardEvent(e *sdl.KeyboardEvent, pe *patternEditor, p *playe
 				track: te.track,
 			}}
 			delete(k.keyNotes, s)
+			k.activeNotes--
 		}
 	}
 }
@@ -397,7 +399,7 @@ func (k *keymap) midiEvent(msg []byte, pe *patternEditor, p *player, keyjazz boo
 				ByteData2: msg[2],
 			}, k)
 		}
-		processKeymapNoteOn(te, pe, p, keyjazz)
+		k.processKeymapNoteOn(te, pe, p, keyjazz)
 		k.midiNotes[msg[1]] = te
 	} else if msg[0]&0xf0 == 0x80 || (msg[0]&0xf0 == 0x90 && msg[2] == 0) { // note off
 		if te := k.midiNotes[msg[1]]; te != nil {
@@ -406,6 +408,7 @@ func (k *keymap) midiEvent(msg []byte, pe *patternEditor, p *player, keyjazz boo
 				track: te.track,
 			}}
 			k.midiNotes[msg[1]] = nil
+			k.activeNotes--
 		}
 	}
 }
@@ -425,9 +428,27 @@ func (k *keymap) pitchFromString(s string, refPitch float64) (float64, bool) {
 }
 
 // set the track and write/play a note on / drum note on event as appropriate
-func processKeymapNoteOn(te *trackEvent, pe *patternEditor, p *player, keyjazz bool) {
-	te.track = -1
-	te.trackMin, te.trackMax, _, _ = pe.getSelection()
+func (k *keymap) processKeymapNoteOn(te *trackEvent, pe *patternEditor, p *player, keyjazz bool) {
+	trackMin, trackMax, _, _ := pe.getSelection()
+	te.track = trackMin + k.activeNotes
+	if te.track > trackMax {
+		te.track = trackMax
+	}
+	for i, v := range k.keyNotes {
+		if v.track == te.track {
+			delete(k.keyNotes, i)
+			k.activeNotes--
+			break
+		}
+	}
+	for i, v := range k.midiNotes {
+		if v != nil && v.track == te.track {
+			k.midiNotes[i] = nil
+			k.activeNotes--
+			break
+		}
+	}
+	k.activeNotes++
 	if keyjazz {
 		p.signal <- playerSignal{typ: signalEvent, event: te}
 	} else {
