@@ -6,6 +6,7 @@ import (
 	"math"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -182,7 +183,55 @@ func (k *keymap) repeatMidiPattern(firstIndex, lastIndex int) {
 // coverage on computer keyboard for up to 38edo. (sorry, 41edo enthusiasts.
 // there's not enough keys. midi should work up to 127edo.)
 func genEqualDivisionKeymap(interval float64, n int) *keymap {
-	k := newEmptyKeymap(fmt.Sprintf("%dedo", n))
+	scale := make([]float64, n+1)
+	for i := 0; i < n+1; i++ {
+		scale[i] = interval / float64(n) * float64(i)
+	}
+	k := genScaleKeymap(fmt.Sprintf("%ded%s", n, getEdxChar(interval)), scale)
+	k.duplicateOctave(interval)
+	k.setMidiPattern()
+	return k
+}
+
+// return o for octave, f for fifth, etc, x for other
+func getEdxChar(interval float64) string {
+	if interval == 12 {
+		return "o"
+	} else if math.Abs(math.Mod(interval, 12)) < 0.01 {
+		return fmt.Sprintf("%.f", math.Pow(2, interval/12))
+	} else if math.Abs(interval-7.02) < 0.01 {
+		return "f"
+	} else if math.Abs(interval-19.02) < 0.01 {
+		return "t"
+	}
+	return "x"
+}
+
+// generate a keymap for a rank-2 temperament scale
+func genRank2Keymap(per, gen float64, n int) (*keymap, error) {
+	if math.Mod(12, per) != 0 {
+		return nil, fmt.Errorf("Octave must be divisible by period.")
+	}
+	nPeriods := int(12 / per)
+	scale := make([]float64, n+1)
+	for i := 0; i < n/nPeriods; i++ {
+		for j := 0; j < nPeriods; j++ {
+			scale[i+j*n/nPeriods] = math.Mod(gen*float64(i), per) + per*float64(j)
+		}
+	}
+	scale[len(scale)-1] = 12
+	sort.Float64s(scale)
+	k := genScaleKeymap("gen-rank2", scale)
+	k.duplicateOctave(12)
+	k.setMidiPattern()
+	return k, nil
+}
+
+// helper function for genEqualDivisionKeymap and genRank2Keymap
+// scale should contain both the identity and the period (ex, 1/1 and 2/1)
+func genScaleKeymap(name string, scale []float64) *keymap {
+	k := newEmptyKeymap(name)
+	n := len(scale) - 1
 	w, h := len(qwertyLayout[0]), len(qwertyLayout)
 	x, y := 0, 1
 	midiRoot := 60
@@ -197,7 +246,7 @@ func genEqualDivisionKeymap(interval float64, n int) *keymap {
 				break
 			}
 			k.Items = append(k.Items, newKeyInfo(qwertyLayout[y][x], false,
-				interval/float64(n)*float64(i), fmt.Sprintf("%d'", (i%int(n))+1),
+				scale[i], fmt.Sprintf("%d'", (i%int(n))+1),
 				fmt.Sprintf("%d\\%d", i, n)))
 		} else if n < w*h/2 {
 			// two sets of two alternating rows, Q2W3... and ZSXD...
@@ -207,7 +256,7 @@ func genEqualDivisionKeymap(interval float64, n int) *keymap {
 			}
 			y = 1 - (x % 2)
 			k.Items = append(k.Items, newKeyInfo(qwertyLayout[y][(x+1)/2], false,
-				interval/float64(n)*float64(i), fmt.Sprintf("%d'", (i%int(n))+1),
+				scale[i], fmt.Sprintf("%d'", (i%int(n))+1),
 				fmt.Sprintf("%d\\%d", i, n)))
 		} else {
 			// Q2W3 same as above, then go backwards down /;.L
@@ -216,16 +265,16 @@ func genEqualDivisionKeymap(interval float64, n int) *keymap {
 			}
 			y = 1 - (x % 2)
 			k.Items = append(k.Items, newKeyInfo(qwertyLayout[y][(x+1)/2], false,
-				interval/float64(n)*float64(i), fmt.Sprintf("%d'", (i%int(n))+1),
+				scale[i], fmt.Sprintf("%d'", (i%int(n))+1),
 				fmt.Sprintf("%d\\%d", i, n)))
 			k.Items = append(k.Items, newKeyInfo(qwertyLayout[y+2][w-x/2-1], false,
-				-interval/float64(n)*float64(i+1), fmt.Sprintf("%d'", ((n-i-1)%int(n))+1),
+				-scale[i+1], fmt.Sprintf("%d'", ((n-i-1)%int(n))+1),
 				fmt.Sprintf("%d\\%d", n-i-1, n)))
 		}
 		// midi is simpler
 		if i <= n {
 			k.Items = append(k.Items, newKeyInfo(fmt.Sprintf("m%d", midiRoot+i), false,
-				interval/float64(n)*float64(i), fmt.Sprintf("%d'", (i%int(n))+1),
+				scale[i], fmt.Sprintf("%d'", (i%int(n))+1),
 				fmt.Sprintf("%d\\%d", i, n)))
 		}
 		x++
@@ -236,8 +285,6 @@ func genEqualDivisionKeymap(interval float64, n int) *keymap {
 		12, "1'", fmt.Sprintf("%d\\%d", n, n)))
 	k.Items = append(k.Items, newKeyInfo("A", false,
 		-12, "1'", fmt.Sprintf("%d\\%d", -n, n)))
-	k.duplicateOctave(interval)
-	k.setMidiPattern()
 	return k
 }
 

@@ -316,7 +316,10 @@ func main() {
 					{label: "Generate equal division...", action: func() {
 						dialogMakeEdoKeymap(dia, sng, patedit)
 					}},
-					{label: "Generate isomorphic...", action: func() {
+					{label: "Generate rank-2 scale...", action: func() {
+						dialogMakeRank2Keyamp(dia, sng, patedit)
+					}},
+					{label: "Generate isomorphic layout...", action: func() {
 						dialogMakeIsoKeymap(dia, sng, patedit)
 					}},
 				},
@@ -628,13 +631,30 @@ func dialogSaveKeymap(d *dialog, sng *song) {
 	d.input = addSuffixIfMissing(sng.Keymap.Name, ".csv")
 }
 
-// set d to an input dialog
+// set d to an input dialog chain
 func dialogMakeEdoKeymap(d *dialog, sng *song, pe *patternEditor) {
 	d.getInterval("Interval to divide:", sng.Keymap, func(f float64) {
 		d.getInt("Number of equal divisions:", 1, 127, func(i int64) {
 			sng.Keymap = genEqualDivisionKeymap(f, int(i))
 			sng.renameNotes()
 			pe.updateRefPitchDisplay()
+		})
+	})
+}
+
+// set d to an input dialog chain
+func dialogMakeRank2Keyamp(d *dialog, sng *song, pe *patternEditor) {
+	d.getInterval("Period:", sng.Keymap, func(per float64) {
+		d.getInterval("Generator:", sng.Keymap, func(gen float64) {
+			d.getInt("Number of notes:", 1, 127, func(i int64) {
+				if k, err := genRank2Keymap(per, gen, int(i)); err == nil {
+					sng.Keymap = k
+					sng.renameNotes()
+					pe.updateRefPitchDisplay()
+				} else {
+					d.message(err.Error())
+				}
+			})
 		})
 	})
 }
