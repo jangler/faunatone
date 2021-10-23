@@ -35,7 +35,8 @@ Keymaps are comma-separated value (CSV) files with three data per line: input,
 notation, and interval. For example, the line `R, F-, 4/3` binds the R key to
 an interval of 4/3 (an ascending just fourth), and that interval is to be
 displayed as `F-5` when in octave 5. Lines that start with `#` are ignored by
-the loader. The equivalent MIDI input mapping would be written `m65, F-, 4/3`.
+the loader. The equivalent MIDI input mapping would be written as `m65, F-,
+4/3`.
 
 The keymap loader is able to "fill in the blanks" in a few ways:
 
@@ -101,8 +102,8 @@ root and no gaps. The generated notation is based on the scale degree.
 The "zeta peaks" 5, 7, 12, 19, 22, 31, 41, and 53 are some edos that generally
 provide close approximations of just intervals relative to their size, although
 the last two won't fit in a generated layout. Other relatively well-known equal
-scales include Wendy Carlos's alpha, beta, and gamma scales (approximately
-9edf, 11edf, and 20edf, where f means 3/2 fifth), and the Bohlen-Pierce scale
+scales include Wendy Carlos's alpha, beta, and gamma scales at approximately
+9edf, 11edf, and 20edf (where f means 3/2 fifth), and the Bohlen-Pierce scale
 at 13edt (where t means 3/1 "tritave").
 
 ### Rank-2 scale keymaps
@@ -123,10 +124,11 @@ formed by each number of scale steps. This does not guarantee that the scale is
 corresponds to a smaller interval.
 
 Rank-2 scales represent a middle ground between the conceptual simplicity of
-equal divisions (which are rank-1 scales) and the harmonic precision of JI.
-Using the right combination of period and generator, you can get better-tuned
-intervals than in an edo with the same number of notes. The tradeoff is that
-not every represented interval will be accessible from every note in the scale.
+equal divisions (which are rank-1 scales) and the harmonic precision of just
+intonation. Using the right combination of period and generator, you can get
+better-tuned intervals than in an edo with the same number of notes. The
+tradeoff is that not every represented interval will be accessible from every
+note in the scale.
 
 Rank-2 scales are usually discussed in terms of temperaments, which effectively
 reduce the number of dimensions in a JI space by eliminating the differences
