@@ -208,7 +208,7 @@ func main() {
 				},
 			},
 			{
-				label: "Cursor",
+				label: "Select",
 				items: []*menuItem{
 					{label: "Previous division", action: func() { patedit.moveCursor(0, -1) },
 						repeat: true},
@@ -218,7 +218,6 @@ func main() {
 						repeat: true},
 					{label: "Next track", action: func() { patedit.moveCursor(1, 0) },
 						repeat: true},
-					{label: "Go to beat...", action: func() { dialogGoToBeat(dia, patedit) }},
 				},
 			},
 			{
@@ -261,6 +260,7 @@ func main() {
 			{
 				label: "Edit",
 				items: []*menuItem{
+					{label: "Go to beat...", action: func() { dialogGoToBeat(dia, patedit) }},
 					{label: "Delete events", action: func() {
 						patedit.deleteSelectedEvents()
 					}},
