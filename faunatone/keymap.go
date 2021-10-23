@@ -239,8 +239,8 @@ func genScaleKeymap(name string, scale []float64) *keymap {
 	for i := n; i > 67; i -= 12 {
 		midiRoot -= 12
 	}
+	// computer keyboard
 	for i := 0; i <= n && y >= 0; i++ {
-		// computer keyboard
 		if n <= w {
 			// two rows, Q-P and Z-/ (second row set by duplicateOctave)
 			if x >= w {
@@ -268,12 +268,12 @@ func genScaleKeymap(name string, scale []float64) *keymap {
 			k.Items = append(k.Items, newKeyInfo(qwertyLayout[y+2][w-x/2-1], false,
 				-scale[i+1], fmt.Sprintf("%d'", ((n-i-1)%int(n))+1), ""))
 		}
-		// midi is simpler
-		if i <= n {
-			k.Items = append(k.Items, newKeyInfo(fmt.Sprintf("m%d", midiRoot+i), false,
-				scale[i], fmt.Sprintf("%d'", (i%int(n))+1), ""))
-		}
 		x++
+	}
+	// midi is simpler
+	for i := 0; i <= n; i++ {
+		k.Items = append(k.Items, newKeyInfo(fmt.Sprintf("m%d", midiRoot+i), false,
+			scale[i], fmt.Sprintf("%d'", (i%int(n))+1), ""))
 	}
 	// 1 and A are unused by these layouts, so map them to octaves. this is
 	// useful for edos 10 and >18
