@@ -1,6 +1,9 @@
 package main
 
 import (
+	"errors"
+	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -35,6 +38,48 @@ const (
 // create a new dialog
 func newDialog(prompt string, size int, action func(string)) *dialog {
 	return &dialog{prompt: strings.Split(prompt, "\n"), size: size, action: action, shown: true}
+}
+
+// set d to a message dialog
+func (d *dialog) message(s string) {
+	*d = *newDialog(s, 0, nil)
+}
+
+// set d to a message dialog if err is non-nil
+func (d *dialog) messageIfErr(err error) {
+	if err != nil {
+		d.message(err.Error())
+	}
+}
+
+// set d to an integer dialog that checks for range and syntax errors
+func (d *dialog) getInt(prompt string, size int, min, max int64, action func(int64)) {
+	*d = *newDialog(prompt, size, func(s string) {
+		if i, err := strconv.ParseInt(s, 10, 64); err == nil && i >= min && i <= max {
+			action(i)
+		} else if err != nil && errors.Is(err, strconv.ErrSyntax) {
+			d.message("Invalid syntax.")
+		} else if i < min || i > max || errors.Is(err, strconv.ErrRange) {
+			d.message(fmt.Sprintf("Value must be in range [%d, %d].", min, max))
+		} else {
+			d.message(err.Error())
+		}
+	})
+}
+
+// set d to a float dialog that checks for range and syntax errors
+func (d *dialog) getFloat(prompt string, size int, min, max float64, action func(float64)) {
+	*d = *newDialog(prompt, size, func(s string) {
+		if f, err := strconv.ParseFloat(s, 64); err == nil && f >= min && f <= max {
+			action(f)
+		} else if err != nil && errors.Is(err, strconv.ErrSyntax) {
+			d.message("Invalid syntax.")
+		} else if f < min || f > max || errors.Is(err, strconv.ErrRange) {
+			d.message(fmt.Sprintf("Value must be in range [%.2f, %.2f].", min, max))
+		} else {
+			d.message(err.Error())
+		}
+	})
 }
 
 // draw the dialog

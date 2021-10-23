@@ -7,7 +7,6 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -42,6 +41,8 @@ var (
 
 	saveAutofill   string
 	exportAutofill string
+
+	posInf = math.Inf(1)
 )
 
 func must(err error) {
@@ -86,7 +87,7 @@ func main() {
 			err = rd.ListenTo(in)
 			must(err)
 		} else {
-			dialogMsg(dia, fmt.Sprintf("MIDI input port index %d out of range [%d, %d].",
+			dia.message(fmt.Sprintf("MIDI input port index %d out of range [%d, %d].",
 				n, 0, len(ins)))
 		}
 	}
@@ -102,7 +103,7 @@ func main() {
 			wr = writer.New(out)
 			sendGMSystemOn(wr)
 		} else {
-			dialogMsg(dia, fmt.Sprintf("MIDI output port index %d out of range [%d, %d].",
+			dia.message(fmt.Sprintf("MIDI output port index %d out of range [%d, %d].",
 				n, 0, len(outs)))
 		}
 	}
@@ -267,9 +268,9 @@ func main() {
 					{label: "Delete events", action: func() {
 						patedit.deleteSelectedEvents()
 					}},
-					{label: "Undo", action: func() { dialogIfErr(dia, patedit.undo()) },
+					{label: "Undo", action: func() { dia.messageIfErr(patedit.undo()) },
 						repeat: true},
-					{label: "Redo", action: func() { dialogIfErr(dia, patedit.redo()) },
+					{label: "Redo", action: func() { dia.messageIfErr(patedit.redo()) },
 						repeat: true},
 					{label: "Cut", action: func() { patedit.cut() }},
 					{label: "Copy", action: func() { patedit.copy() }},
@@ -447,44 +448,19 @@ func conditionalString(cond bool, a, b string) string {
 
 // set d to an input dialog
 func dialogGoToBeat(d *dialog, pe *patternEditor) {
-	*d = *newDialog("Go to beat:", 5, func(s string) {
-		if f, err := strconv.ParseFloat(s, 64); err == nil {
-			pe.goToBeat(f)
-		} else {
-			dialogMsg(d, err.Error())
-		}
+	d.getFloat("Go to beat:", 5, 1, posInf, func(f float64) {
+		pe.goToBeat(f)
 	})
-}
-
-// set d to a message dialog
-func dialogMsg(d *dialog, s string) {
-	*d = *newDialog(s, 0, nil)
-}
-
-// set d to a message dialog if err is non-nil
-func dialogIfErr(d *dialog, err error) {
-	if err != nil {
-		dialogMsg(d, err.Error())
-	}
 }
 
 // set d to an input dialog
 func dialogInsertNote(d *dialog, pe *patternEditor, p *player) {
-	*d = *newDialog("Insert note:", 7, func(s string) {
-		if f, err := strconv.ParseFloat(s, 64); err == nil {
-			if f >= minPitch && f <= maxPitch {
-				pe.writeEvent(newTrackEvent(&trackEvent{
-					Type:      noteOnEvent,
-					FloatData: f,
-					ByteData1: pe.velocity,
-				}, pe.song.Keymap), p)
-			} else {
-				dialogMsg(d, fmt.Sprintf("Note must be in the range [%d, %d].",
-					minPitch, maxPitch))
-			}
-		} else {
-			dialogMsg(d, err.Error())
-		}
+	d.getFloat("Insert note:", 7, minPitch, maxPitch, func(f float64) {
+		pe.writeEvent(newTrackEvent(&trackEvent{
+			Type:      noteOnEvent,
+			FloatData: f,
+			ByteData1: pe.velocity,
+		}, pe.song.Keymap), p)
 	})
 }
 
@@ -498,20 +474,12 @@ func pitchToMIDI(p float64) (uint8, int16) {
 
 // set to d an input dialog
 func dialogInsertDrumNote(d *dialog, pe *patternEditor, p *player) {
-	*d = *newDialog("Insert drum note:", 3, func(s string) {
-		if i, err := strconv.ParseUint(s, 10, 8); err == nil {
-			if i < 128 {
-				pe.writeEvent(newTrackEvent(&trackEvent{
-					Type:      drumNoteOnEvent,
-					ByteData1: uint8(i),
-					ByteData2: pe.velocity,
-				}, nil), p)
-			} else {
-				dialogMsg(d, "Note must be in the range [0, 127].")
-			}
-		} else {
-			dialogMsg(d, err.Error())
-		}
+	d.getInt("Insert drum note:", 3, 0, 127, func(i int64) {
+		pe.writeEvent(newTrackEvent(&trackEvent{
+			Type:      drumNoteOnEvent,
+			ByteData1: uint8(i),
+			ByteData2: pe.velocity,
+		}, nil), p)
 	})
 }
 
@@ -524,7 +492,7 @@ func dialogInsertPitchBend(d *dialog, pe *patternEditor, p *player) {
 				FloatData: f,
 			}, pe.song.Keymap), p)
 		} else {
-			dialogMsg(d, "Key not in keymap.")
+			d.message("Key not in keymap.")
 		}
 	})
 	d.mode = noteInput
@@ -532,85 +500,48 @@ func dialogInsertPitchBend(d *dialog, pe *patternEditor, p *player) {
 
 // set d to an input dialog
 func dialogInsertTempoChange(d *dialog, pe *patternEditor, p *player) {
-	*d = *newDialog("Insert tempo change:", 7, func(s string) {
-		if f, err := strconv.ParseFloat(s, 64); err == nil {
-			if f > 0 {
-				pe.writeEvent(newTrackEvent(&trackEvent{
-					Type:      tempoEvent,
-					FloatData: f,
-				}, nil), p)
-			} else {
-				dialogMsg(d, "Tempo must be above zero.")
-			}
-		} else {
-			dialogMsg(d, err.Error())
-		}
+	// using 0.01 here since the error msg only displays 2 decimal places
+	d.getFloat("Insert tempo change:", 7, 0.01, posInf, func(f float64) {
+		pe.writeEvent(newTrackEvent(&trackEvent{
+			Type:      tempoEvent,
+			FloatData: f,
+		}, nil), p)
 	})
 }
 
 // set d to an input dialog
 func dialogInsertControlChange(d *dialog, pe *patternEditor, p *player) {
-	*d = *newDialog("Controller value:", 3, func(s string) {
-		if i, err := strconv.ParseUint(s, 10, 8); err == nil {
-			pe.writeEvent(newTrackEvent(&trackEvent{
-				Type:      controllerEvent,
-				ByteData1: pe.controller,
-				ByteData2: byte(i),
-			}, nil), p)
-		} else {
-			dialogMsg(d, err.Error())
-		}
+	d.getInt("Controller value:", 3, 0, 127, func(i int64) {
+		pe.writeEvent(newTrackEvent(&trackEvent{
+			Type:      controllerEvent,
+			ByteData1: pe.controller,
+			ByteData2: byte(i),
+		}, nil), p)
 	})
 }
 
 // set d to an input dialog
 func dialogInsertUint8Event(d *dialog, pe *patternEditor, p *player, prompt string,
-	et trackEventType, offset int) {
-	*d = *newDialog(prompt, 3, func(s string) {
-		if i, err := strconv.ParseUint(s, 10, 8); err == nil {
-			if int(i) >= offset && int(i) <= 127+offset {
-				pe.writeEvent(newTrackEvent(&trackEvent{
-					Type:      et,
-					ByteData1: byte(int(i) - offset),
-				}, nil), p)
-			} else {
-				dialogMsg(d, fmt.Sprintf("Value must be in the range [%d, %d].",
-					offset, 127+offset))
-			}
-		} else {
-			dialogMsg(d, err.Error())
-		}
+	et trackEventType, offset int64) {
+	d.getInt(prompt, 3, offset, 127+offset, func(i int64) {
+		pe.writeEvent(newTrackEvent(&trackEvent{
+			Type:      et,
+			ByteData1: byte(i - offset),
+		}, nil), p)
 	})
 }
 
 // set d to an input dialog
 func dialogSetController(d *dialog, pe *patternEditor) {
-	*d = *newDialog("Controller index:", 3, func(s string) {
-		if i, err := strconv.ParseUint(s, 10, 8); err == nil {
-			if i < 128 {
-				pe.controller = uint8(i)
-			} else {
-				dialogMsg(d, "Controller must be in the range [0, 127].")
-			}
-		} else {
-			dialogMsg(d, err.Error())
-		}
+	d.getInt("Controller index:", 3, 0, 127, func(i int64) {
+		pe.controller = uint8(i)
 	})
 }
 
 // set d to an input dialog
 func dialogSetDivision(d *dialog, pe *patternEditor) {
-	*d = *newDialog("Division:", 3, func(s string) {
-		if i, err := strconv.ParseUint(s, 10, 16); err == nil {
-			if i > ticksPerBeat {
-				i = ticksPerBeat
-			} else if i < 1 {
-				i = 1
-			}
-			pe.division = int(i)
-		} else {
-			dialogMsg(d, err.Error())
-		}
+	d.getInt("Division:", 3, 1, ticksPerBeat, func(i int64) {
+		pe.division = int(i)
 	})
 }
 
@@ -620,7 +551,7 @@ func dialogTranpose(d *dialog, pe *patternEditor) {
 		if f, ok := pe.song.Keymap.pitchFromString(s, 0); ok {
 			pe.transposeSelection(f)
 		} else {
-			dialogMsg(d, "Key not in keymap.")
+			d.message("Key not in keymap.")
 		}
 	})
 	d.mode = noteInput
@@ -628,38 +559,22 @@ func dialogTranpose(d *dialog, pe *patternEditor) {
 
 // set d to an input dialog
 func dialogMultiply(d *dialog, pe *patternEditor) {
-	*d = *newDialog("Multiply selection by:", 5, func(s string) {
-		if f, err := strconv.ParseFloat(s, 64); err == nil {
-			pe.multiplySelection(f)
-		} else {
-			dialogMsg(d, err.Error())
-		}
+	d.getFloat("Multiply selection by:", 5, 0, posInf, func(f float64) {
+		pe.multiplySelection(f)
 	})
 }
 
 // set d to an input dialog
 func dialogVary(d *dialog, pe *patternEditor) {
-	*d = *newDialog("Vary selection by:", 5, func(s string) {
-		if f, err := strconv.ParseFloat(s, 64); err == nil {
-			pe.varySelection(f)
-		} else {
-			dialogMsg(d, err.Error())
-		}
+	d.getFloat("Vary selection by:", 5, 0, posInf, func(f float64) {
+		pe.varySelection(f)
 	})
 }
 
 // set d to an input dialog
 func dialogSetVelocity(d *dialog, pe *patternEditor) {
-	*d = *newDialog("Set velocity:", 3, func(s string) {
-		if i, err := strconv.ParseUint(s, 10, 8); err == nil {
-			if i < 128 {
-				pe.velocity = uint8(i)
-			} else {
-				dialogMsg(d, "Velocity must be in the range [0, 127].")
-			}
-		} else {
-			dialogMsg(d, err.Error())
-		}
+	d.getInt("Set velocity:", 3, 0, 127, func(i int64) {
+		pe.velocity = uint8(i)
 	})
 }
 
@@ -672,7 +587,7 @@ func dialogRemapKey(d *dialog, s *song) {
 				s.Keymap.Items = append(s.Keymap.Items, ki)
 				s.Keymap.Name = addSuffixIfMissing(s.Keymap.Name, "*")
 			} else {
-				dialogMsg(d, err.Error())
+				d.message(err.Error())
 			}
 		})
 	})
@@ -688,7 +603,7 @@ func dialogLoadKeymap(d *dialog, sng *song, pe *patternEditor) {
 			sng.renameNotes()
 			pe.updateRefPitchDisplay()
 		} else {
-			dialogMsg(d, err.Error())
+			d.message(err.Error())
 		}
 	})
 }
@@ -698,7 +613,7 @@ func dialogSaveKeymap(d *dialog, sng *song) {
 	*d = *newDialog("Save keymap as:", 50, func(s string) {
 		s = addSuffixIfMissing(s, ".csv")
 		if err := sng.Keymap.write(s); err != nil {
-			dialogMsg(d, err.Error())
+			d.message(err.Error())
 		}
 	})
 	d.input = addSuffixIfMissing(sng.Keymap.Name, ".csv")
@@ -706,14 +621,10 @@ func dialogSaveKeymap(d *dialog, sng *song) {
 
 // set d to an input dialog
 func dialogMakeEdoKeymap(d *dialog, sng *song, pe *patternEditor) {
-	*d = *newDialog("Enter number of equal divisions of octave:", 3, func(s string) {
-		if i, err := strconv.ParseUint(s, 10, 8); err == nil {
-			sng.Keymap = genEdoKeymap(int(i))
-			sng.renameNotes()
-			pe.updateRefPitchDisplay()
-		} else {
-			dialogMsg(d, err.Error())
-		}
+	d.getInt("Enter number of equal divisions of octave:", 3, 1, 127, func(i int64) {
+		sng.Keymap = genEdoKeymap(int(i))
+		sng.renameNotes()
+		pe.updateRefPitchDisplay()
 	})
 }
 
@@ -727,11 +638,11 @@ func dialogMakeIsoKeymap(d *dialog, sng *song, pe *patternEditor) {
 					sng.renameNotes()
 					pe.updateRefPitchDisplay()
 				} else {
-					dialogMsg(d, err.Error())
+					d.message(err.Error())
 				}
 			})
 		} else {
-			dialogMsg(d, err.Error())
+			d.message(err.Error())
 		}
 	})
 }
@@ -760,10 +671,10 @@ func dialogOpen(d *dialog, sng *song, pe *patternEditor, p *player) {
 				saveAutofill = s
 				exportAutofill = replaceSuffix(s, fileExt, ".mid")
 			} else {
-				dialogMsg(d, err.Error())
+				d.message(err.Error())
 			}
 		} else {
-			dialogMsg(d, err.Error())
+			d.message(err.Error())
 		}
 	})
 }
@@ -780,10 +691,10 @@ func dialogSaveAs(d *dialog, sng *song) {
 		if f, err := os.Create(filepath.Join(savesPath, s)); err == nil {
 			defer f.Close()
 			if err := sng.write(f); err != nil {
-				dialogMsg(d, err.Error())
+				d.message(err.Error())
 			}
 		} else {
-			dialogMsg(d, err.Error())
+			d.message(err.Error())
 		}
 	})
 	d.input = saveAutofill
@@ -800,7 +711,7 @@ func dialogExportMIDI(d *dialog, sng *song, p *player) {
 		p.stop(true) // avoid race condition
 		os.MkdirAll(exportsPath, 0755)
 		if err := sng.exportSMF(filepath.Join(exportsPath, s)); err != nil {
-			dialogMsg(d, err.Error())
+			d.message(err.Error())
 		}
 	})
 	d.input = exportAutofill
@@ -808,17 +719,8 @@ func dialogExportMIDI(d *dialog, sng *song, p *player) {
 
 // set d to an input dialog
 func dialogTrackSetChannel(d *dialog, sng *song, pe *patternEditor) {
-	*d = *newDialog("Set channel:", 3, func(s string) {
-		if i, err := strconv.ParseUint(s, 10, 8); err == nil {
-			if i >= 1 && i <= numVirtualChannels {
-				pe.setTrackChannel(uint8(i - 1))
-			} else {
-				dialogMsg(d, fmt.Sprintf("Channel must be in the range [1, %d].",
-					numVirtualChannels))
-			}
-		} else {
-			dialogMsg(d, err.Error())
-		}
+	d.getInt("Set channel:", 3, 1, numVirtualChannels, func(i int64) {
+		pe.setTrackChannel(uint8(i - 1))
 	})
 }
 
