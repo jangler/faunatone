@@ -558,7 +558,7 @@ func (pe *patternEditor) modifyRefPitch(delta float64) {
 func (pe *patternEditor) captureRefPitch() {
 	trackMin, _, tickMin, _ := pe.getSelection()
 	for _, te := range pe.song.Tracks[trackMin].Events {
-		if te.Type == noteOnEvent && te.Tick == tickMin {
+		if (te.Type == noteOnEvent || te.Type == pitchBendEvent) && te.Tick == tickMin {
 			pe.refPitch = te.FloatData
 			pe.updateRefPitchDisplay()
 			return
