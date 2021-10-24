@@ -353,6 +353,10 @@ func main() {
 					{label: "Send pitch bend sensitivity RPN", action: func() {
 						pl.signal <- playerSignal{typ: signalSendPitchRPN}
 					}},
+					{label: "Send GM system on", action: func() {
+						pl.signal <- playerSignal{typ: signalSendGMSystemOn}
+						pl.signal <- playerSignal{typ: signalSendPitchRPN}
+					}},
 				},
 			},
 		},

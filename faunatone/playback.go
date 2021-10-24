@@ -25,6 +25,7 @@ const (
 	signalEvent
 	signalSongChanged // TODO actually use this
 	signalSendPitchRPN
+	signalSendGMSystemOn
 )
 
 const (
@@ -141,6 +142,11 @@ func (p *player) run() {
 			p.playEvent(sig.event)
 		case signalSendPitchRPN:
 			p.broadcastPitchBendRPN(bendSemitones, 0)
+		case signalSendGMSystemOn:
+			writer.SysEx(p.writer, []byte{0x7e, 0x7f, 0x09, 0x01})
+			for i := range p.midiChannels {
+				p.midiChannels[i] = newChannelState()
+			}
 		case signalSongChanged:
 			p.findHorizon()
 		}
