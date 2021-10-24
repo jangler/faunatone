@@ -478,14 +478,14 @@ func conditionalString(cond bool, a, b string) string {
 
 // set d to an input dialog
 func dialogGoToBeat(d *dialog, pe *patternEditor) {
-	d.getFloat("Go to beat:", 1, posInf, func(f float64) {
+	d.getFloat("Beat:", 1, posInf, func(f float64) {
 		pe.goToBeat(f)
 	})
 }
 
 // set d to an input dialog
 func dialogInsertNote(d *dialog, pe *patternEditor, p *player) {
-	d.getFloat("Insert note:", minPitch, maxPitch, func(f float64) {
+	d.getFloat("Pitch:", minPitch, maxPitch, func(f float64) {
 		pe.writeEvent(newTrackEvent(&trackEvent{
 			Type:      noteOnEvent,
 			FloatData: f,
@@ -504,7 +504,7 @@ func pitchToMIDI(p float64) (uint8, int16) {
 
 // set to d an input dialog
 func dialogInsertDrumNote(d *dialog, pe *patternEditor, p *player) {
-	d.getInt("Insert drum note:", 0, 127, func(i int64) {
+	d.getInt("Pitch:", 0, 127, func(i int64) {
 		pe.writeEvent(newTrackEvent(&trackEvent{
 			Type:      drumNoteOnEvent,
 			ByteData1: uint8(i),
@@ -515,7 +515,7 @@ func dialogInsertDrumNote(d *dialog, pe *patternEditor, p *player) {
 
 // set d to a key dialog
 func dialogInsertPitchBend(d *dialog, pe *patternEditor, p *player) {
-	*d = *newDialog("Insert pitch bend...", 0, func(s string) {
+	*d = *newDialog("Bend to key...", 0, func(s string) {
 		if f, ok := pe.song.Keymap.pitchFromString(s, pe.refPitch); ok {
 			pe.writeEvent(newTrackEvent(&trackEvent{
 				Type:      pitchBendEvent,
@@ -531,7 +531,7 @@ func dialogInsertPitchBend(d *dialog, pe *patternEditor, p *player) {
 // set d to an input dialog
 func dialogInsertTempoChange(d *dialog, pe *patternEditor, p *player) {
 	// using 0.01 here since the error msg only displays 2 decimal places
-	d.getFloat("Insert tempo change:", 0.01, posInf, func(f float64) {
+	d.getFloat("Tempo (BPM):", 0.01, posInf, func(f float64) {
 		pe.writeEvent(newTrackEvent(&trackEvent{
 			Type:      tempoEvent,
 			FloatData: f,
@@ -577,7 +577,7 @@ func dialogSetDivision(d *dialog, pe *patternEditor) {
 
 // set d to an input dialog
 func dialogTranpose(d *dialog, pe *patternEditor) {
-	*d = *newDialog("Transpose selection by...", 0, func(s string) {
+	*d = *newDialog("Transpose selection by key...", 0, func(s string) {
 		if f, ok := pe.song.Keymap.pitchFromString(s, 0); ok {
 			pe.transposeSelection(f)
 		} else {
@@ -603,15 +603,15 @@ func dialogVary(d *dialog, pe *patternEditor) {
 
 // set d to an input dialog
 func dialogSetVelocity(d *dialog, pe *patternEditor) {
-	d.getInt("Set velocity:", 0, 127, func(i int64) {
+	d.getInt("Velocity:", 0, 127, func(i int64) {
 		pe.velocity = uint8(i)
 	})
 }
 
 // set d to a key dialog, then input dialog
 func dialogRemapKey(d *dialog, s *song, pe *patternEditor) {
-	*d = *newDialog("Press key to remap...", 0, func(s1 string) {
-		*d = *newDialog("Remap to interval:", 7, func(s2 string) {
+	*d = *newDialog("Remap key...", 0, func(s1 string) {
+		*d = *newDialog("Interval:", 7, func(s2 string) {
 			if f, err := parsePitch(s2, s.Keymap); err == nil {
 				ki := newKeyInfo(s1, strings.HasPrefix(s2, "*"), f, s1, s2)
 				if existing := s.Keymap.getByKey(s1); existing == nil {
@@ -672,7 +672,7 @@ func dialogImportScl(d *dialog, sng *song, pe *patternEditor) {
 // set d to an input dialog chain
 func dialogMakeEdoKeymap(d *dialog, sng *song, pe *patternEditor) {
 	d.getInterval("Interval to divide:", sng.Keymap, func(f float64) {
-		d.getInt("Number of equal divisions:", 1, 127, func(i int64) {
+		d.getInt("Number of divisions:", 1, 127, func(i int64) {
 			sng.Keymap = genEqualDivisionKeymap(f, int(i))
 			sng.renameNotes()
 			pe.updateRefPitchDisplay()
@@ -699,8 +699,8 @@ func dialogMakeRank2Keyamp(d *dialog, sng *song, pe *patternEditor) {
 
 // set d to an input dialog chain
 func dialogMakeIsoKeymap(d *dialog, sng *song, pe *patternEditor) {
-	d.getInterval("Enter first interval:", sng.Keymap, func(f1 float64) {
-		d.getInterval("Enter second interval:", sng.Keymap, func(f2 float64) {
+	d.getInterval("First interval:", sng.Keymap, func(f1 float64) {
+		d.getInterval("Second interval:", sng.Keymap, func(f2 float64) {
 			sng.Keymap = genIsoKeymap(f1, f2)
 			sng.renameNotes()
 			pe.updateRefPitchDisplay()
@@ -722,7 +722,7 @@ func dialogNew(d *dialog, sng *song, pe *patternEditor, p *player) {
 
 // set d to an input dialog
 func dialogOpen(d *dialog, sng *song, pe *patternEditor, p *player) {
-	d.getPath("Open:", savesPath, ".faun", func(s string) {
+	d.getPath("Load song:", savesPath, ".faun", func(s string) {
 		s = addSuffixIfMissing(s, fileExt)
 		if f, err := os.Open(filepath.Join(savesPath, s)); err == nil {
 			defer f.Close()
@@ -742,7 +742,7 @@ func dialogOpen(d *dialog, sng *song, pe *patternEditor, p *player) {
 
 // set d to an input dialog
 func dialogSaveAs(d *dialog, sng *song) {
-	d.getPath("Save as:", savesPath, ".faun", func(s string) {
+	d.getPath("Save song as:", savesPath, ".faun", func(s string) {
 		s = addSuffixIfMissing(s, fileExt)
 		saveAutofill = s
 		if exportAutofill == "" {
@@ -763,7 +763,7 @@ func dialogSaveAs(d *dialog, sng *song) {
 
 // set d to an input dialog
 func dialogExportMIDI(d *dialog, sng *song, p *player) {
-	d.getPath("Export as:", exportsPath, ".mid", func(s string) {
+	d.getPath("Export song as:", exportsPath, ".mid", func(s string) {
 		s = addSuffixIfMissing(s, ".mid")
 		exportAutofill = s
 		if saveAutofill == "" {
@@ -808,7 +808,7 @@ func dialogMidiOutputs(d *dialog, drv *driver.Driver) {
 
 // set d to an input dialog
 func dialogTrackSetChannel(d *dialog, sng *song, pe *patternEditor) {
-	d.getInt("Set channel:", 1, numVirtualChannels, func(i int64) {
+	d.getInt("Channel:", 1, numVirtualChannels, func(i int64) {
 		pe.setTrackChannel(uint8(i - 1))
 	})
 }
