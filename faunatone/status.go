@@ -1,10 +1,23 @@
 package main
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
+
+// queue for status messages
+var statusChan = make(chan string, 10)
+
+// add a message to the status message queue if possible
+func statusf(format string, args ...interface{}) {
+	s := fmt.Sprintf(format, args...)
+	select {
+	case statusChan <- s:
+	default:
+	}
+}
 
 // type that draws a series of string function results in a line
 type statusBar struct {
@@ -12,7 +25,6 @@ type statusBar struct {
 	funcs       []func() string
 	msg         string
 	msgTime     time.Time
-	msgChan     chan string
 	msgDuration time.Duration
 }
 
@@ -21,13 +33,12 @@ func newStatusBar(msgSeconds int, funcs ...func() string) *statusBar {
 	return &statusBar{
 		rect:        &sdl.Rect{},
 		funcs:       funcs,
-		msgChan:     make(chan string),
 		msgDuration: time.Second * time.Duration(msgSeconds),
 	}
 }
 
 // draw the status bar
-func (sb *statusBar) draw(pr *printer, r *sdl.Renderer) {
+func (sb *statusBar) draw(pr *printer, r *sdl.Renderer, redraw chan bool) {
 	x := int32(padding)
 	y := r.GetViewport().H - pr.rect.H - padding
 	r.SetDrawColorArray(colorBg2Array...)
@@ -41,29 +52,19 @@ func (sb *statusBar) draw(pr *printer, r *sdl.Renderer) {
 		}
 	}
 
-	// update message
-	select {
-	case sb.msg = <-sb.msgChan:
-		sb.msgTime = time.Now()
-	default:
-	}
-
-	// draw
 	if time.Now().Sub(sb.msgTime) < sb.msgDuration {
+		// draw message
 		pr.draw(r, sb.msg, r.GetViewport().W-padding-pr.rect.W*int32(len(sb.msg)), y)
+	} else {
+		// check for message updates
+		select {
+		case sb.msg = <-statusChan:
+			sb.msgTime = time.Now()
+			go func() {
+				time.Sleep(sb.msgDuration)
+				redraw <- true
+			}()
+		default:
+		}
 	}
-}
-
-// update status bar message and sends redraw flag updates as necessary
-func (sb *statusBar) showMessage(s string, redraw chan bool) {
-	go func() {
-		sb.msgChan <- s
-		if redraw != nil {
-			redraw <- true
-		}
-		time.Sleep(sb.msgDuration)
-		if redraw != nil {
-			redraw <- true
-		}
-	}()
 }

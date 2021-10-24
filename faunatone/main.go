@@ -378,13 +378,13 @@ func main() {
 	if len(os.Args) > 1 {
 		if f, err := os.Open(os.Args[1]); err == nil {
 			if err := sng.read(f); err == nil {
-				sb.showMessage(fmt.Sprintf("Loaded %s.", os.Args[1]), redrawChan)
+				statusf("Loaded %s.", os.Args[1])
 			} else {
-				sb.showMessage(err.Error(), redrawChan)
+				dia.message(err.Error())
 			}
 			f.Close()
 		} else {
-			sb.showMessage(err.Error(), redrawChan)
+			dia.message(err.Error())
 		}
 	}
 
@@ -459,7 +459,7 @@ func main() {
 			y := mb.menus[0].rect.H
 			patedit.draw(renderer, &sdl.Rect{0, y, viewport.W, viewport.H - y - sb.rect.H},
 				pl.lastTick)
-			sb.draw(pr, renderer)
+			sb.draw(pr, renderer, redrawChan)
 			mb.draw(pr, renderer)
 			dia.draw(pr, renderer)
 			renderer.Present()
@@ -622,6 +622,7 @@ func dialogRemapKey(d *dialog, s *song, pe *patternEditor) {
 				s.Keymap.Name = addSuffixIfMissing(s.Keymap.Name, "*")
 				s.renameNotes()
 				pe.updateRefPitchDisplay()
+				statusf("Remapped %s.", s1)
 			} else {
 				d.message(err.Error())
 			}
@@ -650,6 +651,8 @@ func dialogSaveKeymap(d *dialog, sng *song) {
 		s = addSuffixIfMissing(s, ".csv")
 		if err := sng.Keymap.write(s); err != nil {
 			d.message(err.Error())
+		} else {
+			statusf("Wrote %s.", s)
 		}
 	})
 	d.input = addSuffixIfMissing(sng.Keymap.Name, ".csv")
@@ -753,6 +756,8 @@ func dialogSaveAs(d *dialog, sng *song) {
 			defer f.Close()
 			if err := sng.write(f); err != nil {
 				d.message(err.Error())
+			} else {
+				statusf("Wrote %s.", s)
 			}
 		} else {
 			d.message(err.Error())
@@ -773,6 +778,8 @@ func dialogExportMIDI(d *dialog, sng *song, p *player) {
 		os.MkdirAll(exportsPath, 0755)
 		if err := sng.exportSMF(filepath.Join(exportsPath, s)); err != nil {
 			d.message(err.Error())
+		} else {
+			statusf("Wrote %s.", s)
 		}
 	})
 	d.input = exportAutofill
