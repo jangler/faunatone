@@ -62,5 +62,5 @@ Faunatone save files (\*.fna) are zlib-compressed JSON.
   note input mapping and notation
 - [config.md](https://github.com/jangler/faunatone/blob/master/docs/config.md):
   other configuration files
-- [building.md](https://github.com/jangler/faunatone/blob/master/docs/config.md):
+- [building.md](https://github.com/jangler/faunatone/blob/master/docs/building.md):
   building from source

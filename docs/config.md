@@ -1,5 +1,15 @@
 # Faunatone configuration
 
+## config/keymaps/
+
+See
+[keymaps.md](https://github.com/jangler/faunatone/blob/master/docs/keymaps.md).
+
+## config/shortcuts.csv
+
+See [the SDL_Keycode documentation](https://wiki.libsdl.org/SDL_Keycode) for
+key names. Multiple shortcuts (or none) can exist for each menu item.
+
 ## config/settings.csv
 
 **ColorBeat** - The color of beat lines, in RGBA.
