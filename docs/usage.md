@@ -1,9 +1,9 @@
 # Faunatone general usage guide
 
-This guide assumes some basic familiarity with tracker interfaces, MIDI, and
-non-microtonal Western music theory. It attempts to cover the main points of
-interest but is not a complete tutorial. If you haven't read
-[README,md](https://github.com/jangler/faunatone/blob/master/README.md), read
+This guide assumes some basic familiarity with tracker interfaces and MIDI. It
+attempts to cover the main points of interest but is not a complete tutorial.
+If you haven't read
+[README.md](https://github.com/jangler/faunatone/blob/master/README.md), read
 that first. If you wish to use Faunatone's microtonal capabilities, you should
 also read 
 [keymaps.md](https://github.com/jangler/faunatone/blob/master/docs/keymaps.md),
@@ -53,10 +53,10 @@ bending, which operates on a per-MIDI-channel basis.
 
 As a general rule, commands that affect tracks, events, or the selection itself
 operate on the entire selection. When inserting most types of events, an
-identical event be inserted in each track in the selection. For note on events
-(melodic and percussion), the pitches of an input chord are distributed across
-the selected tracks. You will need to select multiple tracks in order to play
-chords, even in keyjazz mode.
+identical event is inserted into each track in the selection. For note on
+events (melodic and percussion), the pitches of an input chord are distributed
+across the selected tracks. You will need to select multiple tracks in order to
+play chords, even in keyjazz mode.
 
 Percussion notes using the GM percussion map can be input by holding Shift. The
 percussion keymap does not change with the melodic keymap, since they serve

@@ -18,7 +18,7 @@ development. Users may experience quirks, bugs, crashes, design changes, etc,
 although backwards-incompatible changes to the save and config file formats are
 less likely to happen.
 
-## Installation
+## Download
 
 Prebuilt standalone binaries for Windows and Linux are available from
 [the releases page](https://github.com/jangler/faunatone/releases).
