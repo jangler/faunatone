@@ -20,7 +20,8 @@ will also need a MIDI-based synthesizer (software or hardware) for it to
 interface with. Windows has one built-in. One option for Linux users is
 FluidSynth. Regardless of platform, anything that supports GM 1 should work.
 The default index of the ports Faunatone connects to for MIDI output and input
-can be changed in `config/settings.csv`.
+can be changed in `config/settings.csv`; you can view port indices using the
+commands in the MIDI menu.
 
 ## Sequencing and time control
 

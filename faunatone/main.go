@@ -341,6 +341,17 @@ func main() {
 						repeat: true},
 				},
 			},
+			{
+				label: "MIDI",
+				items: []*menuItem{
+					{label: "Display available inputs", action: func() {
+						dialogMidiInputs(dia, drv)
+					}},
+					{label: "Display available outputs", action: func() {
+						dialogMidiOutputs(dia, drv)
+					}},
+				},
+			},
 		},
 	}
 	mb.init(pr)
@@ -757,6 +768,34 @@ func dialogExportMIDI(d *dialog, sng *song, p *player) {
 		}
 	})
 	d.input = exportAutofill
+}
+
+// set d to a message dialog
+func dialogMidiInputs(d *dialog, drv *driver.Driver) {
+	if ins, err := drv.Ins(); err == nil {
+		a := make([]string, len(ins)+1)
+		a[0] = "Available MIDI inputs:"
+		for i, v := range ins {
+			a[i+1] = fmt.Sprintf("[%d] %s", i, v)
+		}
+		d.message(strings.Join(a, "\n"))
+	} else {
+		d.message(err.Error())
+	}
+}
+
+// set d to a message dialog
+func dialogMidiOutputs(d *dialog, drv *driver.Driver) {
+	if outs, err := drv.Outs(); err == nil {
+		a := make([]string, len(outs)+1)
+		a[0] = "Available MIDI outputs:"
+		for i, v := range outs {
+			a[i+1] = fmt.Sprintf("[%d] %s", i, v)
+		}
+		d.message(strings.Join(a, "\n"))
+	} else {
+		d.message(err.Error())
+	}
 }
 
 // set d to an input dialog

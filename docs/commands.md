@@ -152,3 +152,10 @@ for details.
 **Delete** - Delete selected tracks.
 
 **Move left** & **Move right** - Shift selected tracks left or right.
+
+## MIDI
+
+For export, see **File -> Export MIDI...**.
+
+**Display available inputs** & **Display available outputs** - Display lists of
+available MIDI inputs/outputs by index.
