@@ -6,7 +6,7 @@ ColorPlayPos, #10101008
 ColorSelect, #10101010
 DefaultKeymap, 12edo-trad.csv
 PercussionKeymap, 12edo-trad.csv
-Font, RobotoMono-Regular-BasicLatin.ttf
+Font, RobotoMono-Regular.ttf
 FontSize, 12
 MessageDuration, 3
 MidiInPortNumber, -1

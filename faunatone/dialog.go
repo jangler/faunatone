@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -181,7 +182,8 @@ func (d *dialog) keyboardEvent(e *sdl.KeyboardEvent) {
 		switch e.Keysym.Sym {
 		case sdl.K_BACKSPACE:
 			if len(d.input) > 0 {
-				d.input = d.input[:len(d.input)-1]
+				_, size := utf8.DecodeLastRuneInString(d.input)
+				d.input = d.input[:len(d.input)-size]
 			}
 		case sdl.K_ESCAPE:
 			d.shown = false
