@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -11,6 +12,7 @@ import (
 )
 
 const (
+	maxDirNames        = 1000
 	inputCursorBlinkMs = 500
 	border             = 2
 )
@@ -24,6 +26,8 @@ type dialog struct {
 	shown  bool
 	accept bool // accept input
 	mode   inputMode
+	dir    string // base dir for path input, used for tab complete
+	ext    string // extension for path input completion if non-empty
 }
 
 // determines how dialog input works
@@ -100,6 +104,12 @@ func (d *dialog) getInterval(prompt string, k *keymap, action func(float64)) {
 			d.message(err.Error())
 		}
 	})
+}
+
+// set d to a file path dialog that allows for tab completion
+func (d *dialog) getPath(prompt, dir, ext string, action func(string)) {
+	*d = *newDialog(prompt, 50, action)
+	d.dir, d.ext = dir, ext
 }
 
 // draw the dialog
@@ -180,6 +190,10 @@ func (d *dialog) keyboardEvent(e *sdl.KeyboardEvent) {
 			if d.action != nil {
 				d.action(d.input)
 			}
+		case sdl.K_TAB:
+			if d.dir != "" {
+				d.tryPathComplete()
+			}
 		}
 	case noteInput:
 		switch e.Keysym.Sym {
@@ -205,4 +219,41 @@ func (d *dialog) keyboardEvent(e *sdl.KeyboardEvent) {
 			}
 		}
 	}
+}
+
+// try to tab-complete an entered file path
+func (d *dialog) tryPathComplete() {
+	if f, err := os.Open(d.dir); err == nil {
+		candidate := ""
+		if names, err := f.Readdirnames(maxDirNames); err == nil {
+			for _, name := range names {
+				if d.ext != "" && !strings.HasSuffix(name, d.ext) {
+					continue
+				}
+				if strings.HasPrefix(name, d.input) {
+					if candidate == "" {
+						candidate = name
+					} else {
+						candidate = commonPrefix(candidate, name)
+					}
+				}
+			}
+		}
+		if candidate != "" {
+			d.input = candidate
+		}
+	}
+}
+
+// return the longest common prefix of two strings
+func commonPrefix(a, b string) string {
+	for i := 0; i < len(a) && i < len(b); i++ {
+		if a[i] != b[i] {
+			return a[:i]
+		}
+	}
+	if len(a) < len(b) {
+		return a
+	}
+	return b
 }

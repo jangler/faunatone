@@ -1,5 +1,7 @@
 # Faunatone menu commands
 
+All filename input dialogs support tab completion.
+
 ## File
 
 **New** - Replace the working song data with an empty template.
