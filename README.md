@@ -50,7 +50,7 @@ percussion notes is separate from the keymap for melodic notes.
 
 ## File format
 
-Faunatone save files (\*.fna) are zlib-compressed JSON.
+Faunatone save files (\*.faun) are zlib-compressed JSON.
 
 ## Further documentation
 
