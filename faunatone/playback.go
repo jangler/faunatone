@@ -24,6 +24,7 @@ const (
 	signalStop
 	signalEvent
 	signalSongChanged // TODO actually use this
+	signalSendPitchRPN
 )
 
 const (
@@ -138,6 +139,8 @@ func (p *player) run() {
 			}
 		case signalEvent:
 			p.playEvent(sig.event)
+		case signalSendPitchRPN:
+			p.broadcastPitchBendRPN(bendSemitones, 0)
 		case signalSongChanged:
 			p.findHorizon()
 		}

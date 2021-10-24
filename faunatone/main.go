@@ -350,6 +350,9 @@ func main() {
 					{label: "Display available outputs", action: func() {
 						dialogMidiOutputs(dia, drv)
 					}},
+					{label: "Send pitch bend sensitivity RPN", action: func() {
+						pl.signal <- playerSignal{typ: signalSendPitchRPN}
+					}},
 				},
 			},
 		},

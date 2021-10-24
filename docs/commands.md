@@ -159,3 +159,6 @@ For export, see **File -> Export MIDI...**.
 
 **Display available inputs** & **Display available outputs** - Display lists of
 available MIDI inputs/outputs by index.
+
+**Send pitch bend sensitivity RPN** - MIDI outputs connected to Faunatone after
+startup will need this to interpret pitches correctly.

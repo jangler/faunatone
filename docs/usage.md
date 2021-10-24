@@ -23,6 +23,9 @@ The default index of the ports Faunatone connects to for MIDI output and input
 can be changed in `config/settings.csv`; you can view port indices using the
 commands in the MIDI menu.
 
+If you manage to connect an output to Faunatone *after* startup, pitches may
+not be correct until you select **MIDI -> Send pitch bend sensitivity RPN**.
+
 ## Sequencing and time control
 
 On the left side of the window are the beat numbers, counting upwards from 1 at
