@@ -1,6 +1,7 @@
 # Faunatone menu commands
 
-All filename input dialogs support tab completion.
+All filename input dialogs support tab completion. Keyboard shortcuts are
+configurable in `config/shortcuts.csv`.
 
 ## File
 
