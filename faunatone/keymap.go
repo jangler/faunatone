@@ -333,15 +333,35 @@ func genScaleKeymap(name string, scale []float64) *keymap {
 // generate a two-dimensional isomorphic keyboard keymap from two intervals
 func genIsoKeymap(interval1, interval2 float64) *keymap {
 	k := newEmptyKeymap("gen-iso")
+	vectors := make([][3]int, len(qwertyLayout)*len(qwertyLayout[0]))
+	i := 0
 	for y, row := range qwertyLayout {
-		for x, key := range row {
-			k.Items = append(k.Items, newKeyInfo(key, false,
-				interval1*float64(x-isoCenterX+y-2)+interval2*float64(isoCenterY-y),
-				fmt.Sprintf("(%d,%d)", x-isoCenterX+y-2, isoCenterY-y), "",
-			))
+		for x := range row {
+			vectors[i] = [3]int{x, y, intAbs(x-isoCenterX+y-2) + intAbs(isoCenterY-y)}
+			i++
 		}
 	}
+	// sort by distance from root so that simpler vectors are used for notation
+	sort.Slice(vectors, func(i, j int) bool {
+		return vectors[i][2] < vectors[j][2]
+	})
+	for _, v := range vectors {
+		x, y := v[0], v[1]
+		key := qwertyLayout[y][x]
+		k.Items = append(k.Items, newKeyInfo(key, false,
+			interval1*float64(x-isoCenterX+y-2)+interval2*float64(isoCenterY-y),
+			fmt.Sprintf("(%d,%d)", x-isoCenterX+y-2, isoCenterY-y), "",
+		))
+	}
 	return k
+}
+
+// return absolute value of a
+func intAbs(a int) int {
+	if a < 0 {
+		return -a
+	}
+	return a
 }
 
 var (
