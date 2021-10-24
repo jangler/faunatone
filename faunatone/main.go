@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math"
 	"os"
 	"path/filepath"
@@ -28,6 +29,7 @@ const (
 	assetsPath    = "assets"
 	savesPath     = "saves"
 	exportsPath   = "exports"
+	errorLogFile  = "error.txt"
 )
 
 var (
@@ -48,7 +50,9 @@ var (
 
 func must(err error) {
 	if err != nil {
-		panic(err.Error())
+		fmt.Fprintln(os.Stderr, err.Error())
+		ioutil.WriteFile(errorLogFile, []byte(err.Error()+"\n"), 0644)
+		os.Exit(1)
 	}
 }
 
