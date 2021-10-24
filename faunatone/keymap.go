@@ -85,7 +85,7 @@ func newKeymap(path string) (*keymap, error) {
 				if pitch, err := parsePitch(rec[2], k); err == nil {
 					name := rec[1]
 					if name == "" {
-						name = rec[2] + "-" // use origin as name if name is absent
+						name = rec[2] // use origin as name if name is absent
 					}
 					k.Items = append(k.Items, newKeyInfo(
 						rec[0], strings.HasPrefix(rec[2], "*"), pitch, name, rec[2]))
@@ -350,7 +350,7 @@ func genIsoKeymap(interval1, interval2 float64) *keymap {
 		key := qwertyLayout[y][x]
 		k.Items = append(k.Items, newKeyInfo(key, false,
 			interval1*float64(x-isoCenterX+y-2)+interval2*float64(isoCenterY-y),
-			fmt.Sprintf("(%d,%d)", x-isoCenterX+y-2, isoCenterY-y), "",
+			fmt.Sprintf("(%d.%d)", x-isoCenterX+y-2, isoCenterY-y), "",
 		))
 	}
 	return k
@@ -546,6 +546,8 @@ func (k *keymap) notatePitch(f float64) string {
 	return ""
 }
 
+var endsWithDigitRegexp = regexp.MustCompile(`\d$`)
+
 // helper function for notatePitch
 func (k *keymap) notatePitchWithMods(f float64, mods ...*keyInfo) string {
 	modString := ""
@@ -556,7 +558,11 @@ func (k *keymap) notatePitchWithMods(f float64, mods ...*keyInfo) string {
 	target := posMod(f, 12)
 	for _, ki := range k.Items {
 		if !ki.IsMod && ki.Name != "" && math.Abs(ki.class-target) < 0.01 {
-			return fmt.Sprintf("%s%s%d", ki.Name, modString, int(f)/12)
+			digitSpacer := ""
+			if endsWithDigitRegexp.MatchString(ki.Name + modString) {
+				digitSpacer = "-"
+			}
+			return fmt.Sprintf("%s%s%s%d", ki.Name, modString, digitSpacer, int(f)/12)
 		}
 	}
 	return ""
