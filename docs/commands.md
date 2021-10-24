@@ -147,7 +147,8 @@ for details.
 
 ## Track
 
-**Set channel...** - Change the virtual channel that this track controls.
+**Set channel...** - Change the virtual channel that the selected tracks
+control.
 
 **Insert** - Add one new track per selected track.
 
