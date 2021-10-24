@@ -1,15 +1,25 @@
 # Faunatone
 
 A tracker-style microtonal MIDI sequencer. Since MIDI does not have any
-widely-implemented native support for microtonality, Faunatone-exported MIDI
-files use pitch bending to play non-12edo pitches. The tradeoff is that in
-this model, you cannot generally have more than 15-voice melodic polyphony
-without experiencing artifacts, although GM 1 only guarantees 16 melodic voices
-anyway.
+widely-implemented native support for microtonality, Faunatone uses pitch
+bending to play non-12edo pitches. The tradeoff is that in this model, you
+cannot generally have more than 15-voice melodic polyphony without experiencing
+artifacts, although GM 1 only guarantees 16 melodic voices anyway.
 
 Management of individual output MIDI channels by the user is not required or
 even possible; Faunatone operates in terms of virtual channels which it maps
 dynamically.
+
+## Features
+
+- First-class support for various approaches to microtonality
+- MIDI input, output, and export including support for all GM 1 channel events
+- Remap keyboard and MIDI note input (intervals and layout)
+- Control how pitches are notated
+- Free transposition and modulation (with notation caveats)
+- Define and use accidentals to modify pitches
+- Flexible rhythms via freely variable beat division
+- Import Scala scale files
 
 ## Status
 
