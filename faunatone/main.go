@@ -242,7 +242,7 @@ func main() {
 					}},
 					{label: "Program change...", action: func() {
 						dialogInsertUint8Event(dia, patedit, pl,
-							"Insert program change:", programEvent, 1)
+							"Program:", programEvent, 1)
 					}},
 					{label: "Tempo change...", action: func() {
 						dialogInsertTempoChange(dia, patedit, pl)
@@ -252,7 +252,7 @@ func main() {
 					}},
 					{label: "Aftertouch...", action: func() {
 						dialogInsertUint8Event(dia, patedit, pl,
-							"Insert channel pressure:", channelPressureEvent, 0)
+							"Channel pressure:", channelPressureEvent, 0)
 					}},
 					/* this is not part of GM level 1
 					{label: "Polyphonic aftertouch...", action: func() {
