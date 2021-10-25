@@ -59,7 +59,7 @@ required to produce the initial pitch in the first place.
 range 1 to 128. Wikipedia has a
 [list of GM program numbers](https://en.wikipedia.org/wiki/General_MIDI#Program_change_events).
 
-**Tempo change...** - Insert a tempo change event. Tempos are specified in
+**Tempo change...** - Insert a tempo change meta-event. Tempos are specified in
 beats per minute. The default is 120.
 
 **Controller change...** - Insert a control change event for the current
@@ -69,6 +69,10 @@ controllers default to 0, with the exception of 7 (volume) to 100, 10 (pan) to
 
 **Aftertouch...** - Insert an aftertouch (channel pressure) event, value range
 0 to 127. Aftertouch usually produces a vibrato effect.
+
+**Text...** - Insert a text meta-event. There are different types of text
+meta-events with different meanings; for the generic text meta-event, choose
+type 1.
 
 ## Edit
 

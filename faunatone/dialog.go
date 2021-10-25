@@ -181,7 +181,9 @@ func (d *dialog) keyboardEvent(e *sdl.KeyboardEvent) {
 	case textInput:
 		switch e.Keysym.Sym {
 		case sdl.K_BACKSPACE:
-			if len(d.input) > 0 {
+			if e.Keysym.Mod&sdl.KMOD_CTRL != 0 {
+				d.input = ""
+			} else if len(d.input) > 0 {
 				_, size := utf8.DecodeLastRuneInString(d.input)
 				d.input = d.input[:len(d.input)-size]
 			}

@@ -260,6 +260,9 @@ func main() {
 							"Insert key pressure:", keyPressureEvent, 0)
 					}},
 					*/
+					{label: "Text...", action: func() {
+						dialogInsertTextEvent(dia, patedit, pl)
+					}},
 				},
 			},
 			{
@@ -565,6 +568,19 @@ func dialogInsertUint8Event(d *dialog, pe *patternEditor, p *player, prompt stri
 			Type:      et,
 			ByteData1: byte(i - offset),
 		}, nil), p)
+	})
+}
+
+// set d to an input dialog chain
+func dialogInsertTextEvent(d *dialog, pe *patternEditor, p *player) {
+	d.getInt("Meta-event type:", 1, 9, func(i int64) {
+		*d = *newDialog("Text:", 100, func(s string) {
+			pe.writeEvent(newTrackEvent(&trackEvent{
+				Type:      textEvent,
+				ByteData1: byte(i),
+				TextData:  s,
+			}, nil), p)
+		})
 	})
 }
 

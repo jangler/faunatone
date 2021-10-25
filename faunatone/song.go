@@ -21,6 +21,7 @@ const (
 	pitchBendEvent
 	keyPressureEvent
 	channelPressureEvent
+	textEvent
 )
 
 const (
@@ -70,6 +71,7 @@ func (s *song) read(r io.Reader) error {
 		ki.class = posMod(ki.Interval, 12)
 	}
 	s.Keymap.setMidiPattern()
+	s.Keymap.keyNotes = make(map[string]*trackEvent)
 	for i, t := range s.Tracks {
 		t.index = i
 		for _, te := range t.Events {
@@ -173,6 +175,7 @@ type trackEvent struct {
 	FloatData float64 `json:",omitempty"`
 	ByteData1 byte    `json:",omitempty"`
 	ByteData2 byte    `json:",omitempty"`
+	TextData  string  `json:",omitempty"`
 	uiString  string
 	track     int
 }
@@ -180,6 +183,19 @@ type trackEvent struct {
 func newTrackEvent(te *trackEvent, k *keymap) *trackEvent {
 	te.setUiString(k)
 	return te
+}
+
+var textEventLabels = []string{
+	"",
+	"text",
+	"copy",
+	"title",
+	"inst",
+	"lyric",
+	"marker",
+	"cue",
+	"prog",
+	"device",
 }
 
 func (te *trackEvent) setUiString(k *keymap) {
@@ -206,6 +222,12 @@ func (te *trackEvent) setUiString(k *keymap) {
 		te.uiString = fmt.Sprintf("prog %d", te.ByteData1+1)
 	case tempoEvent:
 		te.uiString = fmt.Sprintf("tempo %.2f", te.FloatData)
+	case textEvent:
+		label := "UNKNOWN"
+		if te.ByteData1 >= 1 && int(te.ByteData1) < len(textEventLabels) {
+			label = textEventLabels[te.ByteData1]
+		}
+		te.uiString = fmt.Sprintf("%s \"%s\"", label, te.TextData)
 	default:
 		te.uiString = "UNKNOWN"
 	}

@@ -332,6 +332,31 @@ func (p *player) playEvent(te *trackEvent) {
 		if wr, ok := p.writer.(*writer.SMF); ok {
 			writer.TempoBPM(wr, te.FloatData)
 		}
+	case textEvent:
+		if wr, ok := p.writer.(*writer.SMF); ok {
+			switch te.ByteData1 {
+			case 1:
+				writer.Text(wr, te.TextData)
+			case 2:
+				writer.Copyright(wr, te.TextData)
+			case 3:
+				writer.TrackSequenceName(wr, te.TextData)
+			case 4:
+				writer.Instrument(wr, te.TextData)
+			case 5:
+				writer.Lyric(wr, te.TextData)
+			case 6:
+				writer.Marker(wr, te.TextData)
+			case 7:
+				writer.Cuepoint(wr, te.TextData)
+			case 8:
+				writer.Program(wr, te.TextData)
+			case 9:
+				writer.Device(wr, te.TextData)
+			default:
+				println("unhandled text event type in player.playTrackEvents")
+			}
+		}
 	default:
 		println("unhandled event type in player.playTrackEvents")
 	}
