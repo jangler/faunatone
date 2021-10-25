@@ -2,11 +2,11 @@
 
 Faunatone aims to assume as little as possible about what tuning system the
 musician is using (one caveat to this is that it currently assumes pure
-octaves). To this end, the intervals used, their mapping to keyboard and MIDI
-input, and the way they are notated are all defined by files called keymaps. If
-you have no interest in alternative tunings, you can disregard keymaps
-entirely; the default keymap is 12edo with a standard keyboard mapping and
-standard notation.
+octaves in some contexts). To this end, the intervals used, their mapping to
+keyboard and MIDI input, and the way they are notated are all defined by files
+called keymaps. If you have no interest in alternative tunings, you can
+disregard keymaps entirely; the default keymap is 12edo with a standard
+keyboard mapping and standard notation.
 
 Microtonal music theory is an expansive field, and its details are beyond the
 scope of this documentation. However, this document does aim to provide cursory
