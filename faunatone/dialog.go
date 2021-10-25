@@ -223,6 +223,18 @@ func (d *dialog) keyboardEvent(e *sdl.KeyboardEvent) {
 	}
 }
 
+// respond to midi events
+func (d *dialog) midiEvent(msg []byte) {
+	if d.mode == noteInput {
+		if msg[0]&0xf0 == 0x90 && msg[2] > 0 { // note on
+			d.shown = false
+			if d.action != nil {
+				d.action(fmt.Sprintf("m%d", msg[1]))
+			}
+		}
+	}
+}
+
 // try to tab-complete an entered file path
 func (d *dialog) tryPathComplete() {
 	if f, err := os.Open(d.dir); err == nil {

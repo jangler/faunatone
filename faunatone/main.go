@@ -441,7 +441,10 @@ func main() {
 		for {
 			select {
 			case msg := <-midiIn:
-				if !dia.shown {
+				if dia.shown {
+					dia.midiEvent(msg.Raw())
+					redrawChan <- true
+				} else {
 					switch msg.Raw()[0] & 0xf0 {
 					case 0x80, 0x90: // note off, note on
 						sng.Keymap.midiEvent(msg.Raw(), patedit, pl, keyjazz)

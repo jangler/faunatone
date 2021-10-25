@@ -27,7 +27,7 @@ var (
 	isoCenterX = 4
 	isoCenterY = 2
 
-	midiRegexp = regexp.MustCompile(`m(\d+)`)
+	midiRegexp = regexp.MustCompile(`^m(\d+)$`)
 )
 
 // turns key events into note events
@@ -485,12 +485,14 @@ func (k *keymap) midiEvent(msg []byte, pe *patternEditor, p *player, keyjazz boo
 func (k *keymap) pitchFromString(s string, refPitch float64) (float64, bool) {
 	if ki := k.getByKey(s); ki != nil {
 		pitch := ki.Interval + refPitch
-		if pitch < minPitch {
-			pitch = minPitch
-		} else if pitch > maxPitch {
-			pitch = maxPitch
-		}
+		pitch = math.Max(minPitch, math.Min(maxPitch, pitch))
 		return pitch, true
+	} else if midiRegexp.MatchString(s) {
+		if i, _ := strconv.ParseUint(s[1:], 10, 8); int(i) < len(k.midimap) {
+			pitch := k.midimap[i] + refPitch
+			pitch = math.Max(minPitch, math.Min(maxPitch, pitch))
+			return pitch, true
+		}
 	}
 	return 0, false
 }
