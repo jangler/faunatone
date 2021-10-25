@@ -21,7 +21,7 @@ import (
 
 const (
 	appName       = "Faunatone"
-	appVersion    = "v0.0.0"
+	appVersion    = "v0.1.0"
 	fileExt       = ".faun"
 	defaultFps    = 60
 	bendSemitones = 24
