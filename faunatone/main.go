@@ -498,10 +498,12 @@ func dialogInsertNote(d *dialog, pe *patternEditor, p *player) {
 	*d = *newDialog("Interval:", 7, func(s string) {
 		if f, err := parsePitch(s, pe.song.Keymap); err == nil {
 			f = math.Min(maxPitch, math.Max(minPitch, f+pe.refPitch))
+			track, _, _, _ := pe.getSelection()
 			pe.writeEvent(newTrackEvent(&trackEvent{
 				Type:      noteOnEvent,
 				FloatData: f,
 				ByteData1: pe.velocity,
+				track:     track,
 			}, pe.song.Keymap), p)
 		} else {
 			d.message(err.Error())
@@ -520,10 +522,12 @@ func pitchToMIDI(p float64) (uint8, int16) {
 // set to d an input dialog
 func dialogInsertDrumNote(d *dialog, pe *patternEditor, p *player) {
 	d.getInt("Pitch:", 0, 127, func(i int64) {
+		track, _, _, _ := pe.getSelection()
 		pe.writeEvent(newTrackEvent(&trackEvent{
 			Type:      drumNoteOnEvent,
 			ByteData1: uint8(i),
 			ByteData2: pe.velocity,
+			track:     track,
 		}, nil), p)
 	})
 }
