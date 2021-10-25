@@ -495,12 +495,17 @@ func dialogGoToBeat(d *dialog, pe *patternEditor) {
 
 // set d to an input dialog
 func dialogInsertNote(d *dialog, pe *patternEditor, p *player) {
-	d.getFloat("Pitch:", minPitch, maxPitch, func(f float64) {
-		pe.writeEvent(newTrackEvent(&trackEvent{
-			Type:      noteOnEvent,
-			FloatData: f,
-			ByteData1: pe.velocity,
-		}, pe.song.Keymap), p)
+	*d = *newDialog("Interval:", 7, func(s string) {
+		if f, err := parsePitch(s, pe.song.Keymap); err == nil {
+			f = math.Min(maxPitch, math.Max(minPitch, f+pe.refPitch))
+			pe.writeEvent(newTrackEvent(&trackEvent{
+				Type:      noteOnEvent,
+				FloatData: f,
+				ByteData1: pe.velocity,
+			}, pe.song.Keymap), p)
+		} else {
+			d.message(err.Error())
+		}
 	})
 }
 

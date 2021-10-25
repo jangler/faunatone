@@ -36,8 +36,8 @@ track.
 
 ## Insert
 
-**Note...** - Insert a melodic note on event at a specified absolute MIDI
-pitch. Keymaps are a more convenient way to insert notes, but this command
+**Note...** - Insert a melodic note on event at an interval relative to the
+root pitch. Keymaps are a more convenient way to insert notes, but this command
 allows you to use notes outside the current keymap.
 
 **Drum note...** - Insert a percussion note on event at a specified absolute

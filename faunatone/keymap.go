@@ -387,11 +387,11 @@ func parsePitch(s string, k *keymap) (float64, error) {
 		if ki := k.getByKey(m[0][1]); ki != nil {
 			return ki.Interval, nil
 		}
-		return 0, fmt.Errorf("no key \"%s\" in keymap", m[0][1])
+		return 0, fmt.Errorf("No key \"%s\" in keymap.", m[0][1])
 	} else if f, err := strconv.ParseFloat(s, 64); err == nil {
 		return f, nil
 	}
-	return 0, fmt.Errorf("invalid pitch syntax")
+	return 0, fmt.Errorf("Invalid pitch syntax.")
 }
 
 // return a keyInfo with a matching key, if any
