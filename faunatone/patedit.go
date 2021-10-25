@@ -195,7 +195,7 @@ func (pe *patternEditor) draw(r *sdl.Renderer, dst *sdl.Rect, playPos int64) {
 				y := dst.Y + int32(e.Tick*int64(pe.beatHeight)/ticksPerBeat) - pe.scrollY
 				if y >= dst.Y && y < dst.Y+dst.H {
 					alpha := uint8(255)
-					if e.Tick%(ticksPerBeat/int64(pe.division)) != 0 {
+					if e.Tick != pe.roundTickToDivision(e.Tick) {
 						alpha = pe.offDivAlphaMod
 					}
 					pe.printer.drawAlpha(r, e.uiString, x+padding/2, y+padding/2, alpha)
