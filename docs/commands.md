@@ -168,4 +168,5 @@ available MIDI inputs/outputs by index.
 startup will need this to interpret pitches correctly.
 
 **Send GM system on** - Resets the state of compliant outputs to the GM
-defaults. (And then sends the pitch bend sensitivity RPN.)
+defaults. (And then sends the pitch bend sensitivity RPN.) This also resets the
+virtual channel states.

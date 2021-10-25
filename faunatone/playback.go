@@ -145,6 +145,9 @@ func (p *player) run() {
 		case signalSendGMSystemOn:
 			writer.SysEx(p.writer, []byte{0x7e, 0x7f, 0x09, 0x01})
 			for i := range p.midiChannels {
+				p.virtChannels[i] = newChannelState()
+			}
+			for i := range p.midiChannels {
 				p.midiChannels[i] = newChannelState()
 			}
 		case signalSongChanged:
