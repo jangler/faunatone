@@ -170,14 +170,15 @@ func (t *track) getEventAtTick(tick int64) *trackEvent {
 }
 
 type trackEvent struct {
-	Tick      int64
-	Type      trackEventType
-	FloatData float64 `json:",omitempty"`
-	ByteData1 byte    `json:",omitempty"`
-	ByteData2 byte    `json:",omitempty"`
-	TextData  string  `json:",omitempty"`
-	uiString  string
-	track     int
+	Tick       int64
+	Type       trackEventType
+	FloatData  float64 `json:",omitempty"`
+	ByteData1  byte    `json:",omitempty"`
+	ByteData2  byte    `json:",omitempty"`
+	TextData   string  `json:",omitempty"`
+	uiString   string
+	track      int
+	chordIndex uint8 // for chord entry
 }
 
 func newTrackEvent(te *trackEvent, k *keymap) *trackEvent {

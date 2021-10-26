@@ -39,7 +39,7 @@ type keymap struct {
 	isPerc      bool
 	keyNotes    map[string]*trackEvent // map of keys to note on events
 	midiNotes   [128]*trackEvent       // map of midi notes to note on events
-	activeNotes int
+	activeNotes [24]bool
 }
 
 // an entry in a keymap
@@ -444,7 +444,7 @@ func (k *keymap) keyboardEvent(e *sdl.KeyboardEvent, pe *patternEditor, p *playe
 				track: te.track,
 			}}
 			delete(k.keyNotes, s)
-			k.activeNotes--
+			k.setActiveNote(te.chordIndex, false)
 		}
 	}
 }
@@ -476,7 +476,7 @@ func (k *keymap) midiEvent(msg []byte, pe *patternEditor, p *player, keyjazz boo
 				track: te.track,
 			}}
 			k.midiNotes[msg[1]] = nil
-			k.activeNotes--
+			k.setActiveNote(te.chordIndex, false)
 		}
 	}
 }
@@ -500,29 +500,48 @@ func (k *keymap) pitchFromString(s string, refPitch float64) (float64, bool) {
 // set the track and write/play a note on / drum note on event as appropriate
 func (k *keymap) processKeymapNoteOn(te *trackEvent, pe *patternEditor, p *player, keyjazz bool) {
 	trackMin, trackMax, _, _ := pe.getSelection()
-	te.track = trackMin + k.activeNotes
+	te.chordIndex = k.getFirstFreeChordIndex()
+	te.track = trackMin + int(te.chordIndex)
 	if te.track > trackMax {
+		te.chordIndex -= uint8(te.track - trackMax)
 		te.track = trackMax
 	}
+	k.setActiveNote(te.chordIndex, true)
 	for i, v := range k.keyNotes {
 		if v.track == te.track {
 			delete(k.keyNotes, i)
-			k.activeNotes--
+			k.setActiveNote(v.chordIndex, false)
 			break
 		}
 	}
 	for i, v := range k.midiNotes {
 		if v != nil && v.track == te.track {
 			k.midiNotes[i] = nil
-			k.activeNotes--
+			k.setActiveNote(v.chordIndex, false)
 			break
 		}
 	}
-	k.activeNotes++
 	if keyjazz {
 		p.signal <- playerSignal{typ: signalEvent, event: te}
 	} else {
 		pe.writeEvent(te, p)
+	}
+}
+
+// get index of first false entry in activeNotes
+func (k *keymap) getFirstFreeChordIndex() uint8 {
+	for i, v := range k.activeNotes {
+		if !v {
+			return uint8(i)
+		}
+	}
+	return 0
+}
+
+// set activeNotes[i] to v, with bounds checking
+func (k *keymap) setActiveNote(i uint8, v bool) {
+	if int(i) < len(k.activeNotes) {
+		k.activeNotes[i] = v
 	}
 }
 
