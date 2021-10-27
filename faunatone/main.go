@@ -384,9 +384,12 @@ func main() {
 
 	// attempt to load save file specified by first CLI arg
 	if len(os.Args) > 1 {
-		if f, err := os.Open(os.Args[1]); err == nil {
+		path := os.Args[1]
+		if f, err := os.Open(path); err == nil {
 			if err := sng.read(f); err == nil {
-				statusf("Loaded %s.", os.Args[1])
+				statusf("Loaded %s.", path)
+				saveAutofill = filepath.Base(path)
+				exportAutofill = replaceSuffix(saveAutofill, fileExt, ".mid")
 			} else {
 				dia.message(err.Error())
 			}
