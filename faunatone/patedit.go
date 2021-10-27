@@ -72,6 +72,13 @@ type editAction struct {
 	size         int
 }
 
+// return true if the action does nothing
+func (ea *editAction) isNop() bool {
+	return len(ea.beforeTracks) == 0 && len(ea.afterTracks) == 0 &&
+		len(ea.beforeEvents) == 0 && len(ea.afterEvents) == 0 &&
+		ea.trackShift == nil && ea.tickShift == nil
+}
+
 // substruct in editAction
 type trackShift struct {
 	min, max, offset int
@@ -453,7 +460,7 @@ func (pe *patternEditor) insertTracks() {
 func (pe *patternEditor) deleteTracks() {
 	trackMin, trackMax, _, _ := pe.getSelection()
 	ea := &editAction{}
-	for i := trackMin; i <= trackMax; i++ {
+	for i := trackMin; i <= trackMax && len(pe.song.Tracks)-len(ea.beforeTracks) > 1; i++ {
 		t := pe.song.Tracks[i]
 		ea.beforeTracks = append(ea.beforeTracks, newTrack(t.Channel, i))
 		for _, te := range t.Events {
@@ -797,8 +804,11 @@ func (pe *patternEditor) addTrack(t *track) {
 }
 
 // do a new edit action and insert it at the history index, clearing the
-// history beyond that index
+// history beyond that index. ignores nop actions
 func (pe *patternEditor) doNewEditAction(ea *editAction) {
+	if ea.isNop() {
+		return // nop action
+	}
 	pe.historyIndex++
 	pe.history = pe.history[:pe.historyIndex]
 	pe.history = append(pe.history, ea)
