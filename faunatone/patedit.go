@@ -58,7 +58,6 @@ type patternEditor struct {
 	followSong       bool
 	prevPlayPos      int64
 	offDivAlphaMod   uint8
-	shiftScrollMult  int
 }
 
 // used for undo/redo. the track structs have nil event slices.
@@ -283,11 +282,7 @@ func (pe *patternEditor) roundTickToDivision(t int64) int64 {
 
 // respond to mouse wheel events
 func (pe *patternEditor) mouseWheel(e *sdl.MouseWheelEvent) {
-	st := scrollTicks
-	if sdl.GetModState()&sdl.KMOD_SHIFT != 0 {
-		st *= pe.shiftScrollMult
-	}
-	pe.scrollY -= e.Y * int32(st) * pe.beatHeight / ticksPerBeat
+	pe.scrollY -= e.Y * scrollTicks * pe.beatHeight / ticksPerBeat
 	if pe.scrollY < 0 {
 		pe.scrollY = 0
 	}

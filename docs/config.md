@@ -44,8 +44,6 @@ folder.
 **OffDivisionAlpha** - The alpha value to use for drawing events that don't
 fall on a current division of the beat, range 0 to 255.
 
-**ShiftScrollMult** - Multiplier for scroll wheel distance when a Shift key is held.
-
 **UndoBufferSize** - The approximate limit on the size of the undo buffer, in bytes.
 
 **WindowHeight** - The initial height of the window, in pixels.
