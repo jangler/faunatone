@@ -26,6 +26,7 @@ type settings struct {
 	MidiInPortNumber  int
 	MidiOutPortNumber int
 	OffDivisionAlpha  int
+	ShiftScrollMult   int
 	UndoBufferSize    int
 	WindowHeight      int
 	WindowWidth       int
