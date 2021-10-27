@@ -605,6 +605,7 @@ func dialogSetController(d *dialog, pe *patternEditor) {
 func dialogSetDivision(d *dialog, pe *patternEditor) {
 	d.getInt("Division:", 1, ticksPerBeat, func(i int64) {
 		pe.division = int(i)
+		pe.fixCursor()
 	})
 }
 
