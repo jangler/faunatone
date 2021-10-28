@@ -133,7 +133,6 @@ func main() {
 	must(err)
 	defer ttf.Quit()
 	fontPath := joinTreePath(assetsPath, settings.Font)
-	println(fontPath)
 	font, err := ttf.OpenFont(fontPath, settings.FontSize)
 	must(err)
 	defer font.Close()
@@ -657,6 +656,7 @@ func dialogRemapKey(d *dialog, s *song, pe *patternEditor) {
 					*existing = *ki
 				}
 				s.Keymap.Name = addSuffixIfMissing(s.Keymap.Name, "*")
+				s.Keymap.setMidiPattern()
 				s.renameNotes()
 				pe.updateRefPitchDisplay()
 				statusf("Remapped %s.", s1)
