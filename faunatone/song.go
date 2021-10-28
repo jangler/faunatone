@@ -68,7 +68,9 @@ func (s *song) read(r io.Reader) error {
 		s.Keymap = newEmptyKeymap("none")
 	}
 	for _, ki := range s.Keymap.Items {
-		ki.class = posMod(ki.Interval, 12)
+		if ki.PitchSrc == nil {
+			ki.PitchSrc = newSemiPitch(ki.Interval)
+		}
 	}
 	s.Keymap.setMidiPattern()
 	s.Keymap.keyNotes = make(map[string]*trackEvent)
@@ -86,6 +88,9 @@ func (s *song) read(r io.Reader) error {
 func (s *song) write(w io.Writer) error {
 	comp := zlib.NewWriter(w)
 	enc := json.NewEncoder(comp)
+	for _, ki := range s.Keymap.Items {
+		ki.Interval = ki.PitchSrc.semitones() // for backward compatibility
+	}
 	if err := enc.Encode(s); err != nil {
 		return err
 	}

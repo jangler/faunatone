@@ -500,8 +500,8 @@ func dialogGoToBeat(d *dialog, pe *patternEditor) {
 // set d to an input dialog
 func dialogInsertNote(d *dialog, pe *patternEditor, p *player) {
 	*d = *newDialog("Interval:", 7, func(s string) {
-		if f, err := parsePitch(s, pe.song.Keymap); err == nil {
-			f = math.Min(maxPitch, math.Max(minPitch, f+pe.refPitch))
+		if ps, err := parsePitch(s, pe.song.Keymap); err == nil {
+			f := math.Min(maxPitch, math.Max(minPitch, ps.semitones()+pe.refPitch))
 			track, _, _, _ := pe.getSelection()
 			pe.writeEvent(newTrackEvent(&trackEvent{
 				Type:      noteOnEvent,
@@ -649,8 +649,8 @@ func dialogSetVelocity(d *dialog, pe *patternEditor) {
 func dialogRemapKey(d *dialog, s *song, pe *patternEditor) {
 	*d = *newDialog("Remap key...", 0, func(s1 string) {
 		*d = *newDialog("Interval:", 7, func(s2 string) {
-			if f, err := parsePitch(s2, s.Keymap); err == nil {
-				ki := newKeyInfo(s1, strings.HasPrefix(s2, "*"), f, s1, s2)
+			if ps, err := parsePitch(s2, s.Keymap); err == nil {
+				ki := newKeyInfo(s1, strings.HasPrefix(s2, "*"), s1, ps)
 				if existing := s.Keymap.getByKey(s1); existing == nil {
 					s.Keymap.Items = append(s.Keymap.Items, ki)
 				} else {
@@ -711,9 +711,9 @@ func dialogImportScl(d *dialog, sng *song, pe *patternEditor) {
 
 // set d to an input dialog chain
 func dialogMakeEdoKeymap(d *dialog, sng *song, pe *patternEditor) {
-	d.getInterval("Interval to divide:", sng.Keymap, func(f float64) {
+	d.getInterval("Interval to divide:", sng.Keymap, func(ps *pitchSrc) {
 		d.getInt("Number of divisions:", 1, 127, func(i int64) {
-			sng.Keymap = genEqualDivisionKeymap(f, int(i))
+			sng.Keymap = genEqualDivisionKeymap(ps.semitones(), int(i))
 			sng.renameNotes()
 			pe.updateRefPitchDisplay()
 		})
@@ -722,8 +722,8 @@ func dialogMakeEdoKeymap(d *dialog, sng *song, pe *patternEditor) {
 
 // set d to an input dialog chain
 func dialogMakeRank2Keyamp(d *dialog, sng *song, pe *patternEditor) {
-	d.getInterval("Period:", sng.Keymap, func(per float64) {
-		d.getInterval("Generator:", sng.Keymap, func(gen float64) {
+	d.getInterval("Period:", sng.Keymap, func(per *pitchSrc) {
+		d.getInterval("Generator:", sng.Keymap, func(gen *pitchSrc) {
 			d.getInt("Number of notes:", 1, 127, func(i int64) {
 				if k, err := genRank2Keymap(per, gen, int(i)); err == nil {
 					sng.Keymap = k
@@ -739,9 +739,9 @@ func dialogMakeRank2Keyamp(d *dialog, sng *song, pe *patternEditor) {
 
 // set d to an input dialog chain
 func dialogMakeIsoKeymap(d *dialog, sng *song, pe *patternEditor) {
-	d.getInterval("First interval:", sng.Keymap, func(f1 float64) {
-		d.getInterval("Second interval:", sng.Keymap, func(f2 float64) {
-			sng.Keymap = genIsoKeymap(f1, f2)
+	d.getInterval("First interval:", sng.Keymap, func(ps1 *pitchSrc) {
+		d.getInterval("Second interval:", sng.Keymap, func(ps2 *pitchSrc) {
+			sng.Keymap = genIsoKeymap(ps1, ps2)
 			sng.renameNotes()
 			pe.updateRefPitchDisplay()
 		})

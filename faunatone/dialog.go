@@ -97,10 +97,10 @@ func (d *dialog) getFloat(prompt string, min, max float64, action func(float64))
 }
 
 // set d to an interval dialog that checks for syntax errors
-func (d *dialog) getInterval(prompt string, k *keymap, action func(float64)) {
+func (d *dialog) getInterval(prompt string, k *keymap, action func(*pitchSrc)) {
 	*d = *newDialog(prompt, 10, func(s string) {
-		if f, err := parsePitch(s, k); err == nil {
-			action(f)
+		if ps, err := parsePitch(s, k); err == nil {
+			action(ps)
 		} else {
 			d.message(err.Error())
 		}

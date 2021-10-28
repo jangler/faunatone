@@ -46,23 +46,20 @@ type keymap struct {
 type keyInfo struct {
 	Key      string
 	IsMod    bool
-	Interval float64
+	Interval float64 // kept only for backwards compatibility, use semitones()
 	Name     string
-	Origin   string // the way the interval was written originally
-
-	class float64 // like pitch class; derived from Interval
+	PitchSrc *pitchSrc
 }
 
-// initialize a new key
-func newKeyInfo(key string, isMod bool, interval float64, name, origin string) *keyInfo {
-	return &keyInfo{
+// initialize a new key. does not report errors for bad src.
+func newKeyInfo(key string, isMod bool, name string, src *pitchSrc) *keyInfo {
+	ki := &keyInfo{
 		Key:      key,
 		IsMod:    isMod,
-		Interval: interval,
 		Name:     name,
-		Origin:   origin,
-		class:    posMod(interval, 12),
+		PitchSrc: src,
 	}
+	return ki
 }
 
 // modulo where result is always in the range [0, y)
@@ -84,11 +81,8 @@ func newKeymap(path string) (*keymap, error) {
 			if len(rec) == 3 {
 				if pitch, err := parsePitch(rec[2], k); err == nil {
 					name := rec[1]
-					if name == "" {
-						name = rec[2] // use origin as name if name is absent
-					}
-					k.Items = append(k.Items, newKeyInfo(
-						rec[0], strings.HasPrefix(rec[2], "*"), pitch, name, rec[2]))
+					k.Items = append(k.Items,
+						newKeyInfo(rec[0], strings.HasPrefix(rec[2], "*"), name, pitch))
 					ok = true
 				}
 			}
@@ -100,7 +94,7 @@ func newKeymap(path string) (*keymap, error) {
 		k.Name = "none"
 		return k, err
 	}
-	k.duplicateOctave(12)
+	k.duplicateOctave(newRatPitch(2, 1))
 	k.setMidiPattern()
 	if len(errs) > 0 {
 		return k, errors.New(strings.Join(errs, "\n"))
@@ -120,17 +114,14 @@ func newEmptyKeymap(name string) *keymap {
 func (k *keymap) write(path string) error {
 	records := make([][]string, len(k.Items))
 	for i, ki := range k.Items {
-		pitchString := ki.Origin
-		if pitchString == "" {
-			pitchString = fmt.Sprintf("%f", ki.Interval)
-		}
-		records[i] = []string{ki.Key, ki.Name, pitchString}
+		records[i] = []string{ki.Key, ki.Name, ki.PitchSrc.String()}
 	}
 	return writeCSV(filepath.Join(keymapPath, path), records)
 }
 
 // duplicate Q-0 keys in Z-; if matching Z-; keys are free
-func (k *keymap) duplicateOctave(interval float64) {
+func (k *keymap) duplicateOctave(interval *pitchSrc) {
+	interval = interval.invert()
 	for i := 0; i < 19; i++ {
 		x, y := (i+1)/2, 1-(i%2)
 		if k.getByKey(qwertyLayout[y][x]) != nil && k.getByKey(qwertyLayout[y+2][x]) != nil {
@@ -141,7 +132,7 @@ func (k *keymap) duplicateOctave(interval float64) {
 		x, y := (i+1)/2, 1-(i%2)
 		if ki := k.getByKey(qwertyLayout[y][x]); ki != nil {
 			k.Items = append(k.Items, newKeyInfo(
-				qwertyLayout[y+2][x], ki.IsMod, ki.Interval-interval, ki.Name, ""))
+				qwertyLayout[y+2][x], ki.IsMod, "", ki.PitchSrc.add(interval)))
 		}
 	}
 }
@@ -152,7 +143,7 @@ func (k *keymap) setMidiPattern() {
 	for _, ki := range k.Items {
 		if midiRegexp.MatchString(ki.Key) {
 			if i, err := strconv.ParseUint(ki.Key[1:], 10, 8); err == nil && i < 128 {
-				k.midimap[i] = ki.Interval
+				k.midimap[i] = ki.PitchSrc.semitones()
 				if firstMidi == -1 || int(i) < firstMidi {
 					firstMidi = int(i)
 				}
@@ -189,7 +180,7 @@ func keymapFromSclFile(path string) (*keymap, error) {
 		return nil, err
 	}
 	defer f.Close()
-	var scale []float64
+	var scale []*pitchSrc
 	scanner := bufio.NewScanner(f)
 	i := 0
 	for scanner.Scan() {
@@ -197,7 +188,7 @@ func keymapFromSclFile(path string) (*keymap, error) {
 		if !strings.HasPrefix(line, "!") {
 			if i == 1 {
 				if n, err := strconv.ParseUint(line, 10, 16); err == nil {
-					scale = make([]float64, n+1)
+					scale = make([]*pitchSrc, n+1)
 				} else {
 					return nil, fmt.Errorf("Invalid scale file.")
 				}
@@ -217,27 +208,27 @@ func keymapFromSclFile(path string) (*keymap, error) {
 	return k, err
 }
 
-// convert a scala pitch string into a midi interval
-func parseScalaPitch(s string) (float64, error) {
+// convert a scala pitch string into a pitch struct
+func parseScalaPitch(s string) (*pitchSrc, error) {
 	if m := ratioRegexp.FindAllStringSubmatch(s, 1); m != nil {
-		num, _ := strconv.ParseFloat(m[0][1], 64)
-		den, _ := strconv.ParseFloat(m[0][2], 64)
-		return 12 * math.Log(num/den) / math.Log(2), nil
+		num, _ := strconv.ParseUint(m[0][1], 10, 64)
+		den, _ := strconv.ParseUint(m[0][2], 10, 64)
+		return newRatPitch(int(num), int(den)), nil
 	}
 	f, err := strconv.ParseFloat(s, 64)
-	return f / 100, err
+	return newSemiPitch(f / 100), err
 }
 
 // generate a keymap for an equal division of an interval. this gets you full
 // coverage on computer keyboard for up to 38edo. (sorry, 41edo enthusiasts.
 // there's not enough keys. midi should work up to 127edo.)
 func genEqualDivisionKeymap(interval float64, n int) *keymap {
-	scale := make([]float64, n+1)
+	scale := make([]*pitchSrc, n+1)
 	for i := 0; i < n+1; i++ {
-		scale[i] = interval / float64(n) * float64(i)
+		scale[i] = newEdxPitch(interval, i, n)
 	}
 	k := genScaleKeymap(fmt.Sprintf("%ded%s", n, getEdxChar(interval)), scale)
-	k.duplicateOctave(interval)
+	k.duplicateOctave(newSemiPitch(interval))
 	k.setMidiPattern()
 	return k
 }
@@ -257,28 +248,30 @@ func getEdxChar(interval float64) string {
 }
 
 // generate a keymap for a rank-2 temperament scale
-func genRank2Keymap(per, gen float64, n int) (*keymap, error) {
-	if math.Mod(12, per) != 0 {
+func genRank2Keymap(per, gen *pitchSrc, n int) (*keymap, error) {
+	if math.Mod(12, per.semitones()) != 0 {
 		return nil, fmt.Errorf("Octave must be divisible by period.")
 	}
-	nPeriods := int(12 / per)
-	scale := make([]float64, n+1)
+	nPeriods := int(12 / per.semitones())
+	scale := make([]*pitchSrc, n+1)
 	for i := 0; i < n/nPeriods; i++ {
 		for j := 0; j < nPeriods; j++ {
-			scale[i+j*n/nPeriods] = math.Mod(gen*float64(i), per) + per*float64(j)
+			scale[i+j*n/nPeriods] = gen.multiply(i).modulo(per).add(per.multiply(j))
 		}
 	}
-	scale[len(scale)-1] = 12
-	sort.Float64s(scale)
+	scale[len(scale)-1] = scale[0].add(newSemiPitch(12))
+	sort.Slice(scale, func(i, j int) bool {
+		return scale[i].semitones() < scale[j].semitones()
+	})
 	k := genScaleKeymap("gen-rank2", scale)
-	k.duplicateOctave(12)
+	k.duplicateOctave(scale[len(scale)-1])
 	k.setMidiPattern()
 	return k, nil
 }
 
 // helper function for genEqualDivisionKeymap and genRank2Keymap
 // scale should contain both the identity and the period (ex, 1/1 and 2/1)
-func genScaleKeymap(name string, scale []float64) *keymap {
+func genScaleKeymap(name string, scale []*pitchSrc) *keymap {
 	k := newEmptyKeymap(name)
 	n := len(scale) - 1
 	w, h := len(qwertyLayout[0]), len(qwertyLayout)
@@ -295,7 +288,7 @@ func genScaleKeymap(name string, scale []float64) *keymap {
 				break
 			}
 			k.Items = append(k.Items, newKeyInfo(qwertyLayout[y][x], false,
-				scale[i], fmt.Sprintf("%d'", (i%int(n))+1), ""))
+				fmt.Sprintf("%d'", (i%int(n))+1), scale[i]))
 		} else if n < w*h/2 {
 			// two sets of two alternating rows, Q2W3... and ZSXD...
 			// (second row set by duplicateOctave)
@@ -304,7 +297,7 @@ func genScaleKeymap(name string, scale []float64) *keymap {
 			}
 			y = 1 - (x % 2)
 			k.Items = append(k.Items, newKeyInfo(qwertyLayout[y][(x+1)/2], false,
-				scale[i], fmt.Sprintf("%d'", (i%int(n))+1), ""))
+				fmt.Sprintf("%d'", (i%int(n))+1), scale[i]))
 		} else {
 			// Q2W3 same as above, then go backwards down /;.L
 			if x >= w*2-1 {
@@ -312,26 +305,26 @@ func genScaleKeymap(name string, scale []float64) *keymap {
 			}
 			y = 1 - (x % 2)
 			k.Items = append(k.Items, newKeyInfo(qwertyLayout[y][(x+1)/2], false,
-				scale[i], fmt.Sprintf("%d'", (i%int(n))+1), ""))
+				fmt.Sprintf("%d'", (i%int(n))+1), scale[i]))
 			k.Items = append(k.Items, newKeyInfo(qwertyLayout[y+2][w-x/2-1], false,
-				-scale[i+1], fmt.Sprintf("%d'", ((n-i-1)%int(n))+1), ""))
+				fmt.Sprintf("%d'", ((n-i-1)%int(n))+1), scale[i+1].invert()))
 		}
 		x++
 	}
 	// midi is simpler
 	for i := 0; i <= n; i++ {
 		k.Items = append(k.Items, newKeyInfo(fmt.Sprintf("m%d", midiRoot+i), false,
-			scale[i], fmt.Sprintf("%d'", (i%int(n))+1), ""))
+			fmt.Sprintf("%d'", (i%int(n))+1), scale[i]))
 	}
 	// 1 and A are unused by these layouts, so map them to octaves. this is
 	// useful for edos 10 and >18
-	k.Items = append(k.Items, newKeyInfo("1", false, 12, "1'", "2/1"))
-	k.Items = append(k.Items, newKeyInfo("A", false, -12, "1'", "1/2"))
+	k.Items = append(k.Items, newKeyInfo("1", false, "1'", newRatPitch(2, 1)))
+	k.Items = append(k.Items, newKeyInfo("A", false, "1'", newRatPitch(1, 2)))
 	return k
 }
 
 // generate a two-dimensional isomorphic keyboard keymap from two intervals
-func genIsoKeymap(interval1, interval2 float64) *keymap {
+func genIsoKeymap(ps1, ps2 *pitchSrc) *keymap {
 	k := newEmptyKeymap("gen-iso")
 	vectors := make([][3]int, len(qwertyLayout)*len(qwertyLayout[0]))
 	i := 0
@@ -349,8 +342,8 @@ func genIsoKeymap(interval1, interval2 float64) *keymap {
 		x, y := v[0], v[1]
 		key := qwertyLayout[y][x]
 		k.Items = append(k.Items, newKeyInfo(key, false,
-			interval1*float64(x-isoCenterX+y-2)+interval2*float64(isoCenterY-y),
-			fmt.Sprintf("(%d.%d)", x-isoCenterX+y-2, isoCenterY-y), "",
+			fmt.Sprintf("(%d.%d)", x-isoCenterX+y-2, isoCenterY-y),
+			ps1.multiply(x-isoCenterX+y-2).add(ps2.multiply((isoCenterY-y))),
 		))
 	}
 	return k
@@ -370,28 +363,34 @@ var (
 	keyRefRegexp  = regexp.MustCompile(`^@(.+)$`)
 )
 
-// convert a string to a floating-point midi pitch offset
-func parsePitch(s string, k *keymap) (float64, error) {
+// convert a string to a pitch struct
+func parsePitch(s string, k *keymap) (*pitchSrc, error) {
 	if strings.HasPrefix(s, "*") {
 		s = s[1:]
 	}
 	if m := ratioRegexp.FindAllStringSubmatch(s, 1); m != nil {
 		num, _ := strconv.ParseFloat(m[0][1], 64)
 		den, _ := strconv.ParseFloat(m[0][2], 64)
-		return 12 * math.Log(num/den) / math.Log(2), nil
+		if math.Round(num) == num && math.Round(den) == den {
+			return newRatPitch(int(num), int(den)), nil
+		}
+		return newSemiPitch(12 * math.Log(num/den) / math.Log(2)), nil
 	} else if m := edoStepRegexp.FindAllStringSubmatch(s, 1); m != nil {
 		step, _ := strconv.ParseFloat(m[0][1], 64)
 		edo, _ := strconv.ParseFloat(m[0][2], 64)
-		return 12 / edo * step, nil
+		if math.Round(step) == step && math.Round(edo) == edo {
+			return newEdxPitch(12, int(step), int(edo)), nil
+		}
+		return newSemiPitch(12 * step / edo), nil
 	} else if m := keyRefRegexp.FindAllStringSubmatch(s, 1); m != nil {
 		if ki := k.getByKey(m[0][1]); ki != nil {
-			return ki.Interval, nil
+			return ki.PitchSrc, nil
 		}
-		return 0, fmt.Errorf("No key \"%s\" in keymap.", m[0][1])
+		return nil, fmt.Errorf("No key \"%s\" in keymap.", m[0][1])
 	} else if f, err := strconv.ParseFloat(s, 64); err == nil {
-		return f, nil
+		return newSemiPitch(f), nil
 	}
-	return 0, fmt.Errorf("Invalid pitch syntax.")
+	return nil, fmt.Errorf("Invalid pitch syntax.")
 }
 
 // return a keyInfo with a matching key, if any
@@ -484,7 +483,7 @@ func (k *keymap) midiEvent(msg []byte, pe *patternEditor, p *player, keyjazz boo
 // convert a key string to an absolute pitch
 func (k *keymap) pitchFromString(s string, refPitch float64) (float64, bool) {
 	if ki := k.getByKey(s); ki != nil {
-		pitch := ki.Interval + refPitch
+		pitch := ki.PitchSrc.semitones() + refPitch
 		pitch = math.Max(minPitch, math.Min(maxPitch, pitch))
 		return pitch, true
 	} else if midiRegexp.MatchString(s) {
@@ -573,18 +572,31 @@ var endsWithDigitRegexp = regexp.MustCompile(`\d$`)
 func (k *keymap) notatePitchWithMods(f float64, mods ...*keyInfo) string {
 	modString := ""
 	for _, mod := range mods {
-		f -= mod.Interval
+		f -= mod.PitchSrc.semitones()
 		modString += mod.Name
 	}
 	target := posMod(f, 12)
+	var match *keyInfo
 	for _, ki := range k.Items {
-		if !ki.IsMod && ki.Name != "" && math.Abs(ki.class-target) < 0.01 {
-			digitSpacer := ""
-			if endsWithDigitRegexp.MatchString(ki.Name + modString) {
-				digitSpacer = "-"
+		if !ki.IsMod && math.Abs(ki.PitchSrc.class(12)-target) < 0.01 {
+			if match == nil {
+				match = ki
 			}
-			return fmt.Sprintf("%s%s%s%d", ki.Name, modString, digitSpacer, int(f)/12)
+			if ki.Name != "" {
+				digitSpacer := ""
+				if endsWithDigitRegexp.MatchString(ki.Name + modString) {
+					digitSpacer = "-"
+				}
+				return fmt.Sprintf("%s%s%s%d", ki.Name, modString, digitSpacer, int(f)/12)
+			}
 		}
+	}
+	if match != nil {
+		digitSpacer := ""
+		if modString == "" { // raw interval strings always end with digits
+			digitSpacer = "-"
+		}
+		return fmt.Sprintf("%s%s%s%d", match.PitchSrc.String(), modString, digitSpacer, int(f)/12)
 	}
 	return ""
 }
