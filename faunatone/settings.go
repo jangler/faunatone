@@ -2,13 +2,12 @@ package main
 
 import (
 	"fmt"
-	"path/filepath"
 	"reflect"
 	"strconv"
 )
 
 var (
-	settingsPath = filepath.Join(configPath, "settings.csv")
+	settingsPath = joinTreePath(configPath, "settings.csv")
 )
 
 type settings struct {

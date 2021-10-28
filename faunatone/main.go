@@ -132,7 +132,8 @@ func main() {
 	err = ttf.Init()
 	must(err)
 	defer ttf.Quit()
-	fontPath := filepath.Join(assetsPath, settings.Font)
+	fontPath := joinTreePath(assetsPath, settings.Font)
+	println(fontPath)
 	font, err := ttf.OpenFont(fontPath, settings.FontSize)
 	must(err)
 	defer font.Close()
@@ -763,7 +764,7 @@ func dialogNew(d *dialog, sng *song, pe *patternEditor, p *player) {
 func dialogOpen(d *dialog, sng *song, pe *patternEditor, p *player) {
 	d.getPath("Load song:", savesPath, ".faun", func(s string) {
 		s = addSuffixIfMissing(s, fileExt)
-		if f, err := os.Open(filepath.Join(savesPath, s)); err == nil {
+		if f, err := os.Open(joinTreePath(savesPath, s)); err == nil {
 			defer f.Close()
 			p.stop(true)
 			if err := sng.read(f); err == nil {
@@ -788,7 +789,7 @@ func dialogSaveAs(d *dialog, sng *song) {
 			exportAutofill = replaceSuffix(s, fileExt, ".mid")
 		}
 		os.MkdirAll(savesPath, 0755)
-		if f, err := os.Create(filepath.Join(savesPath, s)); err == nil {
+		if f, err := os.Create(joinTreePath(savesPath, s)); err == nil {
 			defer f.Close()
 			if err := sng.write(f); err != nil {
 				d.message(err.Error())
@@ -812,7 +813,7 @@ func dialogExportMIDI(d *dialog, sng *song, p *player) {
 		}
 		p.stop(true) // avoid race condition
 		os.MkdirAll(exportsPath, 0755)
-		if err := sng.exportSMF(filepath.Join(exportsPath, s)); err != nil {
+		if err := sng.exportSMF(joinTreePath(exportsPath, s)); err != nil {
 			d.message(err.Error())
 		} else {
 			statusf("Wrote %s.", s)
@@ -922,4 +923,29 @@ func replaceSuffix(s, old, new_ string) string {
 		return s[:len(s)-len(old)] + new_
 	}
 	return s
+}
+
+// cached for joinTreePath
+var exePath string
+
+// like filepath.Join, but relative to the executable's dir
+// falls back onto the working dir if the exe-relative path doesn't exist
+func joinTreePath(elem ...string) string {
+	if exePath == "" {
+		var err error
+		if exePath, err = os.Executable(); err == nil {
+			if exePath, err = filepath.EvalSymlinks(exePath); err != nil {
+				statusf(err.Error())
+			}
+		} else {
+			statusf(err.Error())
+		}
+	}
+	if exePath != "" {
+		result := filepath.Join(append([]string{filepath.Dir(exePath)}, elem...)...)
+		if _, err := os.Stat(result); err == nil {
+			return result
+		}
+	}
+	return filepath.Join(elem...)
 }

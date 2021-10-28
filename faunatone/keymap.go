@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	keymapPath = filepath.Join(configPath, "keymaps")
+	keymapPath = joinTreePath(configPath, "keymaps")
 
 	qwertyLayout = [][]string{
 		{"1", "2", "3", "4", "5", "6", "7", "8", "9", "0"},
@@ -78,7 +78,7 @@ func posMod(x, y float64) float64 {
 func newKeymap(path string) (*keymap, error) {
 	errs := []string{}
 	k := newEmptyKeymap(strings.Replace(filepath.Base(path), ".csv", "", 1))
-	if records, err := readCSV(filepath.Join(keymapPath, path)); err == nil {
+	if records, err := readCSV(joinTreePath(keymapPath, path)); err == nil {
 		for _, rec := range records {
 			ok := false
 			if len(rec) == 3 {
@@ -126,7 +126,7 @@ func (k *keymap) write(path string) error {
 		}
 		records[i] = []string{ki.Key, ki.Name, pitchString}
 	}
-	return writeCSV(filepath.Join(keymapPath, path), records)
+	return writeCSV(joinTreePath(keymapPath, path), records)
 }
 
 // duplicate Q-0 keys in Z-; if matching Z-; keys are free
@@ -184,7 +184,7 @@ func (k *keymap) repeatMidiPattern(firstIndex, lastIndex int) {
 
 // convert a scala .scl file into a keymap
 func keymapFromSclFile(path string) (*keymap, error) {
-	f, err := os.Open(filepath.Join(keymapPath, path))
+	f, err := os.Open(joinTreePath(keymapPath, path))
 	if err != nil {
 		return nil, err
 	}
