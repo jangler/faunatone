@@ -573,7 +573,11 @@ func (k *keymap) notatePitchWithMods(f float64, mods ...*keyInfo) string {
 	modString := ""
 	for _, mod := range mods {
 		f -= mod.PitchSrc.semitones()
-		modString += mod.Name
+		if mod.Name == "" {
+			modString += mod.Key
+		} else {
+			modString += mod.Name
+		}
 	}
 	target := posMod(f, 12)
 	var match *keyInfo
