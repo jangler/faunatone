@@ -650,7 +650,7 @@ func dialogRemapKey(d *dialog, s *song, pe *patternEditor) {
 	*d = *newDialog("Remap key...", 0, func(s1 string) {
 		*d = *newDialog("Interval:", 7, func(s2 string) {
 			if ps, err := parsePitch(s2, s.Keymap); err == nil {
-				ki := newKeyInfo(s1, strings.HasPrefix(s2, "*"), s1, ps)
+				ki := newKeyInfo(s1, strings.HasPrefix(s2, "*"), "", ps)
 				if existing := s.Keymap.getByKey(s1); existing == nil {
 					s.Keymap.Items = append(s.Keymap.Items, ki)
 				} else {
