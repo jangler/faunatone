@@ -49,6 +49,9 @@ The keymap loader is able to "fill in the blanks" in a few ways:
    The defined octave must include both the unison mapping and the
    octave/period mapping.
 
+The first field of a line can be left blank to specify notation for an interval
+interval without mapping it.
+
 For the purposes of keymaps, keyboard input is interpreted by its scancode (and
 therefore its position on the physical keyboard) rather than its symbolic
 value. This means that keymaps must always be written for QWERTY keyboards, but
