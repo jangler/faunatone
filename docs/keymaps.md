@@ -41,7 +41,9 @@ the loader. The equivalent MIDI input mapping would be written as `m65, F-,
 The keymap loader is able to "fill in the blanks" in a few ways:
 
 1. The notation datum can be left blank if notation for the given pitch class
-   was already provided by another mapping.
+   was already provided by another mapping, or if you want the notation to be
+   determined by the interval datum (for non-accidentals) or the key datum (for
+   accidentals).
 2. If the Z-/ and A-; keyboard rows are unmapped, the Q-P and 2-0 rows are
    automatically copied onto those keys, transposed an octave down.
 3. Only one octave (or other period) of MIDI input mappings needs to be
