@@ -24,11 +24,20 @@ var (
 		{"A", "S", "D", "F", "G", "H", "J", "K", "L", ";"},
 		{"Z", "X", "C", "V", "B", "N", "M", ",", ".", "/"},
 	}
-	isoCenterX = 4
-	isoCenterY = 2
+	lowerOctaveKeys = make([]string, 19) // set in init()
+	upperOctaveKeys = make([]string, 19) // set in init()
+	isoCenterX      = 4
+	isoCenterY      = 2
 
 	midiRegexp = regexp.MustCompile(`^m(\d+)$`)
 )
+
+func init() {
+	for i := 0; i < 19; i++ {
+		lowerOctaveKeys[i] = qwertyLayout[3-(i%2)][(i+1)/2]
+		upperOctaveKeys[i] = qwertyLayout[1-(i%2)][(i+1)/2]
+	}
+}
 
 // turns key events into note events
 type keymap struct {
@@ -112,11 +121,40 @@ func newEmptyKeymap(name string) *keymap {
 
 // write a keymap to a file
 func (k *keymap) write(path string) error {
-	records := make([][]string, len(k.Items))
-	for i, ki := range k.Items {
-		records[i] = []string{ki.Key, ki.Name, ki.PitchSrc.String()}
+	records := [][]string{}
+	octavesAreDuplicated := k.areOctavesDuplicated()
+	for _, ki := range k.Items {
+		if !(octavesAreDuplicated && stringInSlice(ki.Key, lowerOctaveKeys)) {
+			records = append(records, []string{ki.Key, ki.Name, ki.PitchSrc.String()})
+		}
 	}
 	return writeCSV(filepath.Join(keymapPath, path), records)
+}
+
+// return true if high octave and low octave keys are identical separated by an
+// octave
+func (k *keymap) areOctavesDuplicated() bool {
+	octave := newRatPitch(2, 1)
+	for i, key := range lowerOctaveKeys {
+		lo := k.getByKey(key)
+		hi := k.getByKey(upperOctaveKeys[i])
+		if (lo == nil) != (hi == nil) {
+			return false
+		} else if lo != nil && *lo.PitchSrc.add(octave) != *hi.PitchSrc {
+			return false
+		}
+	}
+	return true
+}
+
+// return true if s is in a
+func stringInSlice(s string, a []string) bool {
+	for _, v := range a {
+		if v == s {
+			return true
+		}
+	}
+	return false
 }
 
 // duplicate Q-0 keys in Z-; if matching Z-; keys are free
@@ -325,8 +363,8 @@ func genScaleKeymap(name string, scale []*pitchSrc) *keymap {
 	}
 	// 1 and A are unused by these layouts, so map them to octaves. this is
 	// useful for edos 10 and >18
-	k.Items = append(k.Items, newKeyInfo("1", false, "1'", newRatPitch(2, 1)))
-	k.Items = append(k.Items, newKeyInfo("A", false, "1'", newRatPitch(1, 2)))
+	k.Items = append(k.Items, newKeyInfo("1", false, "", newRatPitch(2, 1)))
+	k.Items = append(k.Items, newKeyInfo("A", false, "", newRatPitch(1, 2)))
 	return k
 }
 
