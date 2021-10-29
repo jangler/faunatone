@@ -311,10 +311,17 @@ func genScaleKeymap(name string, scale []*pitchSrc) *keymap {
 		}
 		x++
 	}
-	// midi is simpler
+	// midi is simpler, but make sure not to duplicate notation
 	for i := 0; i <= n; i++ {
+		notation := fmt.Sprintf("%d'", (i%int(n))+1)
+		for _, ki := range k.Items {
+			if ki.Name == notation {
+				notation = ""
+				break
+			}
+		}
 		k.Items = append(k.Items, newKeyInfo(fmt.Sprintf("m%d", midiRoot+i), false,
-			fmt.Sprintf("%d'", (i%int(n))+1), scale[i]))
+			notation, scale[i]))
 	}
 	// 1 and A are unused by these layouts, so map them to octaves. this is
 	// useful for edos 10 and >18
