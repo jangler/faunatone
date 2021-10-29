@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -883,7 +884,9 @@ func writeCSV(path string, records [][]string) error {
 		return err
 	}
 	defer f.Close()
-	return csv.NewWriter(f).WriteAll(records)
+	w := csv.NewWriter(f)
+	w.UseCRLF = runtime.GOOS == "windows"
+	return w.WriteAll(records)
 }
 
 // return base+suffix if base does not already end with suffix, otherwise
@@ -933,7 +936,7 @@ func replaceSuffix(s, old, new_ string) string {
 
 // cached for joinTreePath
 var (
-	exePath string
+	exePath    string
 	useExePath bool
 )
 
