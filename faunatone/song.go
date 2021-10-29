@@ -38,7 +38,10 @@ type song struct {
 	Keymap *keymap
 }
 
-func newSong() *song {
+func newSong(k *keymap) *song {
+	if k == nil {
+		k = newEmptyKeymap("none")
+	}
 	return &song{
 		Tracks: []*track{
 			newTrack(0, 0),
@@ -46,6 +49,7 @@ func newSong() *song {
 			newTrack(0, 2),
 			newTrack(0, 3),
 		},
+		Keymap: k,
 	}
 }
 

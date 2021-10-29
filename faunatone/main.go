@@ -150,7 +150,7 @@ func main() {
 	}()
 	fps := getRefreshRate()
 
-	sng := newSong()
+	sng := newSong(nil)
 	patedit := &patternEditor{
 		printer:          pr,
 		song:             sng,
@@ -759,7 +759,7 @@ func dialogMakeIsoKeymap(d *dialog, sng *song, pe *patternEditor) {
 func dialogNew(d *dialog, sng *song, pe *patternEditor, p *player) {
 	*d = *newDialog("Create new song? (y/n)", 0, func(s string) {
 		p.stop(true)
-		*sng = *newSong()
+		*sng = *newSong(sng.Keymap)
 		pe.reset()
 		saveAutofill = ""
 		exportAutofill = ""
