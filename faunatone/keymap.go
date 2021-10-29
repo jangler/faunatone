@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	keymapPath = joinTreePath(configPath, "keymaps")
+	keymapPath = filepath.Join(configPath, "keymaps")
 
 	qwertyLayout = [][]string{
 		{"1", "2", "3", "4", "5", "6", "7", "8", "9", "0"},

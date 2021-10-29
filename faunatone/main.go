@@ -165,9 +165,15 @@ func main() {
 	pl.redrawChan = redrawChan
 	go pl.run()
 	defer pl.cleanup()
-	sng.Keymap, _ = newKeymap(settings.DefaultKeymap)
+	sng.Keymap, err = newKeymap(settings.DefaultKeymap)
+	if err != nil {
+		statusf(err.Error())
+	}
 	patedit.updateRefPitchDisplay()
-	percKeymap, _ := newKeymap(settings.PercussionKeymap)
+	percKeymap, err := newKeymap(settings.PercussionKeymap)
+	if err != nil {
+		statusf(err.Error())
+	}
 	percKeymap.isPerc = true
 
 	// required for cursor blink
@@ -788,7 +794,7 @@ func dialogSaveAs(d *dialog, sng *song) {
 		if exportAutofill == "" {
 			exportAutofill = replaceSuffix(s, fileExt, ".mid")
 		}
-		os.MkdirAll(savesPath, 0755)
+		os.MkdirAll(joinTreePath(savesPath), 0755)
 		if f, err := os.Create(joinTreePath(savesPath, s)); err == nil {
 			defer f.Close()
 			if err := sng.write(f); err != nil {
@@ -812,7 +818,7 @@ func dialogExportMIDI(d *dialog, sng *song, p *player) {
 			saveAutofill = replaceSuffix(s, ".mid", fileExt)
 		}
 		p.stop(true) // avoid race condition
-		os.MkdirAll(exportsPath, 0755)
+		os.MkdirAll(joinTreePath(exportsPath), 0755)
 		if err := sng.exportSMF(joinTreePath(exportsPath, s)); err != nil {
 			d.message(err.Error())
 		} else {
@@ -926,26 +932,29 @@ func replaceSuffix(s, old, new_ string) string {
 }
 
 // cached for joinTreePath
-var exePath string
+var (
+	exePath string
+	useExePath bool
+)
 
-// like filepath.Join, but relative to the executable's dir
-// falls back onto the working dir if the exe-relative path doesn't exist
+// like filepath.Join, but relative to the executable's dir. falls back onto
+// the working dir if the exe-relative path doesn't have config dir
 func joinTreePath(elem ...string) string {
 	if exePath == "" {
 		var err error
 		if exePath, err = os.Executable(); err == nil {
-			if exePath, err = filepath.EvalSymlinks(exePath); err != nil {
+			if exePath, err = filepath.EvalSymlinks(exePath); err == nil {
+				_, err := os.Stat(filepath.Join(filepath.Dir(exePath), configPath))
+				useExePath = err == nil
+			} else {
 				statusf(err.Error())
 			}
 		} else {
 			statusf(err.Error())
 		}
 	}
-	if exePath != "" {
-		result := filepath.Join(append([]string{filepath.Dir(exePath)}, elem...)...)
-		if _, err := os.Stat(result); err == nil {
-			return result
-		}
+	if useExePath {
+		return filepath.Join(append([]string{filepath.Dir(exePath)}, elem...)...)
 	}
 	return filepath.Join(elem...)
 }

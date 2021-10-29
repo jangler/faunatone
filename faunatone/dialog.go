@@ -110,7 +110,7 @@ func (d *dialog) getInterval(prompt string, k *keymap, action func(float64)) {
 // set d to a file path dialog that allows for tab completion
 func (d *dialog) getPath(prompt, dir, ext string, action func(string)) {
 	*d = *newDialog(prompt, 50, action)
-	d.dir, d.ext = dir, ext
+	d.dir, d.ext = joinTreePath(dir), ext
 }
 
 // draw the dialog
