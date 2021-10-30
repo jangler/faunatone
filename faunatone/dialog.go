@@ -129,8 +129,8 @@ func (d *dialog) draw(p *printer, r *sdl.Renderer) {
 	}
 	inputWidth := p.rect.W * int32(d.size)
 	w := promptWidth + padding*2
-	if inputWidth > promptWidth {
-		w = inputWidth + padding*2
+	if inputWidth+padding > promptWidth {
+		w = inputWidth + padding*3
 	}
 	h := (p.rect.H+padding)*int32(len(d.prompt)) + padding
 	if d.size > 0 {
