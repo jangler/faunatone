@@ -626,7 +626,17 @@ func (pe *patternEditor) interpolateSelection() {
 		}
 		prevEvent := startEvt
 		if startEvt != nil && endEvt != nil && (startEvt.Type == endEvt.Type ||
-			startEvt.Type == noteOnEvent && endEvt.Type == pitchBendEvent) {
+			(startEvt.Type == noteOnEvent && endEvt.Type == pitchBendEvent) ||
+			(startEvt.Type == pitchBendEvent && endEvt.Type == noteOnEvent)) {
+			if endEvt.Type == noteOnEvent {
+				// convert end note to pitch bend
+				ea.beforeEvents = append(ea.beforeEvents, endEvt.clone())
+				te := endEvt.clone()
+				te.Type, te.ByteData1 = pitchBendEvent, 0
+				te.setUiString(pe.song.Keymap)
+				ea.afterEvents = append(ea.afterEvents, te)
+				endEvt = te
+			}
 			increment := ticksPerBeat / int64(pe.division)
 			for tick := startEvt.Tick + increment; tick < endEvt.Tick; tick += increment {
 				te := endEvt.clone()

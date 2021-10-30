@@ -50,10 +50,10 @@ root pitch. Wikipedia has a
 
 **Pitch bend...** - Insert a pitch bend event to an interval from the keymap,
 relative to the current root pitch. To get gradual pitch transitions, use the
-**Edit -> Interpolate** command from one pitch bend event to another, or from
-one note event to one pitch bend event. The maximum range of a pitch bend is
-two octaves from the initial pitch, plus or minus the amount of bending
-required to produce the initial pitch in the first place.
+**Edit -> Interpolate** command from one note or pitch bend event to another.
+The maximum range of a pitch bend is two octaves from the initial pitch, plus
+or minus the amount of bending required to produce the initial pitch in the
+first place.
 
 **Program change...** - Insert a program (instrument/patch) change event, value
 range 1 to 128. Wikipedia has a
