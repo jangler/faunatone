@@ -46,6 +46,7 @@ var (
 	exportAutofill string
 
 	posInf = math.Inf(1)
+	negInf = math.Inf(-1)
 )
 
 func must(err error) {
@@ -263,6 +264,9 @@ func main() {
 					*/
 					{label: "Text...", action: func() {
 						dialogInsertTextEvent(dia, patedit, pl)
+					}},
+					{label: "Release length...", action: func() {
+						dialogInsertReleaseLen(dia, patedit, pl)
 					}},
 				},
 			},
@@ -594,6 +598,16 @@ func dialogInsertTextEvent(d *dialog, pe *patternEditor, p *player) {
 				TextData:  s,
 			}, nil), p)
 		})
+	})
+}
+
+// set d to an input dialog
+func dialogInsertReleaseLen(d *dialog, pe *patternEditor, p *player) {
+	d.getFloat("Release length in beats:", negInf, posInf, func(f float64) {
+		pe.writeEvent(newTrackEvent(&trackEvent{
+			Type:      releaseLenEvent,
+			FloatData: f,
+		}, nil), p)
 	})
 }
 

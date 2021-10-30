@@ -74,6 +74,11 @@ controllers default to 0, with the exception of 7 (volume) to 100, 10 (pan) to
 meta-events with different meanings; for the generic text meta-event, choose
 type 1.
 
+**Release length...** - Insert a release length directive. This tells the
+channel allocator not to steal MIDI channels from future off notes in this
+channel until a number of beats after the note off. This directive does not
+affect notes that have already been turned off.
+
 ## Edit
 
 **Go to beat...** - Scroll to a given beat (integers not required) without

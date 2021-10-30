@@ -357,6 +357,8 @@ func (p *player) playEvent(te *trackEvent) {
 				println("unhandled text event type in player.playTrackEvents")
 			}
 		}
+	case releaseLenEvent:
+		p.virtChannels[t.Channel].releaseLen = int64(math.Round(te.FloatData * ticksPerBeat))
 	default:
 		println("unhandled event type in player.playTrackEvents")
 	}
@@ -369,7 +371,7 @@ func (p *player) noteOff(i int, tick int64) {
 		p.writer.SetChannel(t.midiChannel)
 		writer.NoteOff(p.writer, activeNote)
 		t.activeNote = byteNil
-		p.midiChannels[t.midiChannel].lastNoteOff = tick
+		p.midiChannels[t.midiChannel].lastNoteOff = tick + p.virtChannels[t.Channel].releaseLen
 	}
 }
 
@@ -423,6 +425,7 @@ type channelState struct {
 	bend        int16
 	pressure    uint8
 	keyPressure [128]uint8
+	releaseLen  int64
 }
 
 // return an initialized channelState, using the default controller values from

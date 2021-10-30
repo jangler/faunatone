@@ -22,6 +22,7 @@ const (
 	keyPressureEvent
 	channelPressureEvent
 	textEvent
+	releaseLenEvent
 )
 
 const (
@@ -234,6 +235,8 @@ func (te *trackEvent) setUiString(k *keymap) {
 			label = textEventLabels[te.ByteData1]
 		}
 		te.uiString = fmt.Sprintf("%s \"%s\"", label, te.TextData)
+	case releaseLenEvent:
+		te.uiString = fmt.Sprintf("rel %.2f", te.FloatData)
 	default:
 		te.uiString = "UNKNOWN"
 	}

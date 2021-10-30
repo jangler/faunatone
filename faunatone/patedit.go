@@ -650,7 +650,7 @@ func (pe *patternEditor) interpolateSelection() {
 						startEvt.FloatData, endEvt.FloatData, false)
 					te.ByteData1 = byte(interpolateValue(tick, startEvt.Tick, endEvt.Tick,
 						float64(startEvt.ByteData1), float64(endEvt.ByteData1), true))
-				case pitchBendEvent, tempoEvent:
+				case pitchBendEvent, tempoEvent, releaseLenEvent:
 					te.FloatData = interpolateValue(tick, startEvt.Tick, endEvt.Tick,
 						startEvt.FloatData, endEvt.FloatData, false)
 				case programEvent, channelPressureEvent, keyPressureEvent:
@@ -908,7 +908,7 @@ func (pe *patternEditor) multiplySelection(f float64) {
 	pe.forEventsInSelection(func(t *track, te *trackEvent) {
 		switch te.Type {
 		case noteOnEvent, drumNoteOnEvent, controllerEvent,
-			channelPressureEvent, keyPressureEvent:
+			channelPressureEvent, keyPressureEvent, releaseLenEvent:
 			ea.beforeEvents = append(ea.beforeEvents, te.clone())
 			te2 := te.clone()
 			switch te2.Type {
@@ -918,6 +918,8 @@ func (pe *patternEditor) multiplySelection(f float64) {
 			case drumNoteOnEvent, controllerEvent:
 				te2.ByteData2 = byte(math.Min(127, math.Max(0,
 					math.Round(float64(te.ByteData2)*f))))
+			case releaseLenEvent:
+				te2.FloatData = te.FloatData * f
 			}
 			te2.setUiString(pe.song.Keymap)
 			ea.afterEvents = append(ea.afterEvents, te2)
@@ -933,7 +935,7 @@ func (pe *patternEditor) varySelection(magnitude float64) {
 	pe.forEventsInSelection(func(t *track, te *trackEvent) {
 		switch te.Type {
 		case noteOnEvent, drumNoteOnEvent, controllerEvent,
-			channelPressureEvent, keyPressureEvent:
+			channelPressureEvent, keyPressureEvent, releaseLenEvent:
 			ea.beforeEvents = append(ea.beforeEvents, te.clone())
 			te2 := te.clone()
 			f := rand.Float64()*magnitude*2 - magnitude
@@ -944,6 +946,8 @@ func (pe *patternEditor) varySelection(magnitude float64) {
 			case drumNoteOnEvent, controllerEvent:
 				te2.ByteData2 = byte(math.Min(127, math.Max(0,
 					math.Round(float64(te.ByteData2)+f))))
+			case releaseLenEvent:
+				te2.FloatData = te.FloatData + f
 			}
 			te2.setUiString(pe.song.Keymap)
 			ea.afterEvents = append(ea.afterEvents, te2)
