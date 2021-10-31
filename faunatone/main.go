@@ -166,6 +166,7 @@ func main() {
 		historyIndex:     -1,
 		historySizeLimit: settings.UndoBufferSize,
 		offDivAlphaMod:   uint8(settings.OffDivisionAlpha),
+		shiftScrollMult:  settings.ShiftScrollMult,
 	}
 	pl := newPlayer(sng, wr, true)
 	pl.redrawChan = redrawChan
