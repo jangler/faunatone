@@ -8,7 +8,9 @@ See
 ## config/shortcuts.csv
 
 See [the SDL_Keycode documentation](https://wiki.libsdl.org/SDL_Keycode) for
-key names. Multiple shortcuts (or none) can exist for each menu item.
+key names. Multiple shortcuts (or none) can exist for each menu item. If you
+want to explicitly disable a shortcut that exists in the default config, keep
+the line but leave the key field blank.
 
 ## config/settings.csv
 

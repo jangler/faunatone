@@ -82,23 +82,12 @@ func posMod(x, y float64) float64 {
 
 // load a keymap from a file
 func newKeymap(path string) (*keymap, error) {
-	errs := []string{}
+	var errs []string
 	k := newEmptyKeymap(strings.Replace(filepath.Base(path), ".csv", "", 1))
-	if records, err := readCSV(joinTreePath(keymapPath, path)); err == nil {
-		for _, rec := range records {
-			ok := false
-			if len(rec) == 3 {
-				if pitch, err := parsePitch(rec[2], k); err == nil {
-					name := rec[1]
-					k.Items = append(k.Items,
-						newKeyInfo(rec[0], strings.HasPrefix(rec[2], "*"), name, pitch))
-					ok = true
-				}
-			}
-			if !ok {
-				errs = append(errs, fmt.Sprintf("bad keymap record: %q", rec))
-			}
-		}
+	if records, err := readCSV(joinTreePath(keymapPath, path), false); err == nil {
+		errs = k.applyRecords(records)
+	} else if records, err := readCSV(filepath.Join(keymapPath, path), true); err == nil {
+		errs = k.applyRecords(records)
 	} else {
 		k.Name = "none"
 		return k, err
@@ -109,6 +98,26 @@ func newKeymap(path string) (*keymap, error) {
 		return k, errors.New(strings.Join(errs, "\n"))
 	}
 	return k, nil
+}
+
+// apply CSV records
+func (k *keymap) applyRecords(records [][]string) []string {
+	errs := []string{}
+	for _, rec := range records {
+		ok := false
+		if len(rec) == 3 {
+			if pitch, err := parsePitch(rec[2], k); err == nil {
+				name := rec[1]
+				k.Items = append(k.Items,
+					newKeyInfo(rec[0], strings.HasPrefix(rec[2], "*"), name, pitch))
+				ok = true
+			}
+		}
+		if !ok {
+			errs = append(errs, fmt.Sprintf("bad keymap record: %q", rec))
+		}
+	}
+	return errs
 }
 
 // initialize a new empty keymap

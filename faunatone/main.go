@@ -1,6 +1,7 @@
 package main
 
 import (
+	"embed"
 	"encoding/csv"
 	"fmt"
 	"io"
@@ -32,6 +33,9 @@ const (
 	exportsPath   = "exports"
 	errorLogFile  = "error.txt"
 )
+
+//go:embed config/*
+var embedFS embed.FS
 
 var (
 	colorBeatArray    = make([]uint8, 4)
@@ -881,8 +885,14 @@ func dialogTrackSetChannel(d *dialog, sng *song, pe *patternEditor) {
 }
 
 // read records from a CSV file
-func readCSV(path string) ([][]string, error) {
-	f, err := os.Open(path)
+func readCSV(path string, embed bool) ([][]string, error) {
+	var f io.ReadCloser
+	var err error
+	if embed {
+		f, err = embedFS.Open(path)
+	} else {
+		f, err = os.Open(path)
+	}
 	if err != nil {
 		return nil, err
 	}

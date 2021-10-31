@@ -21,37 +21,64 @@ func (mb *menuBar) init(p *printer) {
 	if mb.shortcuts == nil {
 		mb.shortcuts = make(map[string]*menuItem)
 	}
-	if records, err := readCSV(shortcutsPath); err == nil {
-		for _, rec := range records {
-			ok := false
-			if len(rec) == 3 {
-				key, menuLabel, itemLabel := rec[0], rec[1], rec[2]
-			outer:
-				for _, m := range mb.menus {
-					if m.label == menuLabel {
-						for _, mi := range m.items {
-							if mi.label == itemLabel {
-								ok = true
-								mi.shortcuts = append(mi.shortcuts, key)
-								mb.shortcuts[key] = mi
-								break outer
-							}
-						}
-					}
-				}
-			}
-			if !ok {
-				log.Printf("bad shortcut config record: %q", rec)
-			}
-		}
+	if records, err := readCSV("config/shortcuts.csv", true); err == nil {
+		mb.applyRecords(records)
 	} else {
 		log.Print(err)
 	}
-
+	if records, err := readCSV(shortcutsPath, false); err == nil {
+		mb.applyRecords(records)
+	} else {
+		log.Print(err)
+	}
 	// init menu layouts
 	x := int32(0)
 	for _, m := range mb.menus {
 		x = m.init(p, x)
+	}
+}
+
+// apply CSV records
+func (mb *menuBar) applyRecords(records [][]string) {
+	for _, rec := range records {
+		ok := false
+		if len(rec) == 3 {
+			key, menuLabel, itemLabel := rec[0], rec[1], rec[2]
+		outer:
+			for _, m := range mb.menus {
+				if m.label == menuLabel {
+					for _, mi := range m.items {
+						if mi.label == itemLabel {
+							ok = true
+							if key == "" {
+								for _, key := range mi.shortcuts {
+									if mb.shortcuts[key] == mi {
+										delete(mb.shortcuts, key)
+									}
+								}
+								mi.shortcuts = mi.shortcuts[:0]
+							} else {
+								mi.shortcuts = append(mi.shortcuts, key)
+								if mi, ok := mb.shortcuts[key]; ok {
+									for i, v := range mi.shortcuts {
+										if v == key {
+											mi.shortcuts = append(mi.shortcuts[:i],
+												mi.shortcuts[i+1:]...)
+											break
+										}
+									}
+								}
+								mb.shortcuts[key] = mi
+							}
+							break outer
+						}
+					}
+				}
+			}
+		}
+		if !ok {
+			log.Printf("bad shortcut config record: %q", rec)
+		}
 	}
 }
 

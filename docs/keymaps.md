@@ -31,18 +31,18 @@ the selection.
 
 ## Keymap file format
 
-Keymaps are comma-separated value (CSV) files with three data per line: input,
-notation, and interval. For example, the line `R, F-, 4/3` binds the R key to
-an interval of 4/3 (an ascending just fourth), and that interval is to be
-displayed as `F-5` when in octave 5. Lines that start with `#` are ignored by
-the loader. The equivalent MIDI input mapping would be written as `m65, F-,
+Keymaps are comma-separated value (CSV) files with three fields per line:
+input, notation, and interval. For example, the line `R, F-, 4/3` binds the R
+key to an interval of 4/3 (an ascending just fourth), and that interval is to
+be displayed as `F-5` when in octave 5. Lines that start with `#` are ignored
+by the loader. The equivalent MIDI input mapping would be written as `m65, F-,
 4/3`.
 
 The keymap loader is able to "fill in the blanks" in a few ways:
 
-1. The notation datum can be left blank if notation for the given pitch class
+1. The notation field can be left blank if notation for the given pitch class
    was already provided by another mapping, or if you want the notation to be
-   determined by the interval datum (for non-accidentals) or the key datum (for
+   determined by the interval field (for non-accidentals) or the key field (for
    accidentals).
 2. If the Z-/ and A-; keyboard rows are unmapped, the Q-P and 2-0 rows are
    automatically copied onto those keys, transposed an octave down.
