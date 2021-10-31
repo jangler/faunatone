@@ -26,6 +26,7 @@ const (
 	signalSongChanged // TODO actually use this
 	signalSendPitchRPN
 	signalSendGMSystemOn
+	signalResetChannels
 )
 
 const (
@@ -149,6 +150,10 @@ func (p *player) run() {
 			}
 			for i := range p.midiChannels {
 				p.midiChannels[i] = newChannelState()
+			}
+		case signalResetChannels:
+			for i := range p.midiChannels {
+				p.virtChannels[i] = newChannelState()
 			}
 		case signalSongChanged:
 			p.findHorizon()
@@ -378,7 +383,10 @@ func (p *player) noteOff(i int, tick int64) {
 // set virtual channel states based on everything that happens from the start
 // of the song up to (but not including) a given tick
 // TODO this seems expensive to do every time play needs to happen; it's
-// probably worth looking into keeping events sorted in the first place
+// probably worth looking into keeping events sorted in the first place. it
+// would also be cheaper to have a different slice for each virtual channel,
+// since channels can't affect each other's states and (n log n + m log m) <
+// (n+m log n+m)
 func (p *player) determineVirtualChannelStates(tick int64) {
 	events := []*trackEvent{}
 	for _, t := range p.song.Tracks {
@@ -432,9 +440,6 @@ type channelState struct {
 // "GM level 1 developer guidelines - second revision"
 func newChannelState() *channelState {
 	cs := &channelState{}
-	for i := range cs.controllers {
-		cs.controllers[i] = 0
-	}
 	cs.controllers[7] = 100    // volume
 	cs.controllers[10] = 64    // pan
 	cs.controllers[11] = 127   // expression

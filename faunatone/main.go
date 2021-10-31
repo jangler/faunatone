@@ -766,6 +766,7 @@ func dialogMakeIsoKeymap(d *dialog, sng *song, pe *patternEditor) {
 func dialogNew(d *dialog, sng *song, pe *patternEditor, p *player) {
 	*d = *newDialog("Create new song? (y/n)", 0, func(s string) {
 		p.stop(true)
+		p.signal <- playerSignal{typ: signalResetChannels}
 		*sng = *newSong()
 		pe.reset()
 		saveAutofill = ""
@@ -781,6 +782,7 @@ func dialogOpen(d *dialog, sng *song, pe *patternEditor, p *player) {
 		if f, err := os.Open(filepath.Join(savesPath, s)); err == nil {
 			defer f.Close()
 			p.stop(true)
+			p.signal <- playerSignal{typ: signalResetChannels}
 			if err := sng.read(f); err == nil {
 				pe.reset()
 				saveAutofill = s
