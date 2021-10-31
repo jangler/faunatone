@@ -179,10 +179,10 @@ func main() {
 
 	// required for cursor blink
 	go func() {
-		for {
+		c := time.Tick(time.Millisecond * inputCursorBlinkMs)
+		for _ = range c {
 			if dia.shown && dia.size > 0 {
 				redrawChan <- true
-				time.Sleep(time.Millisecond * inputCursorBlinkMs)
 			}
 		}
 	}()
