@@ -2,13 +2,12 @@ package main
 
 import (
 	"log"
-	"path/filepath"
 	"strings"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-var shortcutsPath = filepath.Join(configPath, "shortcuts.csv")
+var shortcutsPath = joinTreePath(configPath, "shortcuts.csv")
 
 // top-level drop-down menu bar
 type menuBar struct {

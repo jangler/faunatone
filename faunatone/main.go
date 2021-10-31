@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -21,7 +22,7 @@ import (
 
 const (
 	appName       = "Faunatone"
-	appVersion    = "v0.1.0"
+	appVersion    = "v0.1.1"
 	fileExt       = ".faun"
 	defaultFps    = 60
 	bendSemitones = 24
@@ -133,7 +134,7 @@ func main() {
 	err = ttf.Init()
 	must(err)
 	defer ttf.Quit()
-	fontPath := filepath.Join(assetsPath, settings.Font)
+	fontPath := joinTreePath(assetsPath, settings.Font)
 	font, err := ttf.OpenFont(fontPath, settings.FontSize)
 	must(err)
 	defer font.Close()
@@ -150,7 +151,7 @@ func main() {
 	}()
 	fps := getRefreshRate()
 
-	sng := newSong()
+	sng := newSong(nil)
 	patedit := &patternEditor{
 		printer:          pr,
 		song:             sng,
@@ -161,23 +162,28 @@ func main() {
 		historyIndex:     -1,
 		historySizeLimit: settings.UndoBufferSize,
 		offDivAlphaMod:   uint8(settings.OffDivisionAlpha),
-		shiftScrollMult:  settings.ShiftScrollMult,
 	}
 	pl := newPlayer(sng, wr, true)
 	pl.redrawChan = redrawChan
 	go pl.run()
 	defer pl.cleanup()
-	sng.Keymap, _ = newKeymap(settings.DefaultKeymap)
+	sng.Keymap, err = newKeymap(settings.DefaultKeymap)
+	if err != nil {
+		statusf(err.Error())
+	}
 	patedit.updateRefPitchDisplay()
-	percKeymap, _ := newKeymap(settings.PercussionKeymap)
+	percKeymap, err := newKeymap(settings.PercussionKeymap)
+	if err != nil {
+		statusf(err.Error())
+	}
 	percKeymap.isPerc = true
 
 	// required for cursor blink
 	go func() {
-		for {
+		c := time.Tick(time.Millisecond * inputCursorBlinkMs)
+		for _ = range c {
 			if dia.shown && dia.size > 0 {
 				redrawChan <- true
-				time.Sleep(time.Millisecond * inputCursorBlinkMs)
 			}
 		}
 	}()
@@ -671,6 +677,7 @@ func dialogRemapKey(d *dialog, s *song, pe *patternEditor) {
 					*existing = *ki
 				}
 				s.Keymap.Name = addSuffixIfMissing(s.Keymap.Name, "*")
+				s.Keymap.setMidiPattern()
 				s.renameNotes()
 				pe.updateRefPitchDisplay()
 				statusf("Remapped %s.", s1)
@@ -767,7 +774,7 @@ func dialogNew(d *dialog, sng *song, pe *patternEditor, p *player) {
 	*d = *newDialog("Create new song? (y/n)", 0, func(s string) {
 		p.stop(true)
 		p.signal <- playerSignal{typ: signalResetChannels}
-		*sng = *newSong()
+		*sng = *newSong(sng.Keymap)
 		pe.reset()
 		saveAutofill = ""
 		exportAutofill = ""
@@ -779,7 +786,7 @@ func dialogNew(d *dialog, sng *song, pe *patternEditor, p *player) {
 func dialogOpen(d *dialog, sng *song, pe *patternEditor, p *player) {
 	d.getPath("Load song:", savesPath, ".faun", func(s string) {
 		s = addSuffixIfMissing(s, fileExt)
-		if f, err := os.Open(filepath.Join(savesPath, s)); err == nil {
+		if f, err := os.Open(joinTreePath(savesPath, s)); err == nil {
 			defer f.Close()
 			p.stop(true)
 			p.signal <- playerSignal{typ: signalResetChannels}
@@ -804,8 +811,8 @@ func dialogSaveAs(d *dialog, sng *song) {
 		if exportAutofill == "" {
 			exportAutofill = replaceSuffix(s, fileExt, ".mid")
 		}
-		os.MkdirAll(savesPath, 0755)
-		if f, err := os.Create(filepath.Join(savesPath, s)); err == nil {
+		os.MkdirAll(joinTreePath(savesPath), 0755)
+		if f, err := os.Create(joinTreePath(savesPath, s)); err == nil {
 			defer f.Close()
 			if err := sng.write(f); err != nil {
 				d.message(err.Error())
@@ -828,8 +835,8 @@ func dialogExportMIDI(d *dialog, sng *song, p *player) {
 			saveAutofill = replaceSuffix(s, ".mid", fileExt)
 		}
 		p.stop(true) // avoid race condition
-		os.MkdirAll(exportsPath, 0755)
-		if err := sng.exportSMF(filepath.Join(exportsPath, s)); err != nil {
+		os.MkdirAll(joinTreePath(exportsPath), 0755)
+		if err := sng.exportSMF(joinTreePath(exportsPath, s)); err != nil {
 			d.message(err.Error())
 		} else {
 			statusf("Wrote %s.", s)
@@ -893,7 +900,9 @@ func writeCSV(path string, records [][]string) error {
 		return err
 	}
 	defer f.Close()
-	return csv.NewWriter(f).WriteAll(records)
+	w := csv.NewWriter(f)
+	w.UseCRLF = runtime.GOOS == "windows"
+	return w.WriteAll(records)
 }
 
 // return base+suffix if base does not already end with suffix, otherwise
@@ -939,4 +948,32 @@ func replaceSuffix(s, old, new_ string) string {
 		return s[:len(s)-len(old)] + new_
 	}
 	return s
+}
+
+// cached for joinTreePath
+var (
+	exePath    string
+	useExePath bool
+)
+
+// like filepath.Join, but relative to the executable's dir. falls back onto
+// the working dir if the exe-relative path doesn't have config dir
+func joinTreePath(elem ...string) string {
+	if exePath == "" {
+		var err error
+		if exePath, err = os.Executable(); err == nil {
+			if exePath, err = filepath.EvalSymlinks(exePath); err == nil {
+				_, err := os.Stat(filepath.Join(filepath.Dir(exePath), configPath))
+				useExePath = err == nil
+			} else {
+				statusf(err.Error())
+			}
+		} else {
+			statusf(err.Error())
+		}
+	}
+	if useExePath {
+		return filepath.Join(append([]string{filepath.Dir(exePath)}, elem...)...)
+	}
+	return filepath.Join(elem...)
 }

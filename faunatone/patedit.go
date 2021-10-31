@@ -58,7 +58,6 @@ type patternEditor struct {
 	followSong       bool
 	prevPlayPos      int64
 	offDivAlphaMod   uint8
-	shiftScrollMult  int
 }
 
 // used for undo/redo. the track structs have nil event slices.
@@ -283,11 +282,7 @@ func (pe *patternEditor) roundTickToDivision(t int64) int64 {
 
 // respond to mouse wheel events
 func (pe *patternEditor) mouseWheel(e *sdl.MouseWheelEvent) {
-	st := scrollTicks
-	if sdl.GetModState()&sdl.KMOD_SHIFT != 0 {
-		st *= pe.shiftScrollMult
-	}
-	pe.scrollY -= e.Y * int32(st) * pe.beatHeight / ticksPerBeat
+	pe.scrollY -= e.Y * scrollTicks * pe.beatHeight / ticksPerBeat
 	if pe.scrollY < 0 {
 		pe.scrollY = 0
 	}
@@ -414,7 +409,8 @@ func (pe *patternEditor) cut() {
 }
 
 // paste selected events to a buffer; if mix is false then all existing events
-// in the affected area are first deleted
+// in the affected area are first deleted; if mix is true then existing events
+// take precedence
 func (pe *patternEditor) paste(mix bool) {
 	trackMin, _, tickMin, _ := pe.getSelection()
 	ea := &editAction{}
@@ -429,7 +425,9 @@ func (pe *patternEditor) paste(mix bool) {
 			te2 := te.clone()
 			te2.Tick += tickMin
 			te2.track = i + trackMin
-			ea.afterEvents = append(ea.afterEvents, te2)
+			if !mix || pe.song.Tracks[te2.track].getEventAtTick(te2.Tick) == nil {
+				ea.afterEvents = append(ea.afterEvents, te2)
+			}
 		}
 	}
 	pe.doNewEditAction(ea)

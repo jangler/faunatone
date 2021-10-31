@@ -91,8 +91,8 @@ buffer is configurable via `config/settings.csv`.
 
 **Cut**, **Copy**, & **Paste** - The usual.
 
-**Mix paste** - A variant of **Paste** that does not delete selected events
-before pasting.
+**Mix paste** - A variant of **Paste** that does not delete or overwrite
+events.
 
 **Insert division** - Move all events in selected tracks after the start of the
 selection down by the size of the selected block (minimum one division).

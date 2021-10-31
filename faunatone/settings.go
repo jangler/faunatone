@@ -2,13 +2,12 @@ package main
 
 import (
 	"fmt"
-	"path/filepath"
 	"reflect"
 	"strconv"
 )
 
 var (
-	settingsPath = filepath.Join(configPath, "settings.csv")
+	settingsPath = joinTreePath(configPath, "settings.csv")
 )
 
 type settings struct {
@@ -26,7 +25,6 @@ type settings struct {
 	MidiInPortNumber  int
 	MidiOutPortNumber int
 	OffDivisionAlpha  int
-	ShiftScrollMult   int
 	UndoBufferSize    int
 	WindowHeight      int
 	WindowWidth       int
