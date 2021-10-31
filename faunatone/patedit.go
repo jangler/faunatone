@@ -868,8 +868,12 @@ func (pe *patternEditor) deleteDivision() {
 
 // insert/delete time at the cursor
 func (pe *patternEditor) doNewTickShift(factor int64) {
-	trackMin, trackMax, tickMin, _ := pe.getSelection()
-	offset := ticksPerBeat / int64(pe.division) * factor
+	trackMin, trackMax, tickMin, tickMax := pe.getSelection()
+	offset := ticksPerBeat / int64(pe.division)
+	if tickMax-tickMin > offset {
+		offset = tickMax - tickMin
+	}
+	offset *= factor
 	beforeEvents := []*trackEvent{}
 	if factor < 0 {
 		for i := trackMin; i <= trackMax; i++ {

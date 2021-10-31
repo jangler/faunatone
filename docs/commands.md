@@ -95,11 +95,11 @@ buffer is configurable via `config/settings.csv`.
 before pasting.
 
 **Insert division** - Move all events in selected tracks after the start of the
-selection down by one division.
+selection down by the size of the selected block (minimum one division).
 
 **Delete division** - Move all events in selected tracks after the start of the
-selection up by one division. Delete any events that would be end up above the
-starting point.
+selection up by the size of the selected block (minimum one division). Delete
+any events that would be end up above the starting point.
 
 **Transpose...** - Transpose selected pitches by an interval in the keymap.
 
