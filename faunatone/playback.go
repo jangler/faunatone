@@ -367,10 +367,11 @@ func (p *player) playEvent(te *trackEvent) {
 	case midiRangeEvent:
 		vcs := p.virtChannels[t.Channel]
 		vcs.midiMin, vcs.midiMax = te.ByteData1, te.ByteData2
-		for _, t2 := range p.song.Tracks {
-			if t2.Channel == t.Channel &&
-				(t2.midiChannel < vcs.midiMin || t2.midiChannel > vcs.midiMax) {
-				t2.midiChannel = vcs.midiMin
+		if vcs.midiMin == vcs.midiMax {
+			for _, t2 := range p.song.Tracks {
+				if t2.Channel == t.Channel {
+					t2.midiChannel = vcs.midiMin
+				}
 			}
 		}
 	default:
