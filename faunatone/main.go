@@ -279,6 +279,9 @@ func main() {
 					{label: "Release length...", action: func() {
 						dialogInsertReleaseLen(dia, patedit, pl)
 					}},
+					{label: "MIDI channel range...", action: func() {
+						dialogInsertMidiRange(dia, patedit, pl)
+					}},
 				},
 			},
 			{
@@ -619,6 +622,19 @@ func dialogInsertReleaseLen(d *dialog, pe *patternEditor, p *player) {
 			Type:      releaseLenEvent,
 			FloatData: f,
 		}, nil), p)
+	})
+}
+
+// set d to an input dialog chain
+func dialogInsertMidiRange(d *dialog, pe *patternEditor, p *player) {
+	d.getInt("Minimum MIDI channel:", 1, 16, func(min int64) {
+		d.getInt("Maximum MIDI channel:", min, 16, func(max int64) {
+			pe.writeEvent(newTrackEvent(&trackEvent{
+				Type:      midiRangeEvent,
+				ByteData1: byte(min - 1),
+				ByteData2: byte(max - 1),
+			}, nil), p)
+		})
 	})
 }
 

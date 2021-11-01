@@ -241,14 +241,14 @@ func (p *player) playEvent(te *trackEvent) {
 	switch te.Type {
 	case noteOnEvent:
 		p.noteOff(i, te.Tick)
+		vcs := p.virtChannels[t.Channel]
 		var stolen bool
-		t.midiChannel, stolen = pickInactiveChannel(p.midiChannels)
+		t.midiChannel, stolen = pickInactiveChannel(p.midiChannels, vcs.midiMin, vcs.midiMax)
 		if stolen {
 			p.noteCutCount++
 		}
 		p.writer.SetChannel(t.midiChannel)
 		mcs := p.midiChannels[t.midiChannel]
-		vcs := p.virtChannels[t.Channel]
 		for i, v := range vcs.controllers {
 			if mcs.controllers[i] != v {
 				writer.ControlChange(p.writer, uint8(i), v)
@@ -364,6 +364,9 @@ func (p *player) playEvent(te *trackEvent) {
 		}
 	case releaseLenEvent:
 		p.virtChannels[t.Channel].releaseLen = int64(math.Round(te.FloatData * ticksPerBeat))
+	case midiRangeEvent:
+		vcs := p.virtChannels[t.Channel]
+		vcs.midiMin, vcs.midiMax = te.ByteData1, te.ByteData2
 	default:
 		println("unhandled event type in player.playTrackEvents")
 	}
@@ -434,12 +437,17 @@ type channelState struct {
 	pressure    uint8
 	keyPressure [128]uint8
 	releaseLen  int64
+	midiMin     uint8 // only used by virtual channels
+	midiMax     uint8 // ^
 }
 
 // return an initialized channelState, using the default controller values from
 // "GM level 1 developer guidelines - second revision"
 func newChannelState() *channelState {
-	cs := &channelState{}
+	cs := &channelState{
+		midiMin: 0,
+		midiMax: numMIDIChannels - 1,
+	}
 	cs.controllers[7] = 100    // volume
 	cs.controllers[10] = 64    // pan
 	cs.controllers[11] = 127   // expression
@@ -451,12 +459,13 @@ func newChannelState() *channelState {
 // return the index of the channel which has had no active notes for the
 // longest time, aside from the percussion channel; return true if voice was
 // stolen
-func pickInactiveChannel(a []*channelState) (uint8, bool) {
-	bestScore, bestIndex := int64(math.MaxInt64), 0
+func pickInactiveChannel(a []*channelState, min, max uint8) (uint8, bool) {
+	bestScore, bestIndex := int64(math.MaxInt64), min
 	for i, cs := range a {
-		if i != percussionChannelIndex && cs.lastNoteOff != -1 && cs.lastNoteOff < bestScore {
-			bestScore, bestIndex = cs.lastNoteOff, i
+		if i >= int(min) && i <= int(max) &&
+			i != percussionChannelIndex && cs.lastNoteOff != -1 && cs.lastNoteOff < bestScore {
+			bestScore, bestIndex = cs.lastNoteOff, uint8(i)
 		}
 	}
-	return uint8(bestIndex), bestScore == int64(math.MaxInt64)
+	return bestIndex, bestScore == int64(math.MaxInt64)
 }

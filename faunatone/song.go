@@ -23,6 +23,7 @@ const (
 	channelPressureEvent
 	textEvent
 	releaseLenEvent
+	midiRangeEvent
 )
 
 const (
@@ -240,7 +241,9 @@ func (te *trackEvent) setUiString(k *keymap) {
 		}
 		te.uiString = fmt.Sprintf("%s \"%s\"", label, te.TextData)
 	case releaseLenEvent:
-		te.uiString = fmt.Sprintf("rel %.2f", te.FloatData)
+		te.uiString = fmt.Sprintf("@rel %.2f", te.FloatData)
+	case midiRangeEvent:
+		te.uiString = fmt.Sprintf("@mcr %d %d", te.ByteData1+1, te.ByteData2+1)
 	default:
 		te.uiString = "UNKNOWN"
 	}

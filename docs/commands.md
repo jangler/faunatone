@@ -79,6 +79,11 @@ channel allocator not to steal MIDI channels from future off notes in this
 channel until a number of beats after the note off. This directive does not
 affect notes that have already been turned off.
 
+**MIDI channel range...** - Insert a MIDI channel range directive. This
+specifies the minimum and maximum MIDI channel numbers that this virtual
+channel will use, value range 1 to 16. This will force multiple notes to play
+on the same MIDI channel if necessary.
+
 ## Edit
 
 **Go to beat...** - Scroll to a given beat (integers not required) without
