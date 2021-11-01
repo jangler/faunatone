@@ -48,7 +48,7 @@ type player struct {
 	midiChannels []*channelState
 	virtChannels []*channelState
 	redrawChan   chan bool // send true on this when a signal is received
-	noteCutCount int       // # of times polyphony limit was exceeded
+	polyErrCount int       // # of times polyphony limit was exceeded
 
 	// ignore signalContinue messages with world < this.
 	// increment world when signalStop and signalStart are sent.
@@ -244,7 +244,7 @@ func (p *player) playEvent(te *trackEvent) {
 		var stolen bool
 		t.midiChannel, stolen = pickInactiveChannel(p.midiChannels)
 		if stolen {
-			p.noteCutCount++
+			p.polyErrCount++
 		}
 		p.writer.SetChannel(t.midiChannel)
 		mcs := p.midiChannels[t.midiChannel]

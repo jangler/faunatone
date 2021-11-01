@@ -111,8 +111,8 @@ func (s *song) exportSMF(path string) error {
 		p.signal <- playerSignal{typ: signalStart}
 		<-p.stopping
 		writer.EndOfTrack(wr)
-		if p.noteCutCount > 0 {
-			return fmt.Errorf("Polyphony limit exceeded; cut %d note(s).", p.noteCutCount)
+		if p.polyErrCount > 0 {
+			return fmt.Errorf("Polyphony limit exceeded by %d note(s).", p.polyErrCount)
 		}
 		return nil
 	})
