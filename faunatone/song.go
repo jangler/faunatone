@@ -27,7 +27,7 @@ const (
 )
 
 const (
-	numMIDIChannels        = 16
+	numMidiChannels        = 16
 	numVirtualChannels     = 16
 	percussionChannelIndex = 9
 )

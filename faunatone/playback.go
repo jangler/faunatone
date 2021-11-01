@@ -65,7 +65,7 @@ func newPlayer(s *song, wr writer.ChannelWriter, realtime bool) *player {
 		signal:       make(chan playerSignal),
 		stopping:     make(chan struct{}),
 		writer:       wr,
-		midiChannels: make([]*channelState, numMIDIChannels),
+		midiChannels: make([]*channelState, numMidiChannels),
 		virtChannels: make([]*channelState, numVirtualChannels),
 	}
 	for i := range p.midiChannels {
@@ -176,7 +176,7 @@ func (p *player) cleanup() {
 
 // send the "pitch bend sensitivity" RPN to every channel
 func (p *player) broadcastPitchBendRPN(semitones, cents uint8) {
-	for i := uint8(0); i < numMIDIChannels; i++ {
+	for i := uint8(0); i < numMidiChannels; i++ {
 		p.writer.SetChannel(i)
 		writer.RPN(p.writer, 0, 0, semitones, cents)
 	}
@@ -263,7 +263,7 @@ func (p *player) playEvent(te *trackEvent) {
 			writer.Aftertouch(p.writer, vcs.pressure)
 			mcs.pressure = vcs.pressure
 		}
-		note, bend := pitchToMIDI(te.FloatData)
+		note, bend := pitchToMidi(te.FloatData)
 		vcs.bend = bend
 		if mcs.bend != bend {
 			writer.Pitchbend(p.writer, bend)
@@ -452,7 +452,7 @@ type channelState struct {
 func newChannelState() *channelState {
 	cs := &channelState{
 		midiMin: 0,
-		midiMax: numMIDIChannels - 1,
+		midiMax: numMidiChannels - 1,
 	}
 	cs.controllers[7] = 100    // volume
 	cs.controllers[10] = 64    // pan

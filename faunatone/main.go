@@ -204,7 +204,7 @@ func main() {
 					{label: "New", action: func() { dialogNew(dia, sng, patedit, pl) }},
 					{label: "Open...", action: func() { dialogOpen(dia, sng, patedit, pl) }},
 					{label: "Save as...", action: func() { dialogSaveAs(dia, sng) }},
-					{label: "Export MIDI...", action: func() { dialogExportMIDI(dia, sng, pl) }},
+					{label: "Export MIDI...", action: func() { dialogExportMidi(dia, sng, pl) }},
 					{label: "Quit", action: func() { running = false }},
 				},
 			},
@@ -535,7 +535,7 @@ func dialogInsertNote(d *dialog, pe *patternEditor, p *player) {
 
 // return note and pitch wheel values required to play a pitch in MIDI,
 // assuming a 2-semitone pitch bend range
-func pitchToMIDI(p float64) (uint8, int16) {
+func pitchToMidi(p float64) (uint8, int16) {
 	note := uint8(math.Round(math.Max(0, math.Min(127, p))))
 	bend := int16((p - float64(note)) * 8192.0 / bendSemitones)
 	return note, bend
@@ -848,7 +848,7 @@ func dialogSaveAs(d *dialog, sng *song) {
 }
 
 // set d to an input dialog
-func dialogExportMIDI(d *dialog, sng *song, p *player) {
+func dialogExportMidi(d *dialog, sng *song, p *player) {
 	d.getPath("Export song as:", exportsPath, ".mid", func(s string) {
 		s = addSuffixIfMissing(s, ".mid")
 		exportAutofill = s
