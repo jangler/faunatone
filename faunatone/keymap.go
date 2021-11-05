@@ -335,32 +335,27 @@ func genScaleKeymap(name string, scale []*pitchSrc) *keymap {
 				break
 			}
 			k.Items = append(k.Items, newKeyInfo(qwertyLayout[y][x], false,
-				fmt.Sprintf("%d'", (i%int(n))+1), scale[i]))
-		} else if n < w*h/2 {
-			// two sets of two alternating rows, Q2W3... and ZSXD...
-			// (second row set by duplicateOctave)
-			if x >= w*2-1 {
-				break
-			}
-			y = 1 - (x % 2)
-			k.Items = append(k.Items, newKeyInfo(qwertyLayout[y][(x+1)/2], false,
-				fmt.Sprintf("%d'", (i%int(n))+1), scale[i]))
+				fmt.Sprintf("%d'", (i%n)+1), scale[i]))
 		} else {
-			// Q2W3 same as above, then go backwards down /;.L
 			if x >= w*2-1 {
 				break
 			}
 			y = 1 - (x % 2)
+			// Q2W3 ascending
 			k.Items = append(k.Items, newKeyInfo(qwertyLayout[y][(x+1)/2], false,
-				fmt.Sprintf("%d'", (i%int(n))+1), scale[i]))
-			k.Items = append(k.Items, newKeyInfo(qwertyLayout[y+2][w-x/2-1], false,
-				fmt.Sprintf("%d'", ((n-i-1)%int(n))+1), scale[i+1].invert()))
+				fmt.Sprintf("%d'", (i%n)+1), scale[i]))
+			if n >= w*h/2 {
+				// /;.L descending
+				k.Items = append(k.Items, newKeyInfo(qwertyLayout[y+2][w-x/2-1], false,
+					fmt.Sprintf("%d'", ((n-i-1)%n)+1),
+					scale[int(posMod(float64(-i-1), float64(n)))].add(newRatPitch(1, 2))))
+			}
 		}
 		x++
 	}
 	// midi is simpler, but make sure not to duplicate notation
 	for i := 0; i <= n; i++ {
-		notation := fmt.Sprintf("%d'", (i%int(n))+1)
+		notation := fmt.Sprintf("%d'", (i%n)+1)
 		for _, ki := range k.Items {
 			if ki.Name == notation {
 				notation = ""
