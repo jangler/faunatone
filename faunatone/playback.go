@@ -243,6 +243,14 @@ func (p *player) playEvent(te *trackEvent) {
 		p.noteOff(i, te.Tick)
 		var stolen bool
 		t.midiChannel, stolen = pickInactiveChannel(p.midiChannels)
+		for j, t2 := range p.song.Tracks {
+			if t2.Channel != t.Channel && t2.midiChannel == t.midiChannel {
+				if t2.activeNote != byteNil {
+					p.noteOff(j, te.Tick)
+				}
+				t2.midiChannel = byteNil
+			}
+		}
 		if stolen {
 			p.polyErrCount++
 		}
