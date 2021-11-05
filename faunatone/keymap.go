@@ -603,6 +603,10 @@ func (k *keymap) notatePitch(f float64) string {
 			if s := k.notatePitchWithMods(f, mod1); s != "" {
 				return s
 			}
+		}
+	}
+	for _, mod1 := range k.Items {
+		if mod1.IsMod {
 			for _, mod2 := range k.Items {
 				if mod2.IsMod {
 					if s := k.notatePitchWithMods(f, mod1, mod2); s != "" {
