@@ -39,6 +39,7 @@ type player struct {
 	song         *song
 	realtime     bool
 	lastTick     int64
+	lastEvtTick  int64 // tick of last event which was written
 	horizon      map[int]int64
 	bpm          float64
 	signal       chan playerSignal
@@ -106,7 +107,7 @@ func (p *player) run() {
 			}
 
 			if wr, ok := p.writer.(*writer.SMF); ok {
-				wr.SetDelta(uint32(sig.tick - p.lastTick))
+				wr.SetDelta(uint32(sig.tick - p.lastEvtTick))
 			}
 
 			for i := range p.song.Tracks {
@@ -240,6 +241,7 @@ func (p *player) playEvent(te *trackEvent) {
 	t := p.song.Tracks[i]
 	switch te.Type {
 	case noteOnEvent:
+		p.lastEvtTick = te.Tick
 		p.noteOff(i, te.Tick)
 		var stolen bool
 		t.midiChannel, stolen = pickInactiveChannel(p.midiChannels)
@@ -285,6 +287,7 @@ func (p *player) playEvent(te *trackEvent) {
 		t.activeNote = note
 		mcs.lastNoteOff = -1
 	case drumNoteOnEvent:
+		p.lastEvtTick = te.Tick
 		p.noteOff(i, te.Tick)
 		t.midiChannel = percussionChannelIndex
 		p.writer.SetChannel(t.midiChannel)
@@ -302,6 +305,7 @@ func (p *player) playEvent(te *trackEvent) {
 		p.virtChannels[t.Channel].controllers[te.ByteData1] = te.ByteData2
 		for _, t2 := range p.song.Tracks {
 			if t2.Channel == t.Channel && t2.midiChannel != byteNil {
+				p.lastEvtTick = te.Tick
 				p.writer.SetChannel(t2.midiChannel)
 				writer.ControlChange(p.writer, te.ByteData1, te.ByteData2)
 				p.midiChannels[t2.midiChannel].controllers[te.ByteData1] = te.ByteData2
@@ -309,6 +313,7 @@ func (p *player) playEvent(te *trackEvent) {
 		}
 	case pitchBendEvent:
 		if note := t.activeNote; note != byteNil {
+			p.lastEvtTick = te.Tick
 			bend := int16((te.FloatData - float64(note)) * 8192.0 / bendSemitones)
 			p.virtChannels[t.Channel].bend = bend
 			p.writer.SetChannel(t.midiChannel)
@@ -319,6 +324,7 @@ func (p *player) playEvent(te *trackEvent) {
 		p.virtChannels[t.Channel].pressure = te.ByteData1
 		for _, t2 := range p.song.Tracks {
 			if t2.Channel == t.Channel && t2.midiChannel != byteNil {
+				p.lastEvtTick = te.Tick
 				p.writer.SetChannel(t2.midiChannel)
 				writer.Aftertouch(p.writer, te.ByteData1)
 				p.midiChannels[t2.midiChannel].pressure = te.ByteData1
@@ -327,6 +333,7 @@ func (p *player) playEvent(te *trackEvent) {
 	case keyPressureEvent:
 		t.pressure = te.ByteData1
 		if t.activeNote != byteNil {
+			p.lastEvtTick = te.Tick
 			p.writer.SetChannel(t.midiChannel)
 			writer.PolyAftertouch(p.writer, t.activeNote, t.pressure)
 			p.midiChannels[t.midiChannel].keyPressure[t.activeNote] = t.pressure
@@ -335,6 +342,7 @@ func (p *player) playEvent(te *trackEvent) {
 		p.virtChannels[t.Channel].program = te.ByteData1
 		for _, t2 := range p.song.Tracks {
 			if t2.Channel == t.Channel && t2.midiChannel != byteNil {
+				p.lastEvtTick = te.Tick
 				p.writer.SetChannel(t2.midiChannel)
 				writer.ProgramChange(p.writer, te.ByteData1)
 				p.midiChannels[t2.midiChannel].program = te.ByteData1
@@ -343,13 +351,13 @@ func (p *player) playEvent(te *trackEvent) {
 	case tempoEvent:
 		p.bpm = te.FloatData
 		if wr, ok := p.writer.(*writer.SMF); ok {
+			p.lastEvtTick = te.Tick
 			writer.TempoBPM(wr, te.FloatData)
 		}
 	case textEvent:
 		if wr, ok := p.writer.(*writer.SMF); ok {
+			p.lastEvtTick = te.Tick
 			switch te.ByteData1 {
-			case 1:
-				writer.Text(wr, te.TextData)
 			case 2:
 				writer.Copyright(wr, te.TextData)
 			case 3:
@@ -367,7 +375,7 @@ func (p *player) playEvent(te *trackEvent) {
 			case 9:
 				writer.Device(wr, te.TextData)
 			default:
-				println("unhandled text event type in player.playTrackEvents")
+				writer.Text(wr, te.TextData)
 			}
 		}
 	case releaseLenEvent:
@@ -381,6 +389,7 @@ func (p *player) playEvent(te *trackEvent) {
 func (p *player) noteOff(i int, tick int64) {
 	t := p.song.Tracks[i]
 	if activeNote := t.activeNote; activeNote != byteNil {
+		p.lastEvtTick = tick
 		p.writer.SetChannel(t.midiChannel)
 		writer.NoteOff(p.writer, activeNote)
 		t.activeNote = byteNil
