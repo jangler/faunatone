@@ -593,6 +593,13 @@ func (k *keymap) setActiveNote(i uint8, v bool) {
 	}
 }
 
+// set all activeNotes values to false
+func (k *keymap) clearActiveNotes() {
+	for i := range k.activeNotes {
+		k.activeNotes[i] = false
+	}
+}
+
 // return a string with notation for a pitch, or empty if none matched
 func (k *keymap) notatePitch(f float64) string {
 	if s := k.notatePitchWithMods(f); s != "" {

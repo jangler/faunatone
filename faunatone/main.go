@@ -222,7 +222,11 @@ func main() {
 						_, _, minTick, _ := patedit.getSelection()
 						pl.signal <- playerSignal{typ: signalStart, tick: minTick}
 					}},
-					{label: "Stop", action: func() { pl.stop(false) }},
+					{label: "Stop", action: func() {
+						pl.stop(false)
+						sng.Keymap.clearActiveNotes()
+						percKeymap.clearActiveNotes()
+					}},
 				},
 			},
 			{
