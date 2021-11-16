@@ -2,6 +2,8 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"encoding/csv"
 	"errors"
 	"fmt"
 	"math"
@@ -130,6 +132,18 @@ func newEmptyKeymap(name string) *keymap {
 
 // write a keymap to a file
 func (k *keymap) write(path string) error {
+	return writeCSV(joinTreePath(keymapPath, path), k.genRecords())
+}
+
+// return a string representation of the keymap
+func (k *keymap) String() string {
+	var b bytes.Buffer
+	csv.NewWriter(&b).WriteAll(k.genRecords())
+	return strings.Trim(b.String(), "\n")
+}
+
+// generate CSV records from current keymap
+func (k *keymap) genRecords() [][]string {
 	records := [][]string{}
 	octavesAreDuplicated := k.areOctavesDuplicated()
 	for _, ki := range k.Items {
@@ -137,7 +151,7 @@ func (k *keymap) write(path string) error {
 			records = append(records, []string{ki.Key, ki.Name, ki.PitchSrc.String()})
 		}
 	}
-	return writeCSV(joinTreePath(keymapPath, path), records)
+	return records
 }
 
 // return true if high octave and low octave keys are identical separated by an

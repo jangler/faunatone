@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -127,14 +128,18 @@ func (d *dialog) draw(p *printer, r *sdl.Renderer) {
 			promptWidth = p.rect.W * int32(len(line))
 		}
 	}
+	var h, cols int32
+	for cols == 0 || h+border*2 > viewport.H {
+		cols++
+		h = (p.rect.H+padding)*int32(math.Ceil(float64(len(d.prompt))/float64(cols))) + padding
+		if d.size > 0 {
+			h += p.rect.H + padding*2
+		}
+	}
 	inputWidth := p.rect.W * int32(d.size)
-	w := promptWidth + padding*2
+	w := (promptWidth+padding)*cols + padding
 	if inputWidth+padding > promptWidth {
 		w = inputWidth + padding*3
-	}
-	h := (p.rect.H+padding)*int32(len(d.prompt)) + padding
-	if d.size > 0 {
-		h += p.rect.H + padding*2
 	}
 	rect := &sdl.Rect{viewport.W/2 - w/2, viewport.H/2 - h/2, w, h}
 
@@ -144,8 +149,13 @@ func (d *dialog) draw(p *printer, r *sdl.Renderer) {
 	r.SetDrawColorArray(colorBg1Array...)
 	r.FillRect(rect)
 	y := rect.Y + padding
-	for _, line := range d.prompt {
-		p.draw(r, line, viewport.W/2-promptWidth/2, y)
+	linesPerCol := int(math.Ceil(float64(len(d.prompt)) / float64(cols)))
+	for i, line := range d.prompt {
+		if i%linesPerCol == 0 {
+			y = rect.Y + padding
+		}
+		colOffset := int32(i/linesPerCol) * (promptWidth + padding)
+		p.draw(r, line, viewport.W/2-(promptWidth*cols)/2-(padding*(cols-1))/2+colOffset, y)
 		y += p.rect.H + padding
 	}
 

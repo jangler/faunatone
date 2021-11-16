@@ -352,6 +352,7 @@ func main() {
 					{label: "Generate isomorphic layout...", action: func() {
 						dialogMakeIsoKeymap(dia, sng, patedit)
 					}},
+					{label: "Display as CSV", action: func() { dialogDisplayKeymap(dia, sng) }},
 				},
 			},
 			{
@@ -735,6 +736,11 @@ func dialogSaveKeymap(d *dialog, sng *song) {
 		}
 	})
 	d.input = addSuffixIfMissing(sng.Keymap.Name, ".csv")
+}
+
+// set d to a message dialog
+func dialogDisplayKeymap(d *dialog, sng *song) {
+	d.message(sng.Keymap.String())
 }
 
 // set d to an input dialog
