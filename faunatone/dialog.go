@@ -30,6 +30,11 @@ type dialog struct {
 	mode   inputMode
 	dir    string // base dir for path input, used for tab complete
 	ext    string // extension for path input completion if non-empty
+
+	// for keysig input mode
+	keymap      *keymap
+	keySig      map[float64]*pitchSrc
+	keySigNotes []float64
 }
 
 // determines how dialog input works
@@ -39,6 +44,7 @@ const (
 	textInput inputMode = iota
 	noteInput
 	yesNoInput
+	keySigInput
 )
 
 // create a new dialog
@@ -232,18 +238,72 @@ func (d *dialog) keyboardEvent(e *sdl.KeyboardEvent) {
 				d.action(d.input)
 			}
 		}
+	case keySigInput:
+		switch e.Keysym.Sym {
+		case sdl.K_ESCAPE:
+			d.shown = false
+		case sdl.K_RETURN:
+			d.shown = false
+			if d.action != nil {
+				d.action(d.input)
+			}
+		case sdl.K_LSHIFT, sdl.K_RSHIFT, sdl.K_LCTRL, sdl.K_RCTRL, sdl.K_LALT, sdl.K_RALT,
+			sdl.K_LGUI, sdl.K_RGUI:
+			// don't react to modifier keys
+		default:
+			d.handleKeySigKey(formatKeyEvent(e, true))
+		}
 	}
 }
 
 // respond to midi events
 func (d *dialog) midiEvent(msg []byte) {
-	if d.mode == noteInput {
+	switch d.mode {
+	case noteInput:
 		if msg[0]&0xf0 == 0x90 && msg[2] > 0 { // note on
 			d.shown = false
 			if d.action != nil {
 				d.action(fmt.Sprintf("m%d", msg[1]))
 			}
 		}
+	case keySigInput:
+		d.handleKeySigKey(fmt.Sprintf("m%d", msg[1]))
+	}
+}
+
+// process input in keysig mode
+func (d *dialog) handleKeySigKey(key string) {
+	if ki := d.keymap.getByKey(key); ki != nil {
+		// handle key
+		if ki.IsMod {
+			for _, v := range d.keySigNotes {
+				if _, ok := d.keySig[v]; !ok {
+					d.keySig[v] = newSemiPitch(0)
+				}
+				d.keySig[v] = d.keySig[v].add(ki.PitchSrc)
+			}
+		} else {
+			note := posMod(ki.PitchSrc.semitones(), 12)
+			for _, v := range d.keySigNotes {
+				if v == note {
+					return
+				}
+			}
+			d.keySigNotes = append(d.keySigNotes, note)
+		}
+
+		// update display text
+		// TODO don't include octave numbers
+		// TODO figure out what to display if notation fails
+		a := make([]string, len(d.keySigNotes))
+		for i, v := range d.keySigNotes {
+			note := v
+			if mod, ok := d.keySig[v]; ok {
+				note += mod.semitones()
+			}
+			a[i] = d.keymap.notatePitch(posMod(note, 12))
+		}
+		d.prompt[1] = strings.Join(a, " ")
 	}
 }
 

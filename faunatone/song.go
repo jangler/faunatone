@@ -80,6 +80,7 @@ func (s *song) read(r io.Reader) error {
 	}
 	s.Keymap.setMidiPattern()
 	s.Keymap.keyNotes = make(map[string]*trackEvent)
+	s.Keymap.keySig = make(map[float64]*pitchSrc)
 	for i, t := range s.Tracks {
 		t.index = i
 		for _, te := range t.Events {

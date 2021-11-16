@@ -51,6 +51,16 @@ type keymap struct {
 	keyNotes    map[string]*trackEvent // map of keys to note on events
 	midiNotes   [128]*trackEvent       // map of midi notes to note on events
 	activeNotes [24]bool
+	keySig      map[float64]*pitchSrc
+}
+
+// return a copy of a keySig map
+func copyKeySig(in map[float64]*pitchSrc) map[float64]*pitchSrc {
+	out := make(map[float64]*pitchSrc)
+	for k, v := range in {
+		out[k] = v.add(newSemiPitch(0))
+	}
+	return out
 }
 
 // an entry in a keymap
@@ -127,6 +137,7 @@ func newEmptyKeymap(name string) *keymap {
 	return &keymap{
 		Name:     name,
 		keyNotes: make(map[string]*trackEvent),
+		keySig:   make(map[float64]*pitchSrc),
 	}
 }
 
@@ -521,7 +532,7 @@ func (k *keymap) midiEvent(msg []byte, pe *patternEditor, p *player, keyjazz boo
 	if msg[0]&0xf0 == 0x90 && msg[2] > 0 { // note on
 		var te *trackEvent
 		if sdl.GetModState()&sdl.KMOD_SHIFT == 0 {
-			pitch := k.midimap[msg[1]] + pe.refPitch
+			pitch := k.adjustPerKeySig(k.midimap[msg[1]]) + pe.refPitch
 			te = newTrackEvent(&trackEvent{
 				Type:      noteOnEvent,
 				FloatData: pitch,
@@ -551,17 +562,28 @@ func (k *keymap) midiEvent(msg []byte, pe *patternEditor, p *player, keyjazz boo
 // convert a key string to an absolute pitch
 func (k *keymap) pitchFromString(s string, refPitch float64) (float64, bool) {
 	if ki := k.getByKey(s); ki != nil {
-		pitch := ki.PitchSrc.semitones() + refPitch
+		pitch := k.adjustPerKeySig(ki.PitchSrc.semitones()) + refPitch
 		pitch = math.Max(minPitch, math.Min(maxPitch, pitch))
 		return pitch, true
 	} else if midiRegexp.MatchString(s) {
 		if i, _ := strconv.ParseUint(s[1:], 10, 8); int(i) < len(k.midimap) {
-			pitch := k.midimap[i] + refPitch
+			pitch := k.adjustPerKeySig(k.midimap[i]) + refPitch
 			pitch = math.Max(minPitch, math.Min(maxPitch, pitch))
 			return pitch, true
 		}
 	}
 	return 0, false
+}
+
+// adjust a pitch according to the current key signature
+func (k *keymap) adjustPerKeySig(pitch float64) float64 {
+	normPitch := posMod(pitch, 12)
+	for key, v := range k.keySig {
+		if key == normPitch {
+			return pitch + v.semitones()
+		}
+	}
+	return pitch
 }
 
 // set the track and write/play a note on / drum note on event as appropriate

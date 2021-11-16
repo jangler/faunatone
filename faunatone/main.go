@@ -353,6 +353,9 @@ func main() {
 						dialogMakeIsoKeymap(dia, sng, patedit)
 					}},
 					{label: "Display as CSV", action: func() { dialogDisplayKeymap(dia, sng) }},
+					{label: "Change key signature...", action: func() {
+						dialogChangeKeySig(dia, sng)
+					}},
 				},
 			},
 			{
@@ -794,6 +797,14 @@ func dialogMakeIsoKeymap(d *dialog, sng *song, pe *patternEditor) {
 			pe.updateRefPitchDisplay()
 		})
 	})
+}
+
+// set d to an input dialog chain
+func dialogChangeKeySig(d *dialog, sng *song) {
+	*d = *newDialog("Input keys and accidentals, then press Enter:\n...", 0, func(s1 string) {
+		sng.Keymap.keySig = d.keySig
+	})
+	d.mode, d.keymap, d.keySig = keySigInput, sng.Keymap, copyKeySig(sng.Keymap.keySig)
 }
 
 // set d to a y/n dialog
