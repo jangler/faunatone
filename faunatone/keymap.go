@@ -600,17 +600,25 @@ func (k *keymap) setActiveNote(i uint8, v bool) {
 
 // return a string with notation for a pitch, or empty if none matched
 func (k *keymap) notatePitch(f float64) string {
-	if s := k.notatePitchWithMods(f); s != "" {
+	if s := k.notatePitchHelper(f, false); s != "" {
+		return s
+	}
+	return k.notatePitchHelper(f, true)
+}
+
+// helper for notatePitch
+func (k *keymap) notatePitchHelper(f float64, auto bool) string {
+	if s := k.notatePitchWithMods(f, auto); s != "" {
 		return s
 	}
 	for _, mod1 := range k.Items {
 		if mod1.IsMod {
-			if s := k.notatePitchWithMods(f, mod1); s != "" {
+			if s := k.notatePitchWithMods(f, auto, mod1); s != "" {
 				return s
 			}
 			for _, mod2 := range k.Items {
 				if mod2.IsMod {
-					if s := k.notatePitchWithMods(f, mod1, mod2); s != "" {
+					if s := k.notatePitchWithMods(f, auto, mod1, mod2); s != "" {
 						return s
 					}
 				}
@@ -623,7 +631,7 @@ func (k *keymap) notatePitch(f float64) string {
 var endsWithDigitRegexp = regexp.MustCompile(`\d$`)
 
 // helper function for notatePitch
-func (k *keymap) notatePitchWithMods(f float64, mods ...*keyInfo) string {
+func (k *keymap) notatePitchWithMods(f float64, auto bool, mods ...*keyInfo) string {
 	modString := ""
 	for _, mod := range mods {
 		f -= mod.PitchSrc.semitones()
@@ -634,13 +642,16 @@ func (k *keymap) notatePitchWithMods(f float64, mods ...*keyInfo) string {
 		}
 	}
 	target := posMod(f, 12)
-	var match *keyInfo
 	for _, ki := range k.Items {
 		if !ki.IsMod && math.Abs(ki.PitchSrc.class(12)-target) < 0.01 {
-			if match == nil {
-				match = ki
-			}
-			if ki.Name != "" {
+			if auto {
+				digitSpacer := ""
+				if modString == "" { // raw interval strings always end with digits
+					digitSpacer = "-"
+				}
+				return fmt.Sprintf("%s%s%s%d",
+					ki.PitchSrc.String(), modString, digitSpacer, int(f)/12)
+			} else if ki.Name != "" {
 				digitSpacer := ""
 				if endsWithDigitRegexp.MatchString(ki.Name + modString) {
 					digitSpacer = "-"
@@ -648,13 +659,6 @@ func (k *keymap) notatePitchWithMods(f float64, mods ...*keyInfo) string {
 				return fmt.Sprintf("%s%s%s%d", ki.Name, modString, digitSpacer, int(f)/12)
 			}
 		}
-	}
-	if match != nil {
-		digitSpacer := ""
-		if modString == "" { // raw interval strings always end with digits
-			digitSpacer = "-"
-		}
-		return fmt.Sprintf("%s%s%s%d", match.PitchSrc.String(), modString, digitSpacer, int(f)/12)
 	}
 	return ""
 }
