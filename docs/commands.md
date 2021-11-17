@@ -160,6 +160,14 @@ isomorphic layout...** - See
 [keymaps.md](https://github.com/jangler/faunatone/blob/master/docs/keymaps.md)
 for details.
 
+**Display as CSV** - Display the current keymap as it would be written to a CSV
+file.
+
+**Change key signature...** - Set which accidentals are automatically applied
+to which input pitch classes (before transposition by the root pitch). This
+does not change the keymap itself. The key signature is lost when loading a new
+keymap.
+
 ## Track
 
 **Set channel...** - Change the virtual channel that the selected tracks
