@@ -251,7 +251,9 @@ func (d *dialog) keyboardEvent(e *sdl.KeyboardEvent) {
 			sdl.K_LGUI, sdl.K_RGUI:
 			// don't react to modifier keys
 		default:
-			d.handleKeySigKey(formatKeyEvent(e, true))
+			if ki := d.keymap.getByKey(formatKeyEvent(e, true)); ki != nil {
+				d.handleKeySigKey(ki.PitchSrc, ki.IsMod)
+			}
 		}
 	}
 }
@@ -267,44 +269,46 @@ func (d *dialog) midiEvent(msg []byte) {
 			}
 		}
 	case keySigInput:
-		d.handleKeySigKey(fmt.Sprintf("m%d", msg[1]))
+		if ki := d.keymap.getByKey(fmt.Sprintf("m%d", msg[1])); ki != nil {
+			d.handleKeySigKey(ki.PitchSrc, ki.IsMod)
+		} else {
+			d.handleKeySigKey(newSemiPitch(d.keymap.midimap[msg[1]]), false)
+		}
 	}
 }
 
 // process input in keysig mode
-func (d *dialog) handleKeySigKey(key string) {
-	if ki := d.keymap.getByKey(key); ki != nil {
-		// handle key
-		if ki.IsMod {
-			for _, v := range d.keySigNotes {
-				if _, ok := d.keySig[v]; !ok {
-					d.keySig[v] = newSemiPitch(0)
-				}
-				d.keySig[v] = d.keySig[v].add(ki.PitchSrc)
+func (d *dialog) handleKeySigKey(pitch *pitchSrc, isMod bool) {
+	// handle key
+	if isMod {
+		for _, v := range d.keySigNotes {
+			if _, ok := d.keySig[v]; !ok {
+				d.keySig[v] = newSemiPitch(0)
 			}
-		} else {
-			note := posMod(ki.PitchSrc.semitones(), 12)
-			for _, v := range d.keySigNotes {
-				if v == note {
-					return
-				}
-			}
-			d.keySigNotes = append(d.keySigNotes, note)
+			d.keySig[v] = d.keySig[v].add(pitch)
 		}
-
-		// update display text
-		// TODO don't include octave numbers
-		// TODO figure out what to display if notation fails
-		a := make([]string, len(d.keySigNotes))
-		for i, v := range d.keySigNotes {
-			note := v
-			if mod, ok := d.keySig[v]; ok {
-				note += mod.semitones()
+	} else {
+		note := posMod(pitch.semitones(), 12)
+		for _, v := range d.keySigNotes {
+			if v == note {
+				return
 			}
-			a[i] = d.keymap.notatePitch(posMod(note, 12))
 		}
-		d.prompt[1] = strings.Join(a, " ")
+		d.keySigNotes = append(d.keySigNotes, note)
 	}
+
+	// update display text
+	// TODO don't include octave numbers
+	// TODO figure out what to display if notation fails
+	a := make([]string, len(d.keySigNotes))
+	for i, v := range d.keySigNotes {
+		note := v
+		if mod, ok := d.keySig[v]; ok {
+			note += mod.semitones()
+		}
+		a[i] = d.keymap.notatePitch(note)
+	}
+	d.prompt[1] = strings.Join(a, " ")
 }
 
 // try to tab-complete an entered file path
