@@ -685,6 +685,8 @@ func (k *keymap) notatePitchWithMods(f float64, auto, octave bool, mods ...*keyI
 				base = ki.PitchSrc.String()
 			} else if ki.Name != "" {
 				base = ki.Name
+			} else {
+				continue
 			}
 			if octave {
 				digitSpacer := ""
