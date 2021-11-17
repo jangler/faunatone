@@ -635,26 +635,26 @@ func (k *keymap) setActiveNote(i uint8, v bool) {
 }
 
 // return a string with notation for a pitch, or empty if none matched
-func (k *keymap) notatePitch(f float64) string {
-	if s := k.notatePitchHelper(f, false); s != "" {
+func (k *keymap) notatePitch(f float64, octave bool) string {
+	if s := k.notatePitchHelper(f, false, octave); s != "" {
 		return s
 	}
-	return k.notatePitchHelper(f, true)
+	return k.notatePitchHelper(f, true, octave)
 }
 
 // helper for notatePitch
-func (k *keymap) notatePitchHelper(f float64, auto bool) string {
-	if s := k.notatePitchWithMods(f, auto); s != "" {
+func (k *keymap) notatePitchHelper(f float64, auto, octave bool) string {
+	if s := k.notatePitchWithMods(f, auto, octave); s != "" {
 		return s
 	}
 	for _, mod1 := range k.Items {
 		if mod1.IsMod {
-			if s := k.notatePitchWithMods(f, auto, mod1); s != "" {
+			if s := k.notatePitchWithMods(f, auto, octave, mod1); s != "" {
 				return s
 			}
 			for _, mod2 := range k.Items {
 				if mod2.IsMod {
-					if s := k.notatePitchWithMods(f, auto, mod1, mod2); s != "" {
+					if s := k.notatePitchWithMods(f, auto, octave, mod1, mod2); s != "" {
 						return s
 					}
 				}
@@ -667,7 +667,7 @@ func (k *keymap) notatePitchHelper(f float64, auto bool) string {
 var endsWithDigitRegexp = regexp.MustCompile(`\d$`)
 
 // helper function for notatePitch
-func (k *keymap) notatePitchWithMods(f float64, auto bool, mods ...*keyInfo) string {
+func (k *keymap) notatePitchWithMods(f float64, auto, octave bool, mods ...*keyInfo) string {
 	modString := ""
 	for _, mod := range mods {
 		f -= mod.PitchSrc.semitones()
@@ -680,19 +680,20 @@ func (k *keymap) notatePitchWithMods(f float64, auto bool, mods ...*keyInfo) str
 	target := posMod(f, 12)
 	for _, ki := range k.Items {
 		if !ki.IsMod && math.Abs(ki.PitchSrc.class(12)-target) < 0.01 {
+			var base string
 			if auto {
-				digitSpacer := ""
-				if modString == "" { // raw interval strings always end with digits
-					digitSpacer = "-"
-				}
-				return fmt.Sprintf("%s%s%s%d",
-					ki.PitchSrc.String(), modString, digitSpacer, int(f)/12)
+				base = ki.PitchSrc.String()
 			} else if ki.Name != "" {
+				base = ki.Name
+			}
+			if octave {
 				digitSpacer := ""
 				if endsWithDigitRegexp.MatchString(ki.Name + modString) {
 					digitSpacer = "-"
 				}
-				return fmt.Sprintf("%s%s%s%d", ki.Name, modString, digitSpacer, int(f)/12)
+				return fmt.Sprintf("%s%s%s%d", base, modString, digitSpacer, int(f)/12)
+			} else {
+				return fmt.Sprintf("%s%s", base, modString)
 			}
 		}
 	}

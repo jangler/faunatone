@@ -298,15 +298,15 @@ func (d *dialog) handleKeySigKey(pitch *pitchSrc, isMod bool) {
 	}
 
 	// update display text
-	// TODO don't include octave numbers
-	// TODO figure out what to display if notation fails
 	a := make([]string, len(d.keySigNotes))
 	for i, v := range d.keySigNotes {
 		note := v
 		if mod, ok := d.keySig[v]; ok {
 			note += mod.semitones()
 		}
-		a[i] = d.keymap.notatePitch(note)
+		if a[i] = d.keymap.notatePitch(note, false); a[i] == "" {
+			a[i] = fmt.Sprintf("%.2f", note)
+		}
 	}
 	d.prompt[1] = strings.Join(a, " ")
 }

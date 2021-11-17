@@ -259,7 +259,7 @@ func (te *trackEvent) clone() *trackEvent {
 
 // reset UI string based on keymap, returning true if successful
 func (te *trackEvent) renameNote(k *keymap) bool {
-	if s := k.notatePitch(te.FloatData); s != "" {
+	if s := k.notatePitch(te.FloatData, true); s != "" {
 		if te.Type == noteOnEvent {
 			te.uiString = fmt.Sprintf("%s %d", s, te.ByteData1)
 		} else if te.Type == pitchBendEvent {
