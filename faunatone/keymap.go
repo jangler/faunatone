@@ -642,7 +642,8 @@ func (k *keymap) notatePitchWithMods(f float64, mods ...*keyInfo) string {
 	target := posMod(f, 12)
 	var match *keyInfo
 	for _, ki := range k.Items {
-		if !ki.IsMod && math.Abs(ki.PitchSrc.class(12)-target) < 0.01 {
+		diff := math.Abs(ki.PitchSrc.class(12) - target)
+		if !ki.IsMod && (diff < 0.01 || diff > 11.99) {
 			if match == nil {
 				match = ki
 			}
