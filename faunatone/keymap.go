@@ -693,7 +693,14 @@ func (k *keymap) notatePitchWithMods(f float64, auto, octave bool, mods ...*keyI
 				if endsWithDigitRegexp.MatchString(ki.Name + modString) {
 					digitSpacer = "-"
 				}
-				return fmt.Sprintf("%s%s%s%d", base, modString, digitSpacer, int(f)/12)
+				// subtract accidentals for octave, so that C3 + v is Cv3 and not Cv2
+				fOct := f
+				for _, mod := range mods {
+					fOct -= mod.PitchSrc.semitones()
+				}
+				// add +0.01 to prevent -0.00000001 (or whatever) from being lower than 0
+				octave := int(fOct+0.01) / 12
+				return fmt.Sprintf("%s%s%s%d", base, modString, digitSpacer, octave)
 			} else {
 				return fmt.Sprintf("%s%s", base, modString)
 			}
