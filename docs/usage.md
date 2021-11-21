@@ -32,7 +32,8 @@ On the left side of the window are the beat numbers, counting upwards from 1 at
 the beginning of the song. There are no "rows" or "patterns", just one
 continuous sequence of events. The song ends when the last event is reached. To
 leave time for instruments to "fade out" as a song ends, place an additional
-note off some distance after the last functional note off in the song.
+functional event some distance after the last functional note off in the song.
+Events are processed in left-to-right order for each tick.
 
 Most trackers use a fixed number of rows per beat; Faunatone allows you to
 freely change how many units the interface divides beats into. Events that do
