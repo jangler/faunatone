@@ -2,6 +2,8 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"encoding/csv"
 	"errors"
 	"fmt"
 	"math"
@@ -49,6 +51,16 @@ type keymap struct {
 	keyNotes    map[string]*trackEvent // map of keys to note on events
 	midiNotes   [128]*trackEvent       // map of midi notes to note on events
 	activeNotes [24]bool
+	keySig      map[float64]*pitchSrc
+}
+
+// return a copy of a keySig map
+func copyKeySig(in map[float64]*pitchSrc) map[float64]*pitchSrc {
+	out := make(map[float64]*pitchSrc)
+	for k, v := range in {
+		out[k] = v.add(newSemiPitch(0))
+	}
+	return out
 }
 
 // an entry in a keymap
@@ -125,11 +137,24 @@ func newEmptyKeymap(name string) *keymap {
 	return &keymap{
 		Name:     name,
 		keyNotes: make(map[string]*trackEvent),
+		keySig:   make(map[float64]*pitchSrc),
 	}
 }
 
 // write a keymap to a file
 func (k *keymap) write(path string) error {
+	return writeCSV(joinTreePath(keymapPath, path), k.genRecords())
+}
+
+// return a string representation of the keymap
+func (k *keymap) String() string {
+	var b bytes.Buffer
+	csv.NewWriter(&b).WriteAll(k.genRecords())
+	return strings.Trim(b.String(), "\n")
+}
+
+// generate CSV records from current keymap
+func (k *keymap) genRecords() [][]string {
 	records := [][]string{}
 	octavesAreDuplicated := k.areOctavesDuplicated()
 	for _, ki := range k.Items {
@@ -137,7 +162,7 @@ func (k *keymap) write(path string) error {
 			records = append(records, []string{ki.Key, ki.Name, ki.PitchSrc.String()})
 		}
 	}
-	return writeCSV(joinTreePath(keymapPath, path), records)
+	return records
 }
 
 // return true if high octave and low octave keys are identical separated by an
@@ -476,7 +501,7 @@ func (k *keymap) keyboardEvent(e *sdl.KeyboardEvent, pe *patternEditor, p *playe
 						ByteData1: pe.velocity,
 					}, k)
 				} else {
-					note, _ := pitchToMIDI(pitch)
+					note, _ := pitchToMidi(pitch)
 					te = newTrackEvent(&trackEvent{
 						Type:      drumNoteOnEvent,
 						ByteData1: note,
@@ -502,7 +527,7 @@ func (k *keymap) midiEvent(msg []byte, pe *patternEditor, p *player, keyjazz boo
 	if msg[0]&0xf0 == 0x90 && msg[2] > 0 { // note on
 		var te *trackEvent
 		if sdl.GetModState()&sdl.KMOD_SHIFT == 0 {
-			pitch := k.midimap[msg[1]] + pe.refPitch
+			pitch := k.adjustPerKeySig(k.midimap[msg[1]]) + pe.refPitch
 			te = newTrackEvent(&trackEvent{
 				Type:      noteOnEvent,
 				FloatData: pitch,
@@ -532,17 +557,28 @@ func (k *keymap) midiEvent(msg []byte, pe *patternEditor, p *player, keyjazz boo
 // convert a key string to an absolute pitch
 func (k *keymap) pitchFromString(s string, refPitch float64) (float64, bool) {
 	if ki := k.getByKey(s); ki != nil {
-		pitch := ki.PitchSrc.semitones() + refPitch
+		pitch := k.adjustPerKeySig(ki.PitchSrc.semitones()) + refPitch
 		pitch = math.Max(minPitch, math.Min(maxPitch, pitch))
 		return pitch, true
 	} else if midiRegexp.MatchString(s) {
 		if i, _ := strconv.ParseUint(s[1:], 10, 8); int(i) < len(k.midimap) {
-			pitch := k.midimap[i] + refPitch
+			pitch := k.adjustPerKeySig(k.midimap[i]) + refPitch
 			pitch = math.Max(minPitch, math.Min(maxPitch, pitch))
 			return pitch, true
 		}
 	}
 	return 0, false
+}
+
+// adjust a pitch according to the current key signature
+func (k *keymap) adjustPerKeySig(pitch float64) float64 {
+	normPitch := posMod(pitch, 12)
+	for key, v := range k.keySig {
+		if key == normPitch {
+			return pitch + v.semitones()
+		}
+	}
+	return pitch
 }
 
 // set the track and write/play a note on / drum note on event as appropriate
@@ -601,13 +637,21 @@ func (k *keymap) clearActiveNotes() {
 }
 
 // return a string with notation for a pitch, or empty if none matched
-func (k *keymap) notatePitch(f float64) string {
-	if s := k.notatePitchWithMods(f); s != "" {
+func (k *keymap) notatePitch(f float64, octave bool) string {
+	if s := k.notatePitchHelper(f, false, octave); s != "" {
+		return s
+	}
+	return k.notatePitchHelper(f, true, octave)
+}
+
+// helper for notatePitch
+func (k *keymap) notatePitchHelper(f float64, auto, octave bool) string {
+	if s := k.notatePitchWithMods(f, auto, octave); s != "" {
 		return s
 	}
 	for _, mod1 := range k.Items {
 		if mod1.IsMod {
-			if s := k.notatePitchWithMods(f, mod1); s != "" {
+			if s := k.notatePitchWithMods(f, auto, octave, mod1); s != "" {
 				return s
 			}
 		}
@@ -616,7 +660,7 @@ func (k *keymap) notatePitch(f float64) string {
 		if mod1.IsMod {
 			for _, mod2 := range k.Items {
 				if mod2.IsMod {
-					if s := k.notatePitchWithMods(f, mod1, mod2); s != "" {
+					if s := k.notatePitchWithMods(f, auto, octave, mod1, mod2); s != "" {
 						return s
 					}
 				}
@@ -629,7 +673,7 @@ func (k *keymap) notatePitch(f float64) string {
 var endsWithDigitRegexp = regexp.MustCompile(`\d$`)
 
 // helper function for notatePitch
-func (k *keymap) notatePitchWithMods(f float64, mods ...*keyInfo) string {
+func (k *keymap) notatePitchWithMods(f float64, auto, octave bool, mods ...*keyInfo) string {
 	modString := ""
 	for _, mod := range mods {
 		f -= mod.PitchSrc.semitones()
@@ -640,28 +684,34 @@ func (k *keymap) notatePitchWithMods(f float64, mods ...*keyInfo) string {
 		}
 	}
 	target := posMod(f, 12)
-	var match *keyInfo
 	for _, ki := range k.Items {
 		diff := math.Abs(ki.PitchSrc.class(12) - target)
 		if !ki.IsMod && (diff < 0.01 || diff > 11.99) {
-			if match == nil {
-				match = ki
+			var base string
+			if auto {
+				base = ki.PitchSrc.String()
+			} else if ki.Name != "" {
+				base = ki.Name
+			} else {
+				continue
 			}
-			if ki.Name != "" {
+			if octave {
 				digitSpacer := ""
 				if endsWithDigitRegexp.MatchString(ki.Name + modString) {
 					digitSpacer = "-"
 				}
-				return fmt.Sprintf("%s%s%s%d", ki.Name, modString, digitSpacer, int(f)/12)
+				// subtract accidentals for octave, so that C3 + v is Cv3 and not Cv2
+				fOct := f
+				for _, mod := range mods {
+					fOct -= mod.PitchSrc.semitones()
+				}
+				// add +0.01 to prevent -0.00000001 (or whatever) from being lower than 0
+				octave := int(fOct+0.01) / 12
+				return fmt.Sprintf("%s%s%s%d", base, modString, digitSpacer, octave)
+			} else {
+				return fmt.Sprintf("%s%s", base, modString)
 			}
 		}
-	}
-	if match != nil {
-		digitSpacer := ""
-		if modString == "" { // raw interval strings always end with digits
-			digitSpacer = "-"
-		}
-		return fmt.Sprintf("%s%s%s%d", match.PitchSrc.String(), modString, digitSpacer, int(f)/12)
 	}
 	return ""
 }

@@ -23,10 +23,11 @@ const (
 	channelPressureEvent
 	textEvent
 	releaseLenEvent
+	midiRangeEvent
 )
 
 const (
-	numMIDIChannels        = 16
+	numMidiChannels        = 16
 	numVirtualChannels     = 16
 	percussionChannelIndex = 9
 )
@@ -79,6 +80,7 @@ func (s *song) read(r io.Reader) error {
 	}
 	s.Keymap.setMidiPattern()
 	s.Keymap.keyNotes = make(map[string]*trackEvent)
+	s.Keymap.keySig = make(map[float64]*pitchSrc)
 	for i, t := range s.Tracks {
 		t.index = i
 		for _, te := range t.Events {
@@ -240,7 +242,9 @@ func (te *trackEvent) setUiString(k *keymap) {
 		}
 		te.uiString = fmt.Sprintf("%s \"%s\"", label, te.TextData)
 	case releaseLenEvent:
-		te.uiString = fmt.Sprintf("rel %.2f", te.FloatData)
+		te.uiString = fmt.Sprintf("@rel %.2f", te.FloatData)
+	case midiRangeEvent:
+		te.uiString = fmt.Sprintf("@mcr %d %d", te.ByteData1+1, te.ByteData2+1)
 	default:
 		te.uiString = "UNKNOWN"
 	}
@@ -255,7 +259,7 @@ func (te *trackEvent) clone() *trackEvent {
 
 // reset UI string based on keymap, returning true if successful
 func (te *trackEvent) renameNote(k *keymap) bool {
-	if s := k.notatePitch(te.FloatData); s != "" {
+	if s := k.notatePitch(te.FloatData, true); s != "" {
 		if te.Type == noteOnEvent {
 			te.uiString = fmt.Sprintf("%s %d", s, te.ByteData1)
 		} else if te.Type == pitchBendEvent {

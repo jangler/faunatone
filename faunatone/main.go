@@ -204,7 +204,7 @@ func main() {
 					{label: "New", action: func() { dialogNew(dia, sng, patedit, pl) }},
 					{label: "Open...", action: func() { dialogOpen(dia, sng, patedit, pl) }},
 					{label: "Save as...", action: func() { dialogSaveAs(dia, sng) }},
-					{label: "Export MIDI...", action: func() { dialogExportMIDI(dia, sng, pl) }},
+					{label: "Export MIDI...", action: func() { dialogExportMidi(dia, sng, pl) }},
 					{label: "Quit", action: func() { running = false }},
 				},
 			},
@@ -283,6 +283,9 @@ func main() {
 					{label: "Release length...", action: func() {
 						dialogInsertReleaseLen(dia, patedit, pl)
 					}},
+					{label: "MIDI channel range...", action: func() {
+						dialogInsertMidiRange(dia, patedit, pl)
+					}},
 				},
 			},
 			{
@@ -352,6 +355,10 @@ func main() {
 					}},
 					{label: "Generate isomorphic layout...", action: func() {
 						dialogMakeIsoKeymap(dia, sng, patedit)
+					}},
+					{label: "Display as CSV", action: func() { dialogDisplayKeymap(dia, sng) }},
+					{label: "Change key signature...", action: func() {
+						dialogChangeKeySig(dia, sng)
 					}},
 				},
 			},
@@ -536,7 +543,7 @@ func dialogInsertNote(d *dialog, pe *patternEditor, p *player) {
 
 // return note and pitch wheel values required to play a pitch in MIDI,
 // assuming a 2-semitone pitch bend range
-func pitchToMIDI(p float64) (uint8, int16) {
+func pitchToMidi(p float64) (uint8, int16) {
 	note := uint8(math.Round(math.Max(0, math.Min(127, p))))
 	bend := int16((p - float64(note)) * 8192.0 / bendSemitones)
 	return note, bend
@@ -623,6 +630,19 @@ func dialogInsertReleaseLen(d *dialog, pe *patternEditor, p *player) {
 			Type:      releaseLenEvent,
 			FloatData: f,
 		}, nil), p)
+	})
+}
+
+// set d to an input dialog chain
+func dialogInsertMidiRange(d *dialog, pe *patternEditor, p *player) {
+	d.getInt("Minimum MIDI channel:", 1, 16, func(min int64) {
+		d.getInt("Maximum MIDI channel:", min, 16, func(max int64) {
+			pe.writeEvent(newTrackEvent(&trackEvent{
+				Type:      midiRangeEvent,
+				ByteData1: byte(min - 1),
+				ByteData2: byte(max - 1),
+			}, nil), p)
+		})
 	})
 }
 
@@ -725,6 +745,11 @@ func dialogSaveKeymap(d *dialog, sng *song) {
 	d.input = addSuffixIfMissing(sng.Keymap.Name, ".csv")
 }
 
+// set d to a message dialog
+func dialogDisplayKeymap(d *dialog, sng *song) {
+	d.message(sng.Keymap.String())
+}
+
 // set d to an input dialog
 func dialogImportScl(d *dialog, sng *song, pe *patternEditor) {
 	d.getPath("Import Scala scale:", keymapPath, ".scl", func(s string) {
@@ -776,6 +801,14 @@ func dialogMakeIsoKeymap(d *dialog, sng *song, pe *patternEditor) {
 			pe.updateRefPitchDisplay()
 		})
 	})
+}
+
+// set d to an input dialog chain
+func dialogChangeKeySig(d *dialog, sng *song) {
+	*d = *newDialog("Input keys and accidentals, then press Enter:\n...", 0, func(s1 string) {
+		sng.Keymap.keySig = d.keySig
+	})
+	d.mode, d.keymap, d.keySig = keySigInput, sng.Keymap, copyKeySig(sng.Keymap.keySig)
 }
 
 // set d to a y/n dialog
@@ -836,7 +869,7 @@ func dialogSaveAs(d *dialog, sng *song) {
 }
 
 // set d to an input dialog
-func dialogExportMIDI(d *dialog, sng *song, p *player) {
+func dialogExportMidi(d *dialog, sng *song, p *player) {
 	d.getPath("Export song as:", exportsPath, ".mid", func(s string) {
 		s = addSuffixIfMissing(s, ".mid")
 		exportAutofill = s

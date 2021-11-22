@@ -6,9 +6,9 @@ bending to play non-12edo pitches. The tradeoff is that in this model, you
 cannot generally have more than 15-voice melodic polyphony without experiencing
 artifacts, although GM 1 only guarantees 16 melodic voices anyway.
 
-Management of individual output MIDI channels by the user is not required or
-even possible; Faunatone operates in terms of virtual channels which it maps
-dynamically.
+Management of individual output MIDI channels by the user is not required;
+Faunatone operates in terms of virtual channels which it maps dynamically by
+default.
 
 ## Features
 

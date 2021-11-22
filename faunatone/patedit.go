@@ -583,7 +583,7 @@ func (pe *patternEditor) captureRefPitch() {
 
 // update the displayed notation for the reference pitch
 func (pe *patternEditor) updateRefPitchDisplay() {
-	s := pe.song.Keymap.notatePitch(pe.refPitch)
+	s := pe.song.Keymap.notatePitch(pe.refPitch, true)
 	if s == "" {
 		s = fmt.Sprintf("%.2f", pe.refPitch)
 	}

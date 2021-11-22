@@ -79,6 +79,11 @@ channel allocator not to steal MIDI channels from future off notes in this
 channel until a number of beats after the note off. This directive does not
 affect notes that have already been turned off.
 
+**MIDI channel range...** - Insert a MIDI channel range directive. This
+specifies the minimum and maximum MIDI channel numbers that this virtual
+channel will use, value range 1 to 16. This will force multiple notes to play
+on the same MIDI channel if necessary.
+
 ## Edit
 
 **Go to beat...** - Scroll to a given beat (integers not required) without
@@ -154,6 +159,14 @@ folder as a keymap.
 isomorphic layout...** - See
 [keymaps.md](https://github.com/jangler/faunatone/blob/master/docs/keymaps.md)
 for details.
+
+**Display as CSV** - Display the current keymap as it would be written to a CSV
+file.
+
+**Change key signature...** - Set which accidentals are automatically applied
+to which input pitch classes (before transposition by the root pitch). This
+does not change the keymap itself. The key signature is lost when loading a new
+keymap.
 
 ## Track
 

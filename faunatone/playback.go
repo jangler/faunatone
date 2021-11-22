@@ -66,7 +66,7 @@ func newPlayer(s *song, wr writer.ChannelWriter, realtime bool) *player {
 		signal:       make(chan playerSignal),
 		stopping:     make(chan struct{}),
 		writer:       wr,
-		midiChannels: make([]*channelState, numMIDIChannels),
+		midiChannels: make([]*channelState, numMidiChannels),
 		virtChannels: make([]*channelState, numVirtualChannels),
 	}
 	for i := range p.midiChannels {
@@ -177,7 +177,7 @@ func (p *player) cleanup() {
 
 // send the "pitch bend sensitivity" RPN to every channel
 func (p *player) broadcastPitchBendRPN(semitones, cents uint8) {
-	for i := uint8(0); i < numMIDIChannels; i++ {
+	for i := uint8(0); i < numMidiChannels; i++ {
 		p.writer.SetChannel(i)
 		writer.RPN(p.writer, 0, 0, semitones, cents)
 	}
@@ -243,8 +243,9 @@ func (p *player) playEvent(te *trackEvent) {
 	case noteOnEvent:
 		p.lastEvtTick = te.Tick
 		p.noteOff(i, te.Tick)
+		vcs := p.virtChannels[t.Channel]
 		var stolen bool
-		t.midiChannel, stolen = pickInactiveChannel(p.midiChannels)
+		t.midiChannel, stolen = pickInactiveChannel(p.midiChannels, vcs.midiMin, vcs.midiMax)
 		for j, t2 := range p.song.Tracks {
 			if t2.Channel != t.Channel && t2.midiChannel == t.midiChannel {
 				if t2.activeNote != byteNil {
@@ -258,7 +259,6 @@ func (p *player) playEvent(te *trackEvent) {
 		}
 		p.writer.SetChannel(t.midiChannel)
 		mcs := p.midiChannels[t.midiChannel]
-		vcs := p.virtChannels[t.Channel]
 		for i, v := range vcs.controllers {
 			if mcs.controllers[i] != v {
 				writer.ControlChange(p.writer, uint8(i), v)
@@ -273,7 +273,7 @@ func (p *player) playEvent(te *trackEvent) {
 			writer.Aftertouch(p.writer, vcs.pressure)
 			mcs.pressure = vcs.pressure
 		}
-		note, bend := pitchToMIDI(te.FloatData)
+		note, bend := pitchToMidi(te.FloatData)
 		vcs.bend = bend
 		if mcs.bend != bend {
 			writer.Pitchbend(p.writer, bend)
@@ -380,6 +380,16 @@ func (p *player) playEvent(te *trackEvent) {
 		}
 	case releaseLenEvent:
 		p.virtChannels[t.Channel].releaseLen = int64(math.Round(te.FloatData * ticksPerBeat))
+	case midiRangeEvent:
+		vcs := p.virtChannels[t.Channel]
+		vcs.midiMin, vcs.midiMax = te.ByteData1, te.ByteData2
+		if vcs.midiMin == vcs.midiMax {
+			for _, t2 := range p.song.Tracks {
+				if t2.Channel == t.Channel {
+					t2.midiChannel = vcs.midiMin
+				}
+			}
+		}
 	default:
 		println("unhandled event type in player.playTrackEvents")
 	}
@@ -451,12 +461,17 @@ type channelState struct {
 	pressure    uint8
 	keyPressure [128]uint8
 	releaseLen  int64
+	midiMin     uint8 // only used by virtual channels
+	midiMax     uint8 // ^
 }
 
 // return an initialized channelState, using the default controller values from
 // "GM level 1 developer guidelines - second revision"
 func newChannelState() *channelState {
-	cs := &channelState{}
+	cs := &channelState{
+		midiMin: 0,
+		midiMax: numMidiChannels - 1,
+	}
 	cs.controllers[7] = 100    // volume
 	cs.controllers[10] = 64    // pan
 	cs.controllers[11] = 127   // expression
@@ -468,12 +483,13 @@ func newChannelState() *channelState {
 // return the index of the channel which has had no active notes for the
 // longest time, aside from the percussion channel; return true if voice was
 // stolen
-func pickInactiveChannel(a []*channelState) (uint8, bool) {
-	bestScore, bestIndex := int64(math.MaxInt64), 0
+func pickInactiveChannel(a []*channelState, min, max uint8) (uint8, bool) {
+	bestScore, bestIndex := int64(math.MaxInt64), min
 	for i, cs := range a {
-		if i != percussionChannelIndex && cs.lastNoteOff != -1 && cs.lastNoteOff < bestScore {
-			bestScore, bestIndex = cs.lastNoteOff, i
+		if i >= int(min) && i <= int(max) &&
+			i != percussionChannelIndex && cs.lastNoteOff != -1 && cs.lastNoteOff < bestScore {
+			bestScore, bestIndex = cs.lastNoteOff, uint8(i)
 		}
 	}
-	return uint8(bestIndex), bestScore == int64(math.MaxInt64)
+	return bestIndex, bestScore == int64(math.MaxInt64)
 }
