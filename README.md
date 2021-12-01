@@ -23,10 +23,10 @@ default.
 
 ## Status
 
-Faunatone has not seen extensive testing and it is still under initial
-development. Users may experience quirks, bugs, crashes, design changes, etc,
-although backwards-incompatible changes to the save and config file formats are
-less likely to happen.
+Faunatone is currently in maintenance mode, with a feature set complete enough
+for the author's purposes. A narrow user base means that undiscovered bugs
+probably exist. Backwards-compatible changes to the save and config formats may
+happen in future releases.
 
 ## Download
 
