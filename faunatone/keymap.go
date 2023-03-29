@@ -159,7 +159,15 @@ func (k *keymap) genRecords() [][]string {
 	octavesAreDuplicated := k.areOctavesDuplicated()
 	for _, ki := range k.Items {
 		if !(octavesAreDuplicated && stringInSlice(ki.Key, lowerOctaveKeys)) {
-			records = append(records, []string{ki.Key, ki.Name, ki.PitchSrc.String()})
+			prefix := ""
+			if ki.IsMod {
+				prefix = "*"
+			}
+			records = append(records, []string{
+				ki.Key,
+				ki.Name,
+				prefix + ki.PitchSrc.String(),
+			})
 		}
 	}
 	return records
