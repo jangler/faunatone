@@ -582,7 +582,7 @@ func (k *keymap) pitchFromString(s string, refPitch float64) (float64, bool) {
 func (k *keymap) adjustPerKeySig(pitch float64) float64 {
 	normPitch := posMod(pitch, 12)
 	for key, v := range k.keySig {
-		if key == normPitch {
+		if math.Abs(key-normPitch) < 0.01 {
 			return pitch + v.semitones()
 		}
 	}
