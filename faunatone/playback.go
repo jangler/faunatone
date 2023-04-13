@@ -253,9 +253,14 @@ func (p *player) playTrackEvents(i int, tickMin, tickMax int64) {
 	}
 }
 
-// return the midi output for a track
+// return the midi output for a track.
+// always returns non-nil if the player has at least one output.
 func (p *player) trackOutput(t *track) *midiOutput {
-	return p.outputs[p.virtChannels[t.Channel].output]
+	i := p.virtChannels[t.Channel].output
+	if i >= len(p.outputs) {
+		i = len(p.outputs) - 1
+	}
+	return p.outputs[i]
 }
 
 // play a single event; i is track index
@@ -414,6 +419,9 @@ func (p *player) playEvent(te *trackEvent) {
 				}
 			}
 		}
+	case midiOutputEvent:
+		vcs := p.virtChannels[t.Channel]
+		vcs.output = int(te.ByteData1)
 	default:
 		println("unhandled event type in player.playTrackEvents")
 	}

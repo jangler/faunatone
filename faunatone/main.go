@@ -293,6 +293,9 @@ func main() {
 					{label: "MIDI channel range...", action: func() {
 						dialogInsertMidiRange(dia, patedit, pl)
 					}},
+					{label: "MIDI output index...", action: func() {
+						dialogInsertMidiOutput(dia, patedit, pl)
+					}},
 				},
 			},
 			{
@@ -650,6 +653,16 @@ func dialogInsertMidiRange(d *dialog, pe *patternEditor, p *player) {
 				ByteData2: byte(max - 1),
 			}, nil), p)
 		})
+	})
+}
+
+// set d to an input dialog
+func dialogInsertMidiOutput(d *dialog, pe *patternEditor, p *player) {
+	d.getInt("Index of MIDI output in settings.csv list:", 0, 127, func(i int64) {
+		pe.writeEvent(newTrackEvent(&trackEvent{
+			Type:      midiOutputEvent,
+			ByteData1: byte(i),
+		}, nil), p)
 	})
 }
 

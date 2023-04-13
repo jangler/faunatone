@@ -84,6 +84,12 @@ specifies the minimum and maximum MIDI channel numbers that this virtual
 channel will use, value range 1 to 16. This will force multiple notes to play
 on the same MIDI channel if necessary.
 
+**MIDI output index...** - Insert a MIDI output index directive. This
+specifies the zero-based index of the MIDI output device that this virtual
+channel will use. Note that this is the index of the device in the list
+provided for `MidiOutPortNumber` in `config.settings.csv`, *not* the port
+number itself.
+
 ## Edit
 
 **Go to beat...** - Scroll to a given beat (integers not required) without
