@@ -103,23 +103,30 @@ func main() {
 		}
 	}
 
-	var wr *writer.Writer
-	if n := settings.MidiOutPortNumber; n >= 0 {
-		outs, err := drv.Outs()
-		must(err)
-		if settings.MidiOutPortNumber < len(outs) {
-			out := outs[settings.MidiOutPortNumber]
-			must(out.Open())
-			defer out.Close()
-			wr = writer.New(out)
-			sendGMSystemOn(wr)
-		} else {
-			dia.message(fmt.Sprintf("MIDI output port index %d out of range [%d, %d].",
-				n, 0, len(outs)))
+	var wrs []writer.ChannelWriter
+	outPorts, err := settings.parsedMidiOutPortNumbers()
+	if err != nil {
+		dia.message("Could not parse MidiOutPortNumber setting.")
+	}
+	for _, port := range outPorts {
+		if port >= 0 {
+			outs, err := drv.Outs()
+			must(err)
+			if port < len(outs) {
+				out := outs[port]
+				must(out.Open())
+				defer out.Close()
+				wr := writer.New(out)
+				sendGMSystemOn(wr)
+				wrs = append(wrs, wr)
+			} else {
+				dia.message(fmt.Sprintf("MIDI output port index %d out of range [%d, %d].",
+					port, 0, len(outs)))
+			}
 		}
 	}
-	if wr == nil {
-		wr = writer.New(io.Discard) // dummy output
+	if wrs == nil {
+		wrs = append(wrs, writer.New(io.Discard)) // dummy output
 	}
 
 	err = sdl.Init(sdl.INIT_VIDEO | sdl.INIT_EVENTS)
@@ -168,7 +175,7 @@ func main() {
 		offDivAlphaMod:   uint8(settings.OffDivisionAlpha),
 		shiftScrollMult:  settings.ShiftScrollMult,
 	}
-	pl := newPlayer(sng, wr, true)
+	pl := newPlayer(sng, wrs, true)
 	pl.redrawChan = redrawChan
 	go pl.run()
 	defer pl.cleanup()

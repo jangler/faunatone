@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 )
 
 var (
@@ -23,7 +24,7 @@ type settings struct {
 	FontSize          int
 	MessageDuration   int
 	MidiInPortNumber  int
-	MidiOutPortNumber int
+	MidiOutPortNumber string
 	OffDivisionAlpha  int
 	ShiftScrollMult   int
 	UndoBufferSize    int
@@ -77,4 +78,17 @@ func (s *settings) applyRecords(records [][]string, warn func(string)) {
 			warn(fmt.Sprintf("bad settings record: %v", rec))
 		}
 	}
+}
+
+// parse and return midi out port numbers
+func (s *settings) parsedMidiOutPortNumbers() ([]int, error) {
+	vs := []int{}
+	for _, s := range strings.Split(s.MidiOutPortNumber, " ") {
+		if i, err := strconv.Atoi(s); err == nil {
+			vs = append(vs, i)
+		} else {
+			return nil, err
+		}
+	}
+	return vs, nil
 }
