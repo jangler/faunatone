@@ -1,2 +1,4 @@
 exports/
 saves/
+config/*
+faunatone.exe
