@@ -276,7 +276,10 @@ func (p *player) playEvent(te *trackEvent) {
 		var stolen bool
 		t.midiChannel, stolen = pickInactiveChannel(out.channels, vcs.midiMin, vcs.midiMax)
 		for j, t2 := range p.song.Tracks {
-			if t2.Channel != t.Channel && t2.midiChannel == t.midiChannel {
+			vcs2 := p.virtChannels[t2.Channel]
+			if t2.Channel != t.Channel &&
+				vcs2.output == vcs.output &&
+				t2.midiChannel == t.midiChannel {
 				if t2.activeNote != byteNil {
 					p.noteOff(j, te.Tick)
 				}
