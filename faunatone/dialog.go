@@ -31,6 +31,10 @@ type dialog struct {
 	dir    string // base dir for path input, used for tab complete
 	ext    string // extension for path input completion if non-empty
 
+	// for display and tab completion
+	targets    []string // all possible targets
+	curTargets []string // filtered by input
+
 	// for keysig input mode
 	keymap      *keymap
 	keySig      map[float64]*pitchSrc
@@ -49,7 +53,12 @@ const (
 
 // create a new dialog
 func newDialog(prompt string, size int, action func(string)) *dialog {
-	return &dialog{prompt: strings.Split(prompt, "\n"), size: size, action: action, shown: true}
+	return &dialog{
+		prompt: strings.Split(prompt, "\n"),
+		size:   size,
+		action: action,
+		shown:  true,
+	}
 }
 
 // set d to a message dialog
@@ -88,6 +97,14 @@ func intMax(a, b int) int {
 	return b
 }
 
+// return the smaller of two integers
+func intMin(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 // set d to a float dialog that checks for range and syntax errors
 func (d *dialog) getFloat(prompt string, min, max float64, action func(float64)) {
 	*d = *newDialog(prompt, 8, func(s string) {
@@ -118,6 +135,22 @@ func (d *dialog) getInterval(prompt string, k *keymap, action func(*pitchSrc)) {
 func (d *dialog) getPath(prompt, dir, ext string, action func(string)) {
 	*d = *newDialog(prompt, 50, action)
 	d.dir, d.ext = joinTreePath(dir), ext
+	d.targets = pathTargets(dir, ext)
+	d.curTargets = d.targets
+}
+
+func pathTargets(dir, ext string) []string {
+	ts := []string{}
+	if f, err := os.Open(dir); err == nil {
+		if names, err := f.Readdirnames(maxDirNames); err == nil {
+			for _, name := range names {
+				if ext == "" || strings.HasSuffix(name, ext) {
+					ts = append(ts, name)
+				}
+			}
+		}
+	}
+	return ts
 }
 
 // draw the dialog
@@ -141,6 +174,11 @@ func (d *dialog) draw(p *printer, r *sdl.Renderer) {
 		if d.size > 0 {
 			h += p.rect.H + padding*2
 		}
+	}
+	maxDisplayedTargets := int(viewport.H/(p.rect.H+padding)) - 7
+	if d.targets != nil {
+		h += (p.rect.H+padding)*int32(intMin(maxDisplayedTargets, len(d.targets))) +
+			padding*2
 	}
 	inputWidth := p.rect.W * int32(d.size)
 	w := (promptWidth+padding)*cols + padding
@@ -176,6 +214,22 @@ func (d *dialog) draw(p *printer, r *sdl.Renderer) {
 		}
 		p.draw(r, s, viewport.W/2-inputWidth/2, rect.Y+p.rect.H+padding*5/2)
 	}
+
+	// draw completion targets
+	y += p.rect.H + padding*3
+	for i, s := range d.curTargets {
+		if i >= maxDisplayedTargets {
+			break
+		} else if i == maxDisplayedTargets-1 &&
+			len(d.curTargets) > maxDisplayedTargets {
+			s = "..."
+		}
+		if len(s) > d.size && d.size >= 3 {
+			s = s[:d.size-3] + "..."
+		}
+		p.draw(r, s, viewport.W/2-inputWidth/2, y)
+		y += p.rect.H + padding
+	}
 }
 
 // respond to text input events
@@ -183,6 +237,7 @@ func (d *dialog) textInput(e *sdl.TextInputEvent) {
 	text := e.GetText()
 	if d.accept && d.mode == textInput && len(d.input)+len(text) <= d.size {
 		d.input += e.GetText()
+		d.updateCurTargets()
 	}
 }
 
@@ -199,9 +254,11 @@ func (d *dialog) keyboardEvent(e *sdl.KeyboardEvent) {
 		case sdl.K_BACKSPACE:
 			if e.Keysym.Mod&sdl.KMOD_CTRL != 0 {
 				d.input = ""
+				d.updateCurTargets()
 			} else if len(d.input) > 0 {
 				_, size := utf8.DecodeLastRuneInString(d.input)
 				d.input = d.input[:len(d.input)-size]
+				d.updateCurTargets()
 			}
 		case sdl.K_ESCAPE:
 			d.shown = false
@@ -254,6 +311,15 @@ func (d *dialog) keyboardEvent(e *sdl.KeyboardEvent) {
 			if ki := d.keymap.getByKey(formatKeyEvent(e, true)); ki != nil {
 				d.handleKeySigKey(ki.PitchSrc, ki.IsMod)
 			}
+		}
+	}
+}
+
+func (d *dialog) updateCurTargets() {
+	d.curTargets = []string{}
+	for _, s := range d.targets {
+		if strings.Contains(s, d.input) {
+			d.curTargets = append(d.curTargets, s)
 		}
 	}
 }
@@ -313,25 +379,17 @@ func (d *dialog) handleKeySigKey(pitch *pitchSrc, isMod bool) {
 
 // try to tab-complete an entered file path
 func (d *dialog) tryPathComplete() {
-	if f, err := os.Open(d.dir); err == nil {
-		candidate := ""
-		if names, err := f.Readdirnames(maxDirNames); err == nil {
-			for _, name := range names {
-				if d.ext != "" && !strings.HasSuffix(name, d.ext) {
-					continue
-				}
-				if strings.HasPrefix(name, d.input) {
-					if candidate == "" {
-						candidate = name
-					} else {
-						candidate = commonPrefix(candidate, name)
-					}
-				}
-			}
+	candidate := ""
+	for _, s := range d.curTargets {
+		if candidate == "" {
+			candidate = s
+		} else {
+			candidate = commonPrefix(candidate, s)
 		}
-		if candidate != "" {
-			d.input = candidate
-		}
+	}
+	if candidate != "" {
+		d.input = candidate
+		d.updateCurTargets()
 	}
 }
 
