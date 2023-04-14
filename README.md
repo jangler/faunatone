@@ -23,10 +23,13 @@ default.
 
 ## Status
 
-Faunatone is currently in maintenance mode, with a feature set complete enough
-for the author's purposes. A narrow user base means that undiscovered bugs
-probably exist. Backwards-compatible changes to the save and config formats may
-happen in future releases.
+Faunatone has been used by the author and others to write music. It is
+functional and well-documented, although speed of implementation has mostly
+been prioritized over a "friendly" user interface. To me it feels fairly
+stable, but the user base is narrow, so undiscovered bugs probably exist.
+
+Faunatone is currently under active development, with a focus on adding new
+features and improving the user interface.
 
 ## Download
 
