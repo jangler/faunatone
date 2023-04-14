@@ -763,6 +763,7 @@ func dialogSaveKeymap(d *dialog, sng *song) {
 		}
 	})
 	d.input = addSuffixIfMissing(sng.Keymap.Name, ".csv")
+	d.updateCurTargets()
 }
 
 // set d to a message dialog
@@ -886,6 +887,7 @@ func dialogSaveAs(d *dialog, sng *song) {
 		}
 	})
 	d.input = saveAutofill
+	d.updateCurTargets()
 }
 
 // set d to an input dialog
@@ -905,6 +907,7 @@ func dialogExportMidi(d *dialog, sng *song, p *player) {
 		}
 	})
 	d.input = exportAutofill
+	d.updateCurTargets()
 }
 
 // set d to a message dialog
