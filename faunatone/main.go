@@ -117,7 +117,7 @@ func main() {
 				must(out.Open())
 				defer out.Close()
 				wr := writer.New(out)
-				sendGMSystemOn(wr)
+				sendGMSystemOn(wr, 0)
 				wrs = append(wrs, wr)
 			} else {
 				dia.message(fmt.Sprintf("MIDI output port index %d out of range [%d, %d].",
@@ -266,7 +266,8 @@ func main() {
 					}},
 					{label: "Program change...", action: func() {
 						dialogInsertUint8Event(dia, patedit, pl,
-							"Program:", programEvent, 1)
+							"Program:", programEvent, []int64{1, 0, 0},
+							instrumentTargets[pl.song.MidiMode])
 					}},
 					{label: "Tempo change...", action: func() {
 						dialogInsertTempoChange(dia, patedit, pl)
@@ -276,12 +277,12 @@ func main() {
 					}},
 					{label: "Aftertouch...", action: func() {
 						dialogInsertUint8Event(dia, patedit, pl,
-							"Channel pressure:", channelPressureEvent, 0)
+							"Channel pressure:", channelPressureEvent, []int64{0}, nil)
 					}},
 					/* this is not part of GM level 1
 					{label: "Polyphonic aftertouch...", action: func() {
 						dialogInsertUint8Event(dia, patedit, pl,
-							"Insert key pressure:", keyPressureEvent, 0)
+							"Insert key pressure:", keyPressureEvent, 0, nil)
 					}},
 					*/
 					{label: "Text...", action: func() {
@@ -399,8 +400,11 @@ func main() {
 						pl.signal <- playerSignal{typ: signalSendPitchRPN}
 					}},
 					{label: "Send GM system on", action: func() {
-						pl.signal <- playerSignal{typ: signalSendGMSystemOn}
+						pl.signal <- playerSignal{typ: signalSendSystemOn}
 						pl.signal <- playerSignal{typ: signalSendPitchRPN}
+					}},
+					{label: "Cycle mode", action: func() {
+						pl.signal <- playerSignal{typ: signalCycleMIDIMode}
 					}},
 				},
 			},
@@ -413,6 +417,7 @@ func main() {
 		func() string { return fmt.Sprintf("Division: %d", patedit.division) },
 		func() string { return fmt.Sprintf("Velocity: %d", patedit.velocity) },
 		func() string { return fmt.Sprintf("Controller: %d", patedit.controller) },
+		func() string { return fmt.Sprintf("Mode: %s", midiModes[sng.MidiMode]) },
 		func() string { return fmt.Sprintf("Keymap: %s", sng.Keymap.Name) },
 		func() string { return conditionalString(patedit.followSong, "Follow", "") },
 		func() string { return conditionalString(keyjazz, "Keyjazz", "") },
@@ -611,11 +616,23 @@ func dialogInsertControlChange(d *dialog, pe *patternEditor, p *player) {
 
 // set d to an input dialog
 func dialogInsertUint8Event(d *dialog, pe *patternEditor, p *player, prompt string,
-	et trackEventType, offset int64) {
-	d.getInt(prompt, offset, 127+offset, func(i int64) {
+	et trackEventType, offsets []int64, targets []*tabTarget) {
+	d.getNamedInts(prompt, offsets, targets, func(ints []int64) {
+		byteData := []byte{0, 0, 0}
+		for i := range byteData {
+			if i < len(ints) {
+				if i < len(offsets) {
+					byteData[i] = byte(ints[i] - offsets[i])
+				} else {
+					byteData[i] = byte(ints[i])
+				}
+			}
+		}
 		pe.writeEvent(newTrackEvent(&trackEvent{
 			Type:      et,
-			ByteData1: byte(i - offset),
+			ByteData1: byteData[0],
+			ByteData2: byteData[1],
+			ByteData3: byteData[2],
 		}, nil), p)
 	})
 }
@@ -1009,8 +1026,8 @@ func setColorSDL(c *sdl.Color, v uint32) {
 }
 
 // send the "GM system on" sysex message
-func sendGMSystemOn(wr *writer.Writer) {
-	writer.SysEx(wr, []byte{0x7e, 0x7f, 0x09, 0x01})
+func sendGMSystemOn(wr *writer.Writer, midiMode int) {
+	writer.SysEx(wr, systemOnBytes[midiMode])
 }
 
 // replaces the suffix of a string, if present

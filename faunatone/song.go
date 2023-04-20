@@ -33,12 +33,15 @@ const (
 	percussionChannelIndex = 9
 )
 
+var midiModes = []string{"GM", "GS", "XG"}
+
 // fields in these types are exported to expose them to the JSON encoder
 
 type song struct {
-	Title  string
-	Tracks []*track
-	Keymap *keymap
+	Title    string
+	Tracks   []*track
+	Keymap   *keymap
+	MidiMode int
 }
 
 func newSong(k *keymap) *song {
@@ -189,6 +192,7 @@ type trackEvent struct {
 	FloatData  float64 `json:",omitempty"`
 	ByteData1  byte    `json:",omitempty"`
 	ByteData2  byte    `json:",omitempty"`
+	ByteData3  byte    `json:",omitempty"`
 	TextData   string  `json:",omitempty"`
 	uiString   string
 	track      int
@@ -234,7 +238,8 @@ func (te *trackEvent) setUiString(k *keymap) {
 	case keyPressureEvent:
 		te.uiString = fmt.Sprintf("kp %d", te.ByteData1)
 	case programEvent:
-		te.uiString = fmt.Sprintf("prog %d", te.ByteData1+1)
+		te.uiString = fmt.Sprintf("prog %d %d %d",
+			te.ByteData1+1, te.ByteData2, te.ByteData3)
 	case tempoEvent:
 		te.uiString = fmt.Sprintf("tempo %.2f", te.FloatData)
 	case textEvent:

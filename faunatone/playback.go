@@ -25,14 +25,24 @@ const (
 	signalEvent
 	signalSongChanged // TODO actually use this
 	signalSendPitchRPN
-	signalSendGMSystemOn
+	signalSendSystemOn
 	signalResetChannels
+	signalCycleMIDIMode
 )
 
 const (
 	defaultBPM = 120
 	byteNil    = 0xff
+
+	ccBankMSB = 0
+	ccBankLSB = 32
 )
+
+var systemOnBytes = [][]byte{
+	{0x7e, 0x7f, 0x09, 0x01},                               // GM
+	{0x41, 0x10, 0x42, 0x12, 0x40, 0x00, 0x7f, 0x00, 0x41}, // GS
+	{0x43, 0x10, 0x4c, 0x00, 0x00, 0x7e, 0x00},             // XG
+}
 
 // type that writes midi events over time according to a song
 type player struct {
@@ -158,9 +168,9 @@ func (p *player) run() {
 			p.playEvent(sig.event)
 		case signalSendPitchRPN:
 			p.broadcastPitchBendRPN(bendSemitones, 0)
-		case signalSendGMSystemOn:
+		case signalSendSystemOn:
 			for _, out := range p.outputs {
-				writer.SysEx(out.writer, []byte{0x7e, 0x7f, 0x09, 0x01})
+				writer.SysEx(out.writer, systemOnBytes[p.song.MidiMode])
 				for i := range out.channels {
 					p.virtChannels[i] = newChannelState()
 				}
@@ -174,6 +184,11 @@ func (p *player) run() {
 			}
 		case signalSongChanged:
 			p.findHorizon()
+		case signalCycleMIDIMode:
+			p.song.MidiMode = (p.song.MidiMode + 1) % len(midiModes)
+			go func() {
+				p.signal <- playerSignal{typ: signalSendSystemOn}
+			}()
 		}
 
 		// if we got any signal, assume redraw is needed
@@ -298,7 +313,9 @@ func (p *player) playEvent(te *trackEvent) {
 			}
 		}
 		if mcs.program != vcs.program {
-			writer.ProgramChange(out.writer, vcs.program)
+			writer.ControlChange(out.writer, ccBankMSB, uint8(vcs.program>>8))
+			writer.ControlChange(out.writer, ccBankLSB, uint8(vcs.program>>16))
+			writer.ProgramChange(out.writer, uint8(vcs.program))
 			mcs.program = vcs.program
 		}
 		if mcs.pressure != vcs.pressure {
@@ -326,7 +343,7 @@ func (p *player) playEvent(te *trackEvent) {
 		out.writer.SetChannel(t.midiChannel)
 		mcs := out.channels[t.midiChannel]
 		if mcs.program != vcs.program {
-			writer.ProgramChange(out.writer, vcs.program)
+			writer.ProgramChange(out.writer, uint8(vcs.program))
 		}
 		writer.NoteOn(out.writer, te.ByteData1, te.ByteData2)
 		t.activeNote = te.ByteData1
@@ -371,13 +388,17 @@ func (p *player) playEvent(te *trackEvent) {
 			out.channels[t.midiChannel].keyPressure[t.activeNote] = t.pressure
 		}
 	case programEvent:
-		p.virtChannels[t.Channel].program = te.ByteData1
+		p.virtChannels[t.Channel].program = uint32(te.ByteData1) +
+			uint32(te.ByteData2)<<8 +
+			uint32(te.ByteData3)<<16
 		for _, t2 := range p.song.Tracks {
 			if t2.Channel == t.Channel && t2.midiChannel != byteNil {
 				p.lastEvtTick = te.Tick
 				out.writer.SetChannel(t2.midiChannel)
+				writer.ControlChange(out.writer, ccBankMSB, te.ByteData2)
+				writer.ControlChange(out.writer, ccBankLSB, te.ByteData3)
 				writer.ProgramChange(out.writer, te.ByteData1)
-				out.channels[t2.midiChannel].program = te.ByteData1
+				out.channels[t2.midiChannel].program = p.virtChannels[t.Channel].program
 			}
 		}
 	case tempoEvent:
@@ -473,7 +494,9 @@ func (p *player) determineVirtualChannelStates(tick int64) {
 		case controllerEvent:
 			p.virtChannels[t.Channel].controllers[te.ByteData1] = te.ByteData2
 		case programEvent:
-			p.virtChannels[t.Channel].program = te.ByteData1
+			p.virtChannels[t.Channel].program = uint32(te.ByteData1) +
+				uint32(te.ByteData2)<<8 +
+				uint32(te.ByteData3)<<16
 		case tempoEvent:
 			p.bpm = te.FloatData
 		}
@@ -491,7 +514,7 @@ func (p *player) stop(await bool) {
 // type that tracks state of a midi or virtual channel
 type channelState struct {
 	lastNoteOff int64
-	program     uint8
+	program     uint32
 	controllers [128]uint8
 	bend        int16
 	pressure    uint8

@@ -19,6 +19,10 @@ const (
 	border             = 2
 )
 
+type tabTarget struct {
+	display, value string
+}
+
 // modal dialog that displays a message or prompts for input
 type dialog struct {
 	prompt []string
@@ -32,8 +36,8 @@ type dialog struct {
 	ext    string // extension for path input completion if non-empty
 
 	// for display and tab completion
-	targets    []string // all possible targets
-	curTargets []string // filtered by input
+	targets    []*tabTarget // all possible targets
+	curTargets []*tabTarget // filtered by input
 
 	// for keysig input mode
 	keymap      *keymap
@@ -89,6 +93,49 @@ func (d *dialog) getInt(prompt string, min, max int64, action func(int64)) {
 	})
 }
 
+// set d to an integer dialog with completion targets
+func (d *dialog) getNamedInts(
+	prompt string, offsets []int64, targets []*tabTarget, action func([]int64)) {
+	size := 3
+	for _, t := range targets {
+		n := len(t.display)
+		if n > size {
+			size = n
+		}
+	}
+	*d = *newDialog(prompt, size, func(s string) {
+		errString := ""
+		ints := []int64{}
+		for _, t := range d.curTargets {
+			if t.display == s {
+				s = t.value
+				break
+			}
+		}
+		for i, token := range strings.Split(s, " ") {
+			if i > len(offsets) {
+				continue
+			}
+			min, max := offsets[i], 127+offsets[i]
+			if n, err := strconv.ParseInt(token, 10, 64); err == nil && n >= min && n <= max {
+				ints = append(ints, n)
+			} else if err != nil && errors.Is(err, strconv.ErrSyntax) {
+				errString = "Invalid syntax."
+			} else if n < min || n > max || errors.Is(err, strconv.ErrRange) {
+				errString = fmt.Sprintf("Value must be in range [%d, %d].", min, max)
+			} else {
+				errString = err.Error()
+			}
+		}
+		if errString == "" {
+			action(ints)
+		} else {
+			d.message(errString)
+		}
+	})
+	d.targets, d.curTargets = targets, targets
+}
+
 // return the larger of two integers
 func intMax(a, b int) int {
 	if a > b {
@@ -131,7 +178,7 @@ func (d *dialog) getInterval(prompt string, k *keymap, action func(*pitchSrc)) {
 	})
 }
 
-// set d to a file path dialog that allows for tab completion
+// set d to a file path dialog that allows for path tab completion
 func (d *dialog) getPath(prompt, dir, ext string, action func(string)) {
 	*d = *newDialog(prompt, 50, action)
 	d.dir, d.ext = joinTreePath(dir), ext
@@ -139,13 +186,14 @@ func (d *dialog) getPath(prompt, dir, ext string, action func(string)) {
 	d.curTargets = d.targets
 }
 
-func pathTargets(dir, ext string) []string {
-	ts := []string{}
+// return path targets for the given directory and filename extension
+func pathTargets(dir, ext string) []*tabTarget {
+	ts := []*tabTarget{}
 	if f, err := os.Open(dir); err == nil {
 		if names, err := f.Readdirnames(maxDirNames); err == nil {
 			for _, name := range names {
 				if ext == "" || strings.HasSuffix(name, ext) {
-					ts = append(ts, name)
+					ts = append(ts, &tabTarget{display: name, value: name})
 				}
 			}
 		}
@@ -176,6 +224,9 @@ func (d *dialog) draw(p *printer, r *sdl.Renderer) {
 		}
 	}
 	maxDisplayedTargets := int(viewport.H/(p.rect.H+padding)) - 7
+	if maxDisplayedTargets > 10 {
+		maxDisplayedTargets = 10
+	}
 	if d.targets != nil {
 		h += (p.rect.H+padding)*int32(intMin(maxDisplayedTargets, len(d.targets))) +
 			padding*2
@@ -217,7 +268,8 @@ func (d *dialog) draw(p *printer, r *sdl.Renderer) {
 
 	// draw completion targets
 	y += p.rect.H + padding*3
-	for i, s := range d.curTargets {
+	for i, t := range d.curTargets {
+		s := t.display
 		if i >= maxDisplayedTargets {
 			break
 		} else if i == maxDisplayedTargets-1 &&
@@ -268,7 +320,7 @@ func (d *dialog) keyboardEvent(e *sdl.KeyboardEvent) {
 				d.action(d.input)
 			}
 		case sdl.K_TAB:
-			if d.dir != "" {
+			if d.curTargets != nil {
 				d.tryPathComplete()
 			}
 		}
@@ -316,10 +368,11 @@ func (d *dialog) keyboardEvent(e *sdl.KeyboardEvent) {
 }
 
 func (d *dialog) updateCurTargets() {
-	d.curTargets = []string{}
-	for _, s := range d.targets {
-		if strings.Contains(s, d.input) {
-			d.curTargets = append(d.curTargets, s)
+	d.curTargets = []*tabTarget{}
+	needle := strings.ToLower(d.input)
+	for _, t := range d.targets {
+		if strings.Contains(strings.ToLower(t.display), needle) {
+			d.curTargets = append(d.curTargets, t)
 		}
 	}
 }
@@ -380,11 +433,16 @@ func (d *dialog) handleKeySigKey(pitch *pitchSrc, isMod bool) {
 // try to tab-complete an entered file path
 func (d *dialog) tryPathComplete() {
 	candidate := ""
-	for _, s := range d.curTargets {
-		if candidate == "" {
-			candidate = s
-		} else {
-			candidate = commonPrefix(candidate, s)
+	n := len(d.curTargets)
+	if n == 1 {
+		candidate = d.curTargets[0].display
+	} else if n > 1 {
+		for _, t := range d.curTargets {
+			if candidate == "" {
+				candidate = t.display
+			} else {
+				candidate = commonPrefix(candidate, t.display)
+			}
 		}
 	}
 	if candidate != "" {
