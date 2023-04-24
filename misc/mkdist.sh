@@ -14,8 +14,8 @@ case "$GOOS" in
 		go build -tags static -ldflags "-s -w" -o ftone ./faunatone/
 		;;
 	windows)
-		CGO_LDFLAGS="-static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread -Wl,-Bdynamic -mwindows" \
-			go build -tags static -ldflags "-s -w -H windowsgui" -o ftone.exe ./faunatone/
+		 CGO_LDFLAGS="-static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread -Wl,-Bdynamic -mwindows" \
+		 	go build -tags static -ldflags "-s -w -H windowsgui" ./faunatone/
 		;;
 	"")
 		echo "error: GOOS not set"
