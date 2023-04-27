@@ -227,8 +227,8 @@ func (d *dialog) draw(p *printer, r *sdl.Renderer) {
 		}
 	}
 	maxDisplayedTargets := int(viewport.H/(p.rect.H+padding)) - 7
-	if maxDisplayedTargets > 10 {
-		maxDisplayedTargets = 10
+	if maxDisplayedTargets > 20 {
+		maxDisplayedTargets = 20
 	}
 	if d.targets != nil {
 		h += (p.rect.H+padding)*int32(intMin(maxDisplayedTargets, len(d.targets))) +
