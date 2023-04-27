@@ -69,3 +69,4 @@ Ctrl+Insert, Track, Insert
 Ctrl+Delete, Track, Delete
 Ctrl+Shift+Tab, Track, Move left
 Ctrl+Tab, Track, Move right
+Ctrl+Shift+M, MIDI, Cycle mode
