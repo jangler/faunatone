@@ -33,7 +33,12 @@ const (
 	percussionChannelIndex = 9
 )
 
-var midiModes = []string{"GM", "GS", "XG"}
+var (
+	midiModes          = []string{"GM", "GS", "XG"}
+	standardPitchNames = []string{
+		"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B",
+	}
+)
 
 // fields in these types are exported to expose them to the JSON encoder
 
@@ -217,6 +222,11 @@ var textEventLabels = []string{
 	"device",
 }
 
+func formatDrumPitch(b byte) string {
+	return standardPitchNames[int(b)%len(standardPitchNames)] +
+		fmt.Sprintf("%d", b/12)
+}
+
 func (te *trackEvent) setUiString(k *keymap) {
 	switch te.Type {
 	case noteOnEvent:
@@ -224,7 +234,8 @@ func (te *trackEvent) setUiString(k *keymap) {
 			te.uiString = fmt.Sprintf("on %.2f %d", te.FloatData, te.ByteData1)
 		}
 	case drumNoteOnEvent:
-		te.uiString = fmt.Sprintf("dr %d %d", te.ByteData1, te.ByteData2)
+		te.uiString = fmt.Sprintf(
+			"dr %s %d", formatDrumPitch(te.ByteData1), te.ByteData2)
 	case noteOffEvent:
 		te.uiString = "off"
 	case controllerEvent:
