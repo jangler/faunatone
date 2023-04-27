@@ -802,4 +802,16 @@ var (
 			{display: "POLY", value: "127"},
 		},
 	}
+
+	metaEvents = []*tabTarget{
+		{display: "Text", value: "1"},
+		{display: "Copyright", value: "2"},
+		{display: "Track Name", value: "3"},
+		{display: "Instrument Name", value: "4"},
+		{display: "Lyric", value: "5"},
+		{display: "Marker", value: "6"},
+		{display: "Cue Point", value: "7"},
+		{display: "Program Name", value: "8"},
+		{display: "Device Name", value: "9"},
+	}
 )

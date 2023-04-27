@@ -639,15 +639,22 @@ func dialogInsertUint8Event(d *dialog, pe *patternEditor, p *player, prompt stri
 
 // set d to an input dialog chain
 func dialogInsertTextEvent(d *dialog, pe *patternEditor, p *player) {
-	d.getInt("Meta-event type:", 1, 9, func(i int64) {
-		*d = *newDialog("Text:", 100, func(s string) {
-			pe.writeEvent(newTrackEvent(&trackEvent{
-				Type:      textEvent,
-				ByteData1: byte(i),
-				TextData:  s,
-			}, nil), p)
+	min, max := 1, 9
+	d.getNamedInts("Meta-event type:", []int64{0}, metaEvents,
+		func(i []int64) {
+			if i[0] >= int64(min) && i[0] <= int64(max) {
+				*d = *newDialog("Text:", 100, func(s string) {
+					pe.writeEvent(newTrackEvent(&trackEvent{
+						Type:      textEvent,
+						ByteData1: byte(i[0]),
+						TextData:  s,
+					}, nil), p)
+				})
+			} else {
+				s := fmt.Sprintf("Value must be in range [%d, %d].", min, max)
+				d.message(s)
+			}
 		})
-	})
 }
 
 // set d to an input dialog
