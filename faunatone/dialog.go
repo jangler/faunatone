@@ -127,6 +127,9 @@ func (d *dialog) getNamedInts(
 				errString = err.Error()
 			}
 		}
+		if len(ints) == 0 {
+			errString = "Invalid syntax."
+		}
 		if errString == "" {
 			action(ints)
 		} else {

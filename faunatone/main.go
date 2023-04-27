@@ -333,7 +333,7 @@ func main() {
 					{label: "Capture root pitch", action: func() { patedit.captureRefPitch() }},
 					{label: "Set velocity...", action: func() { dialogSetVelocity(dia, patedit) }},
 					{label: "Set controller...", action: func() {
-						dialogSetController(dia, patedit)
+						dialogSetController(dia, sng, patedit)
 					}},
 					{label: "Set division...", action: func() { dialogSetDivision(dia, patedit) }},
 					{label: "Decrease division", action: func() { patedit.addDivision(-1) },
@@ -684,10 +684,11 @@ func dialogInsertMidiOutput(d *dialog, pe *patternEditor, p *player) {
 }
 
 // set d to an input dialog
-func dialogSetController(d *dialog, pe *patternEditor) {
-	d.getInt("Controller index:", 0, 127, func(i int64) {
-		pe.controller = uint8(i)
-	})
+func dialogSetController(d *dialog, s *song, pe *patternEditor) {
+	d.getNamedInts("Controller index:", []int64{0}, ccTargets[s.MidiMode],
+		func(i []int64) {
+			pe.controller = uint8(i[0])
+		})
 }
 
 // set d to an input dialog
