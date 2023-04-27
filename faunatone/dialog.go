@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -17,6 +18,10 @@ const (
 	maxDirNames        = 1000
 	inputCursorBlinkMs = 500
 	border             = 2
+)
+
+var (
+	startsWithDigitRegexp = regexp.MustCompile("^[0-9]")
 )
 
 type tabTarget struct {
@@ -106,11 +111,9 @@ func (d *dialog) getNamedInts(
 	*d = *newDialog(prompt, size, func(s string) {
 		errString := ""
 		ints := []int64{}
-		for _, t := range d.curTargets {
-			if t.display == s {
-				s = t.value
-				break
-			}
+
+		if len(d.curTargets) == 1 && !startsWithDigitRegexp.MatchString(s) {
+			s = d.curTargets[0].value
 		}
 		for i, token := range strings.Split(s, " ") {
 			if i > len(offsets) {
