@@ -1,7 +1,13 @@
 # Faunatone menu commands
 
-All filename input dialogs support tab completion. Keyboard shortcuts are
-configurable in `config/shortcuts.csv`.
+In search-style dialogs (file dialogs, program change, set controller, drum
+note, and text event), results are filtered by the input string. Results can
+either match exactly, by prefix, by substring, and by word prefixes, in that
+order of precedence. Pressing enter with incomplete input will automatically
+expand the input to the top search result, except in save and export dialogs,
+where input must be explicitly expanded with the tab key.
+
+Keyboard shortcuts are configurable in `config/shortcuts.csv`.
 
 ## File
 
@@ -41,10 +47,8 @@ root pitch. Keymaps are a more convenient way to insert notes, but this command
 allows you to use notes outside the current keymap.
 
 **Drum note...** - Insert a percussion note on event at a specified absolute
-MIDI "pitch". Keymaps are a more convenient way to insert notes, but this
-command lets you insert percussion notes without having to worry about your
-root pitch. Wikipedia has a
-[list of GM percussion keys](https://en.wikipedia.org/wiki/General_MIDI#Percussion).
+MIDI "pitch". You can also insert percussion notes without using this dialog,
+by holding shift and pressing keys from the percussion keymap.
 
 **Note off** - Insert a note off event.
 
@@ -56,8 +60,7 @@ or minus the amount of bending required to produce the initial pitch in the
 first place.
 
 **Program change...** - Insert a program (instrument/patch) change event, value
-range 1 to 128. Wikipedia has a
-[list of GM program numbers](https://en.wikipedia.org/wiki/General_MIDI#Program_change_events).
+range 1 to 128. Also sets bank MSB and LSB in GS and XG modes.
 
 **Tempo change...** - Insert a tempo change meta-event. Tempos are specified in
 beats per minute. The default is 120.
@@ -65,14 +68,12 @@ beats per minute. The default is 120.
 **Controller change...** - Insert a control change event for the current
 controller (set by **Status -> Set controller...**), value range 0 to 127. Most
 controllers default to 0, with the exception of 7 (volume) to 100, 10 (pan) to
-64, and 11 (expression) to 127.
+64, and 11 (expression) to 127. GS and XG controllers may have other defaults.
 
 **Aftertouch...** - Insert an aftertouch (channel pressure) event, value range
 0 to 127. Aftertouch usually produces a vibrato effect.
 
-**Text...** - Insert a text meta-event. There are different types of text
-meta-events with different meanings; for the generic text meta-event, choose
-type 1.
+**Text...** - Insert a text meta-event.
 
 **Release length...** - Insert a release length directive. This tells the
 channel allocator not to steal MIDI channels from future off notes in this
@@ -140,9 +141,7 @@ A key familiar to users of a certain tracker.
 keyboard will have. Notes entered via MIDI input retain their velocities.
 
 **Set controller...** - Set the controller that inserted controller change
-events affect, range 0 to 127. GM level 1 controllers are 1 (modulation), 7
-(volume), 10 (pan), 11 (expression), 64 (sustain), 121 (reset all controllers),
-and 123 (all notes off).
+events affect, range 0 to 127.
 
 **Set division...**, **Decrease division**, **Increase division**, **Halve
 division**, & **Double division** - Change the number of equal divisions each

@@ -42,7 +42,8 @@ folder.
 **MidiInPortNumber** - The index of the MIDI input port used. -1 means none.
 
 **MidiOutPortNumber** - The index of the MIDI output port used. -1 means none.
-Can use multiple port numbers, separated by spaces.
+Can use multiple port numbers, separated by spaces; in this case, the first
+port is the default.
 
 **OffDivisionAlpha** - The alpha value to use for drawing events that don't
 fall on a current division of the beat, range 0 to 255.
