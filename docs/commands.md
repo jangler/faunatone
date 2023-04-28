@@ -195,6 +195,6 @@ available MIDI inputs/outputs by index.
 **Send pitch bend sensitivity RPN** - MIDI outputs connected to Faunatone after
 startup will need this to interpret pitches correctly.
 
-**Send GM system on** - Resets the state of compliant outputs to the GM
+**Send system on** - Resets the state of compliant outputs to the GM, GS, or XG
 defaults. (And then sends the pitch bend sensitivity RPN.) This also resets the
 virtual channel states.
