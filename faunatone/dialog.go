@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/veandco/go-sdl2/sdl"
@@ -373,11 +374,40 @@ func (d *dialog) keyboardEvent(e *sdl.KeyboardEvent) {
 	}
 }
 
+func canStartWord(r rune) bool {
+	return unicode.IsUpper(r) || unicode.IsDigit(r)
+}
+
+// split s into words by whitespace, capitalization, or punctuation
+func splitWords(s string) []string {
+	words := []string{}
+	curWord := []rune{}
+	prevRune := ' '
+	for i, r := range s {
+		if i > 0 {
+			if canStartWord(r) && !canStartWord(prevRune) {
+				words = append(words, strings.ToLower(string(curWord)))
+				curWord = []rune{}
+			}
+		}
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			curWord = append(curWord, r)
+		}
+		prevRune = r
+	}
+	if len(curWord) > 0 {
+		words = append(words, strings.ToLower(string(curWord)))
+	}
+	return words
+}
+
 func (d *dialog) updateCurTargets() {
 	exactMatches := []*tabTarget{}
 	prefixMatches := []*tabTarget{}
 	substringMatches := []*tabTarget{}
+	wordPrefixMatches := []*tabTarget{}
 	needle := strings.ToLower(d.input)
+	needleWords := strings.Split(needle, " ")
 	for _, t := range d.targets {
 		haystack := strings.ToLower(t.display)
 		if needle == haystack {
@@ -386,10 +416,31 @@ func (d *dialog) updateCurTargets() {
 			prefixMatches = append(prefixMatches, t)
 		} else if strings.Contains(haystack, needle) {
 			substringMatches = append(substringMatches, t)
+		} else if len(needleWords) > 1 {
+			haystackWords := splitWords(t.display)
+			if len(haystackWords) >= len(needleWords) {
+				match := false
+				for skip := 0; skip <= len(haystackWords)-len(needleWords); skip++ {
+					subMatch := true
+					for i := 0; i < len(needleWords) && i < len(haystackWords); i++ {
+						if !strings.HasPrefix(haystackWords[skip+i], needleWords[i]) {
+							subMatch = false
+							break
+						}
+					}
+					if subMatch {
+						match = true
+					}
+				}
+				if match {
+					wordPrefixMatches = append(wordPrefixMatches, t)
+				}
+			}
 		}
 	}
 	d.curTargets = append(exactMatches, prefixMatches...)
 	d.curTargets = append(d.curTargets, substringMatches...)
+	d.curTargets = append(d.curTargets, wordPrefixMatches...)
 }
 
 // respond to midi events
