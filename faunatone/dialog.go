@@ -186,8 +186,14 @@ func (d *dialog) getInterval(prompt string, k *keymap, action func(*pitchSrc)) {
 }
 
 // set d to a file path dialog that allows for path tab completion
-func (d *dialog) getPath(prompt, dir, ext string, action func(string)) {
-	*d = *newDialog(prompt, 50, action)
+func (d *dialog) getPath(
+	prompt, dir, ext string, requireExists bool, action func(string)) {
+	*d = *newDialog(prompt, 50, func(s string) {
+		if requireExists && len(d.curTargets) > 0 {
+			s = d.curTargets[0].value
+		}
+		action(s)
+	})
 	d.dir, d.ext = joinTreePath(dir), ext
 	d.targets = pathTargets(dir, ext)
 	d.curTargets = d.targets
@@ -501,34 +507,8 @@ func (d *dialog) handleKeySigKey(pitch *pitchSrc, isMod bool) {
 
 // try to tab-complete an entered file path
 func (d *dialog) tryPathComplete() {
-	candidate := ""
-	n := len(d.curTargets)
-	if n == 1 {
-		candidate = d.curTargets[0].display
-	} else if n > 1 {
-		for _, t := range d.curTargets {
-			if candidate == "" {
-				candidate = t.display
-			} else {
-				candidate = commonPrefix(candidate, t.display)
-			}
-		}
-	}
-	if candidate != "" {
-		d.input = candidate
+	if len(d.curTargets) > 0 {
+		d.input = d.curTargets[0].display
 		d.updateCurTargets()
 	}
-}
-
-// return the longest common prefix of two strings
-func commonPrefix(a, b string) string {
-	for i := 0; i < len(a) && i < len(b); i++ {
-		if a[i] != b[i] {
-			return a[:i]
-		}
-	}
-	if len(a) < len(b) {
-		return a
-	}
-	return b
 }

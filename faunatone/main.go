@@ -766,7 +766,7 @@ func dialogRemapKey(d *dialog, s *song, pe *patternEditor) {
 
 // set d to an input dialog
 func dialogLoadKeymap(d *dialog, sng *song, pe *patternEditor) {
-	d.getPath("Load keymap:", keymapPath, ".csv", func(s string) {
+	d.getPath("Load keymap:", keymapPath, ".csv", true, func(s string) {
 		s = addSuffixIfMissing(s, ".csv")
 		if k, err := newKeymap(s); err == nil {
 			sng.Keymap = k
@@ -780,7 +780,7 @@ func dialogLoadKeymap(d *dialog, sng *song, pe *patternEditor) {
 
 // set d to an input dialog
 func dialogSaveKeymap(d *dialog, sng *song) {
-	d.getPath("Save keymap as:", keymapPath, ".csv", func(s string) {
+	d.getPath("Save keymap as:", keymapPath, ".csv", false, func(s string) {
 		s = addSuffixIfMissing(s, ".csv")
 		if err := sng.Keymap.write(s); err != nil {
 			d.message(err.Error())
@@ -799,7 +799,7 @@ func dialogDisplayKeymap(d *dialog, sng *song) {
 
 // set d to an input dialog
 func dialogImportScl(d *dialog, sng *song, pe *patternEditor) {
-	d.getPath("Import Scala scale:", keymapPath, ".scl", func(s string) {
+	d.getPath("Import Scala scale:", keymapPath, ".scl", true, func(s string) {
 		s = addSuffixIfMissing(s, ".scl")
 		if k, err := keymapFromSclFile(s); err == nil {
 			sng.Keymap = k
@@ -873,7 +873,7 @@ func dialogNew(d *dialog, sng *song, pe *patternEditor, p *player) {
 
 // set d to an input dialog
 func dialogOpen(d *dialog, sng *song, pe *patternEditor, p *player) {
-	d.getPath("Load song:", savesPath, ".faun", func(s string) {
+	d.getPath("Load song:", savesPath, ".faun", true, func(s string) {
 		s = addSuffixIfMissing(s, fileExt)
 		if f, err := os.Open(joinTreePath(savesPath, s)); err == nil {
 			defer f.Close()
@@ -894,7 +894,7 @@ func dialogOpen(d *dialog, sng *song, pe *patternEditor, p *player) {
 
 // set d to an input dialog
 func dialogSaveAs(d *dialog, sng *song) {
-	d.getPath("Save song as:", savesPath, ".faun", func(s string) {
+	d.getPath("Save song as:", savesPath, ".faun", false, func(s string) {
 		s = addSuffixIfMissing(s, fileExt)
 		saveAutofill = s
 		if exportAutofill == "" {
@@ -918,7 +918,7 @@ func dialogSaveAs(d *dialog, sng *song) {
 
 // set d to an input dialog
 func dialogExportMidi(d *dialog, sng *song, p *player) {
-	d.getPath("Export song as:", exportsPath, ".mid", func(s string) {
+	d.getPath("Export song as:", exportsPath, ".mid", false, func(s string) {
 		s = addSuffixIfMissing(s, ".mid")
 		exportAutofill = s
 		if saveAutofill == "" {
