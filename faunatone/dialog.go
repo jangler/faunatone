@@ -418,23 +418,21 @@ func (d *dialog) updateCurTargets() {
 			substringMatches = append(substringMatches, t)
 		} else if len(needleWords) > 1 {
 			haystackWords := splitWords(t.display)
-			if len(haystackWords) >= len(needleWords) {
-				match := false
-				for skip := 0; skip <= len(haystackWords)-len(needleWords); skip++ {
-					subMatch := true
-					for i := 0; i < len(needleWords) && i < len(haystackWords); i++ {
-						if !strings.HasPrefix(haystackWords[skip+i], needleWords[i]) {
-							subMatch = false
-							break
-						}
-					}
-					if subMatch {
-						match = true
+			match := false
+			for skip := 0; skip <= len(haystackWords)-len(needleWords); skip++ {
+				subMatch := true
+				for i := 0; i < len(needleWords) && i < len(haystackWords); i++ {
+					if !strings.HasPrefix(haystackWords[skip+i], needleWords[i]) {
+						subMatch = false
+						break
 					}
 				}
-				if match {
-					wordPrefixMatches = append(wordPrefixMatches, t)
+				if subMatch {
+					match = true
 				}
+			}
+			if match {
+				wordPrefixMatches = append(wordPrefixMatches, t)
 			}
 		}
 	}
