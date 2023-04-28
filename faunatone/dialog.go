@@ -374,6 +374,10 @@ func (d *dialog) keyboardEvent(e *sdl.KeyboardEvent) {
 	}
 }
 
+func canBeWord(r rune) bool {
+	return unicode.IsLetter(r) || unicode.IsDigit(r)
+}
+
 func canStartWord(r rune) bool {
 	return unicode.IsUpper(r) || unicode.IsDigit(r)
 }
@@ -385,12 +389,13 @@ func splitWords(s string) []string {
 	prevRune := ' '
 	for i, r := range s {
 		if i > 0 {
-			if canStartWord(r) && !canStartWord(prevRune) {
+			if (canStartWord(r) && !canStartWord(prevRune)) ||
+				(canBeWord(r) && !canBeWord(prevRune)) {
 				words = append(words, strings.ToLower(string(curWord)))
 				curWord = []rune{}
 			}
 		}
-		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+		if canBeWord(r) {
 			curWord = append(curWord, r)
 		}
 		prevRune = r
