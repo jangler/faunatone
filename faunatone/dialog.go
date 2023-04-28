@@ -21,7 +21,7 @@ const (
 )
 
 var (
-	startsWithDigitRegexp = regexp.MustCompile("^[0-9]")
+	alphaRegexp = regexp.MustCompile("[A-Za-z]")
 )
 
 type tabTarget struct {
@@ -112,7 +112,7 @@ func (d *dialog) getNamedInts(
 		errString := ""
 		ints := []int64{}
 
-		if len(d.curTargets) == 1 && !startsWithDigitRegexp.MatchString(s) {
+		if len(d.curTargets) > 0 && alphaRegexp.MatchString(s) {
 			s = d.curTargets[0].value
 		}
 		for i, token := range strings.Split(s, " ") {
@@ -374,13 +374,22 @@ func (d *dialog) keyboardEvent(e *sdl.KeyboardEvent) {
 }
 
 func (d *dialog) updateCurTargets() {
-	d.curTargets = []*tabTarget{}
+	exactMatches := []*tabTarget{}
+	prefixMatches := []*tabTarget{}
+	substringMatches := []*tabTarget{}
 	needle := strings.ToLower(d.input)
 	for _, t := range d.targets {
-		if strings.Contains(strings.ToLower(t.display), needle) {
-			d.curTargets = append(d.curTargets, t)
+		haystack := strings.ToLower(t.display)
+		if needle == haystack {
+			exactMatches = append(exactMatches, t)
+		} else if strings.HasPrefix(haystack, needle) {
+			prefixMatches = append(prefixMatches, t)
+		} else if strings.Contains(haystack, needle) {
+			substringMatches = append(substringMatches, t)
 		}
 	}
+	d.curTargets = append(exactMatches, prefixMatches...)
+	d.curTargets = append(d.curTargets, substringMatches...)
 }
 
 // respond to midi events
