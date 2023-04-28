@@ -103,7 +103,7 @@ func (d *dialog) getNamedInts(
 	prompt string, offsets []int64, targets []*tabTarget, action func([]int64)) {
 	size := 3
 	for _, t := range targets {
-		n := len(t.display)
+		n := len(t.display) + 1
 		if n > size {
 			size = n
 		}

@@ -566,15 +566,16 @@ func pitchToMidi(p float64) (uint8, int16) {
 
 // set to d an input dialog
 func dialogInsertDrumNote(d *dialog, pe *patternEditor, p *player) {
-	d.getInt("Pitch:", 0, 127, func(i int64) {
-		track, _, _, _ := pe.getSelection()
-		pe.writeEvent(newTrackEvent(&trackEvent{
-			Type:      drumNoteOnEvent,
-			ByteData1: uint8(i),
-			ByteData2: pe.velocity,
-			track:     track,
-		}, nil), p)
-	})
+	d.getNamedInts("Pitch:", []int64{0}, drumTargets[p.song.MidiMode],
+		func(i []int64) {
+			track, _, _, _ := pe.getSelection()
+			pe.writeEvent(newTrackEvent(&trackEvent{
+				Type:      drumNoteOnEvent,
+				ByteData1: uint8(i[0]),
+				ByteData2: pe.velocity,
+				track:     track,
+			}, nil), p)
+		})
 }
 
 // set d to a key dialog
