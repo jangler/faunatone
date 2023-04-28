@@ -88,12 +88,12 @@ func newPlayer(s *song, wrs []writer.ChannelWriter, realtime bool) *player {
 			channels: make([]*channelState, numMidiChannels),
 		}
 		for i := range out.channels {
-			out.channels[i] = newChannelState()
+			out.channels[i] = newChannelState(s.MidiMode)
 		}
 		p.outputs[i] = out
 	}
 	for i := range p.virtChannels {
-		p.virtChannels[i] = newChannelState()
+		p.virtChannels[i] = newChannelState(s.MidiMode)
 	}
 	return p
 }
@@ -172,15 +172,15 @@ func (p *player) run() {
 			for _, out := range p.outputs {
 				writer.SysEx(out.writer, systemOnBytes[p.song.MidiMode])
 				for i := range out.channels {
-					p.virtChannels[i] = newChannelState()
+					p.virtChannels[i] = newChannelState(p.song.MidiMode)
 				}
 				for i := range out.channels {
-					out.channels[i] = newChannelState()
+					out.channels[i] = newChannelState(p.song.MidiMode)
 				}
 			}
 		case signalResetChannels:
 			for i := range p.virtChannels {
-				p.virtChannels[i] = newChannelState()
+				p.virtChannels[i] = newChannelState(p.song.MidiMode)
 			}
 		case signalSongChanged:
 			p.findHorizon()
@@ -527,7 +527,7 @@ type channelState struct {
 
 // return an initialized channelState, using the default controller values from
 // "GM level 1 developer guidelines - second revision"
-func newChannelState() *channelState {
+func newChannelState(midiMode int) *channelState {
 	cs := &channelState{
 		midiMin: 0,
 		midiMax: numMidiChannels - 1,
@@ -537,6 +537,15 @@ func newChannelState() *channelState {
 	cs.controllers[11] = 127   // expression
 	cs.controllers[100] = 0x7f // RPN LSB
 	cs.controllers[101] = 0x7f // RPN MSB
+	if midiModes[midiMode] == "XG" {
+		cs.controllers[71] = 0x40  // harmonic content
+		cs.controllers[72] = 0x40  // release time
+		cs.controllers[73] = 0x40  // attack time
+		cs.controllers[74] = 0x40  // brightness
+		cs.controllers[91] = 0x28  // reverb send level
+		cs.controllers[100] = 0x7f // RPN LSB
+		cs.controllers[101] = 0x7f // RPN MSB
+	}
 	return cs
 }
 
