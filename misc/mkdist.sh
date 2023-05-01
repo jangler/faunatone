@@ -15,11 +15,11 @@ case "$GOOS" in
 		;;
 	windows)
 		 CGO_LDFLAGS="-static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread -Wl,-Bdynamic -mwindows" \
-		 	go build -tags static -ldflags "-s -w -H windowsgui" ./faunatone/
+		 	go build -tags static -ldflags "-s -w -H windowsgui" -o ftone.exe ./faunatone/
 		;;
 	"")
 		echo "error: GOOS not set"
-		exit 1
+		exit 1explorer
 		;;
 	*)
 		echo "error: unsupported GOOS: $GOOS"
