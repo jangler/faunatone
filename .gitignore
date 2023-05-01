@@ -2,3 +2,4 @@ exports/
 saves/
 config/*
 faunatone.exe
+dist/
