@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # puts together a release folder for a target GOOS.
-# requires dos2unix and util-linux's rename.
+# requires dos2unix and either util-linux rename or perl rename.
 # cross-compilation not currently supported.
 
 if [ "$(basename $(pwd))" == misc ]; then
@@ -32,8 +32,13 @@ mkdir -p "$dir"
 mv ftone* "$dir"
 cp -r assets docs faunatone/config README.md "$dir"
 cd "$dir"
-rename ftone faunatone ftone*
-rename .md .txt *.md docs/*.md
+if [[ $(rename --version) == *util-linux* ]]; then
+	rename ftone faunatone ftone*
+	rename .md .txt *.md docs/*.md
+else
+	rename s/ftone/faunatone/ ftone*
+	rename s/.md/.txt/ *.md docs/*.md
+fi
 if [ "$GOOS" == windows ]; then
 	unix2dos *.txt docs/*.txt config/* config/keymaps/*
 fi
