@@ -441,7 +441,7 @@ var (
 			{display: "Clv Bass", value: "39 0 35"},
 			{display: "TeknoBa", value: "39 0 40"},
 			{display: "Oscar", value: "39 0 64"},
-			{display: "SqrBass", value: "0 65 "},
+			{display: "SqrBass", value: "39 0 65"},
 			{display: "RubberBa", value: "39 0 66"},
 			{display: "Hammer", value: "39 0 96"},
 			{display: "SynBass2", value: "40 0 0"},
