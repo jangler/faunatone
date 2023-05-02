@@ -117,7 +117,7 @@ func (d *dialog) getNamedInts(
 			s = d.curTargets[0].value
 		}
 		for i, token := range strings.Split(s, " ") {
-			if i > len(offsets) {
+			if i >= len(offsets) {
 				continue
 			}
 			min, max := offsets[i], 127+offsets[i]
