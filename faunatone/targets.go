@@ -1,5 +1,11 @@
 package main
 
+import (
+	"fmt"
+	"strconv"
+	"strings"
+)
+
 var (
 	instrumentTargets = [][]*tabTarget{
 		// GM
@@ -916,4 +922,41 @@ var (
 			{value: "84", display: "Bell Tree"},
 		}...),
 	}
+
+	programCategories = []string{
+		"Piano",
+		"Chromatic Percussion",
+		"Organ",
+		"Guitar",
+		"Bass",
+		"Strings",
+		"Ensemble",
+		"Brass",
+		"Reed",
+		"Pipe",
+		"Synth Lead",
+		"Synth Pad",
+		"Synth Effects",
+		"Ethnic", // lol...
+		"Percussive",
+		"Sound Effects",
+	}
 )
+
+func init() {
+	for i, ts := range instrumentTargets {
+		for _, t := range ts {
+			prog, err := strconv.Atoi(strings.Split(t.value, " ")[0])
+			if err != nil {
+				panic(err)
+			}
+			if i == 0 {
+				t.display = fmt.Sprintf("%s / %s",
+					programCategories[(prog-1)/8], t.display)
+			} else {
+				t.display = fmt.Sprintf("%s / %s",
+					instrumentTargets[0][prog-1].display, t.display)
+			}
+		}
+	}
+}
