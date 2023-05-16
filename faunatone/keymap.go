@@ -269,6 +269,7 @@ func keymapFromSclFile(path string) (*keymap, error) {
 			if i == 1 {
 				if n, err := strconv.ParseUint(line, 10, 16); err == nil {
 					scale = make([]*pitchSrc, n+1)
+					scale[0] = newRatPitch(1, 1)
 				} else {
 					return nil, fmt.Errorf("Invalid scale file.")
 				}
