@@ -22,22 +22,22 @@ import (
 )
 
 const (
-	appName       = "Faunatone"
-	appVersion    = "v0.4.2"
-	fileExt       = ".faun"
-	defaultFps    = 60
-	bendSemitones = 24
-	configPath    = "config"
-	assetsPath    = "assets"
-	savesPath     = "saves"
-	exportsPath   = "exports"
-	errorLogFile  = "error.txt"
+	appName      = "Faunatone"
+	appVersion   = "v0.5.0"
+	fileExt      = ".faun"
+	defaultFps   = 60
+	configPath   = "config"
+	assetsPath   = "assets"
+	savesPath    = "saves"
+	exportsPath  = "exports"
+	errorLogFile = "error.txt"
 )
 
 //go:embed config/*
 var embedFS embed.FS
 
 var (
+	bendSemitones     = 24
 	colorBeatArray    = make([]uint8, 4)
 	colorBg1Array     = make([]uint8, 4)
 	colorBg2Array     = make([]uint8, 4)
@@ -64,6 +64,7 @@ func must(err error) {
 
 func main() {
 	settings := loadSettings(func(s string) { println(s) })
+	bendSemitones = settings.PitchBendSemitones
 	setColorArray(colorBeatArray, settings.ColorBeat)
 	setColorArray(colorBg1Array, settings.ColorBg1)
 	setColorArray(colorBg2Array, settings.ColorBg2)
@@ -560,7 +561,7 @@ func dialogInsertNote(d *dialog, pe *patternEditor, p *player) {
 // assuming a 2-semitone pitch bend range
 func pitchToMidi(p float64) (uint8, int16) {
 	note := uint8(math.Round(math.Max(0, math.Min(127, p))))
-	bend := int16((p - float64(note)) * 8192.0 / bendSemitones)
+	bend := int16((p - float64(note)) * 8192.0 / float64(bendSemitones))
 	return note, bend
 }
 

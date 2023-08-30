@@ -100,7 +100,7 @@ func newPlayer(s *song, wrs []writer.ChannelWriter, realtime bool) *player {
 
 // start signal-handling loop
 func (p *player) run() {
-	p.broadcastPitchBendRPN(bendSemitones, 0)
+	p.broadcastPitchBendRPN(uint8(bendSemitones), 0)
 	for sig := range p.signal {
 		switch sig.typ {
 		case signalStart:
@@ -167,7 +167,7 @@ func (p *player) run() {
 		case signalEvent:
 			p.playEvent(sig.event)
 		case signalSendPitchRPN:
-			p.broadcastPitchBendRPN(bendSemitones, 0)
+			p.broadcastPitchBendRPN(uint8(bendSemitones), 0)
 		case signalSendSystemOn:
 			for _, out := range p.outputs {
 				writer.SysEx(out.writer, systemOnBytes[p.song.MidiMode])
@@ -363,7 +363,7 @@ func (p *player) playEvent(te *trackEvent) {
 	case pitchBendEvent:
 		if note := t.activeNote; note != byteNil {
 			p.lastEvtTick = te.Tick
-			bend := int16((te.FloatData - float64(note)) * 8192.0 / bendSemitones)
+			bend := int16((te.FloatData - float64(note)) * 8192.0 / float64(bendSemitones))
 			p.virtChannels[t.Channel].bend = bend
 			out.writer.SetChannel(t.midiChannel)
 			writer.Pitchbend(out.writer, bend)

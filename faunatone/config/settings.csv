@@ -12,6 +12,7 @@ MessageDuration, 3
 MidiInPortNumber, -1
 MidiOutPortNumber, 0
 OffDivisionAlpha, 64
+PitchBendSemitones, 24
 ShiftScrollMult, 4
 UndoBufferSize, 10000000
 WindowHeight, 720

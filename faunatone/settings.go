@@ -12,24 +12,25 @@ var (
 )
 
 type settings struct {
-	ColorBeat         uint32
-	ColorBg1          uint32
-	ColorBg2          uint32
-	ColorFg           uint32
-	ColorPlayPos      uint32
-	ColorSelect       uint32
-	DefaultKeymap     string
-	PercussionKeymap  string
-	Font              string
-	FontSize          int
-	MessageDuration   int
-	MidiInPortNumber  int
-	MidiOutPortNumber string
-	OffDivisionAlpha  int
-	ShiftScrollMult   int
-	UndoBufferSize    int
-	WindowHeight      int
-	WindowWidth       int
+	ColorBeat          uint32
+	ColorBg1           uint32
+	ColorBg2           uint32
+	ColorFg            uint32
+	ColorPlayPos       uint32
+	ColorSelect        uint32
+	DefaultKeymap      string
+	PercussionKeymap   string
+	Font               string
+	FontSize           int
+	MessageDuration    int
+	MidiInPortNumber   int
+	MidiOutPortNumber  string
+	OffDivisionAlpha   int
+	PitchBendSemitones int
+	ShiftScrollMult    int
+	UndoBufferSize     int
+	WindowHeight       int
+	WindowWidth        int
 }
 
 // load settings from config file
