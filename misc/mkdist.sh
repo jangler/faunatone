@@ -19,7 +19,7 @@ case "$GOOS" in
 		;;
 	"")
 		echo "error: GOOS not set"
-		exit 1explorer
+		exit 1
 		;;
 	*)
 		echo "error: unsupported GOOS: $GOOS"
