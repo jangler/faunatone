@@ -237,7 +237,7 @@ func (p *player) findTrackHorizon(i int) {
 	}
 }
 
-// returnt he ticks until the next event
+// return the ticks until the next event
 func (p *player) ticksToHorizon() (int64, bool) {
 	horizon, ok := int64(math.MaxInt64), false
 	for _, tick := range p.horizon {
