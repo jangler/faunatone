@@ -117,6 +117,7 @@ func (s *song) write(w io.Writer) error {
 func (s *song) exportSMF(path string) error {
 	return writer.WriteSMF(path, 1, func(wr *writer.SMF) error {
 		// TODO: make sure this doesn't crash things depdending on device mapping
+		wr.ConsolidateNotes(false) // prevents timing issues with 0-velocity notes
 		p := newPlayer(s, []writer.ChannelWriter{wr}, false)
 		go p.run()
 		p.sendStopping = true
