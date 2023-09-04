@@ -31,14 +31,31 @@ const (
 	numMidiChannels        = 16
 	numVirtualChannels     = 16
 	percussionChannelIndex = 9
+	numMidiModes           = 3
 )
 
-var (
-	midiModes          = []string{"GM", "GS", "XG"}
-	standardPitchNames = []string{
-		"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B",
-	}
+const (
+	modeGM = iota
+	modeGS
+	modeXG
 )
+
+var standardPitchNames = []string{
+	"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B",
+}
+
+func midiModeName(index int) string {
+	// remember to update numMidiModes when adding to this
+	switch index {
+	case modeGM:
+		return "GM"
+	case modeGS:
+		return "GS"
+	case modeXG:
+		return "XG"
+	}
+	return "Unknown"
+}
 
 // fields in these types are exported to expose them to the JSON encoder
 

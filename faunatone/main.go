@@ -418,7 +418,7 @@ func main() {
 		func() string { return fmt.Sprintf("Division: %d", patedit.division) },
 		func() string { return fmt.Sprintf("Velocity: %d", patedit.velocity) },
 		func() string { return fmt.Sprintf("Controller: %d", patedit.controller) },
-		func() string { return fmt.Sprintf("Mode: %s", midiModes[sng.MidiMode]) },
+		func() string { return fmt.Sprintf("Mode: %s", midiModeName(sng.MidiMode)) },
 		func() string { return fmt.Sprintf("Keymap: %s", sng.Keymap.Name) },
 		func() string { return conditionalString(patedit.followSong, "Follow", "") },
 		func() string { return conditionalString(keyjazz, "Keyjazz", "") },

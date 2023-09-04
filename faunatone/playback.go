@@ -185,7 +185,7 @@ func (p *player) run() {
 		case signalSongChanged:
 			p.findHorizon()
 		case signalCycleMIDIMode:
-			p.song.MidiMode = (p.song.MidiMode + 1) % len(midiModes)
+			p.song.MidiMode = (p.song.MidiMode + 1) % numMidiModes
 			go func() {
 				p.signal <- playerSignal{typ: signalSendSystemOn}
 			}()
@@ -537,7 +537,7 @@ func newChannelState(midiMode int) *channelState {
 	cs.controllers[11] = 127   // expression
 	cs.controllers[100] = 0x7f // RPN LSB
 	cs.controllers[101] = 0x7f // RPN MSB
-	if midiModes[midiMode] == "XG" {
+	if midiMode == modeXG {
 		cs.controllers[71] = 0x40  // harmonic content
 		cs.controllers[72] = 0x40  // release time
 		cs.controllers[73] = 0x40  // attack time
