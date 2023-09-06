@@ -36,6 +36,9 @@ const (
 
 	ccBankMSB = 0
 	ccBankLSB = 32
+
+	mt32MinChannel = 1
+	mt32MaxChannel = 8
 )
 
 var systemOnBytes = [][]byte{
@@ -595,8 +598,8 @@ func newChannelState(midiMode, index int, virtual bool) *channelState {
 // stolen
 func pickInactiveChannel(a []*channelState, min, max uint8, midiMode int) (uint8, bool) {
 	if midiMode == modeMT32 {
-		min = clamp(min, 1, 8)
-		max = clamp(max, 1, 8)
+		min = clamp(min, mt32MinChannel, mt32MaxChannel)
+		max = clamp(max, mt32MinChannel, mt32MaxChannel)
 	}
 	bestScore, bestIndex := int64(math.MaxInt64), min
 	for i, cs := range a {

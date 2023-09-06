@@ -31,9 +31,6 @@ const (
 	savesPath    = "saves"
 	exportsPath  = "exports"
 	errorLogFile = "error.txt"
-
-	mt32MinChannel = 1
-	mt32MaxChannel = 9
 )
 
 //go:embed config/*
