@@ -23,7 +23,7 @@ const (
 	signalStart
 	signalStop
 	signalEvent
-	signalSongChanged // TODO actually use this
+	signalSongChanged
 	signalSendPitchRPN
 	signalSendSystemOn
 	signalResetChannels
@@ -171,9 +171,7 @@ func (p *player) run() {
 			p.broadcastPitchBendRPN(uint8(bendSemitones), 0)
 		case signalSendSystemOn:
 			for _, out := range p.outputs {
-				if p.song.MidiMode < len(systemOnBytes) {
-					writer.SysEx(out.writer, systemOnBytes[p.song.MidiMode])
-				}
+				sendGMSystemOn(out.writer, p.song.MidiMode)
 				for i := range out.channels {
 					out.channels[i] = newChannelState(p.song.MidiMode, i, false)
 				}
@@ -449,9 +447,40 @@ func (p *player) playEvent(te *trackEvent) {
 	case midiOutputEvent:
 		vcs := p.virtChannels[t.Channel]
 		vcs.output = int(te.ByteData1)
+	case mt32ReverbEvent:
+		p.lastEvtTick = te.Tick
+		// mode, time, level
+		sysex([]byte{0x41, 0x10, 0x16, 0x12, 0x10, 0x00, 0x01, te.ByteData1},
+			out.writer, p.song.MidiMode)
+		sysex([]byte{0x41, 0x10, 0x16, 0x12, 0x10, 0x00, 0x02, te.ByteData2},
+			out.writer, p.song.MidiMode)
+		sysex([]byte{0x41, 0x10, 0x16, 0x12, 0x10, 0x00, 0x03, te.ByteData3},
+			out.writer, p.song.MidiMode)
 	default:
 		println("unhandled event type in player.playTrackEvents")
 	}
+}
+
+func sysex(data []byte, wr writer.ChannelWriter, midiMode int) {
+	b := make([]byte, len(data))
+	copy(b, data)
+	// MT-32 sysexes require checksum
+	if midiMode == modeMT32 && len(b) >= 5 {
+		b = append(b, calcRolandChecksum(b))
+	}
+	if err := writer.SysEx(wr, b); err != nil {
+		println(err.Error())
+	}
+}
+
+// calculate the checksum byte for a MT-32 sysex message
+func calcRolandChecksum(b []byte) byte {
+	sum := 0
+	for _, n := range b[4:] {
+		sum += int(n)
+	}
+	sum = (0x80 - (sum % 0x80)) % 0x80 // https://github.com/shingo45endo/sysex-checksum/blob/main/sysex_parser.js
+	return byte(sum)
 }
 
 // if a note is playing on the indexed track, play a note off

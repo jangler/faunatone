@@ -305,6 +305,9 @@ func main() {
 					{label: "MIDI output index...", action: func() {
 						dialogInsertMidiOutput(dia, patedit, pl)
 					}},
+					{label: "MT-32 global reverb...", action: func() {
+						dialogInsertMT32Reverb(dia, patedit, pl)
+					}},
 				},
 			},
 			{
@@ -703,6 +706,22 @@ func dialogInsertMidiOutput(d *dialog, pe *patternEditor, p *player) {
 	})
 }
 
+// set d to an input dialog chain
+func dialogInsertMT32Reverb(d *dialog, pe *patternEditor, p *player) {
+	d.getInt("Mode (0-3 = room, hall, plate, tap delay):", 0, 3, func(mode int64) {
+		d.getInt("Time (0-7):", 0, 7, func(time int64) {
+			d.getInt("Level (0-7):", 0, 7, func(level int64) {
+				pe.writeEvent(newTrackEvent(&trackEvent{
+					Type:      mt32ReverbEvent,
+					ByteData1: byte(mode),
+					ByteData2: byte(time),
+					ByteData3: byte(level),
+				}, nil), p)
+			})
+		})
+	})
+}
+
 // set d to an input dialog
 func dialogSetController(d *dialog, s *song, pe *patternEditor) {
 	if s.MidiMode >= len(ccTargets) {
@@ -1051,9 +1070,16 @@ func setColorSDL(c *sdl.Color, v uint32) {
 }
 
 // send the "GM system on" sysex message
-func sendGMSystemOn(wr *writer.Writer, midiMode int) {
+func sendGMSystemOn(wr writer.ChannelWriter, midiMode int) {
 	if midiMode < len(systemOnBytes) {
 		writer.SysEx(wr, systemOnBytes[midiMode])
+	}
+	if midiMode == modeMT32 {
+		// set partial reserves for dynamic allocation
+		sysex([]byte{
+			0x41, 0x10, 0x16, 0x12, 0x10, 0x00, 0x04,
+			0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x08,
+		}, wr, midiMode)
 	}
 }
 

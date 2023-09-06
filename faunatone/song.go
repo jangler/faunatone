@@ -25,6 +25,7 @@ const (
 	releaseLenEvent
 	midiRangeEvent
 	midiOutputEvent
+	mt32ReverbEvent
 )
 
 const (
@@ -286,6 +287,9 @@ func (te *trackEvent) setUiString(k *keymap) {
 		te.uiString = fmt.Sprintf("@chn %d %d", te.ByteData1+1, te.ByteData2+1)
 	case midiOutputEvent:
 		te.uiString = fmt.Sprintf("@out %d", te.ByteData1)
+	case mt32ReverbEvent:
+		te.uiString = fmt.Sprintf("rv %d %d %d",
+			te.ByteData1, te.ByteData2, te.ByteData3)
 	default:
 		te.uiString = "UNKNOWN"
 	}
