@@ -266,6 +266,10 @@ func main() {
 						dialogInsertPitchBend(dia, patedit, pl)
 					}},
 					{label: "Program change...", action: func() {
+						if pl.song.MidiMode >= len(instrumentTargets) {
+							dia.message("Unknown MIDI mode.")
+							return
+						}
 						dialogInsertUint8Event(dia, patedit, pl,
 							"Program:", programEvent, []int64{1, 0, 0},
 							instrumentTargets[pl.song.MidiMode])
@@ -567,6 +571,10 @@ func pitchToMidi(p float64) (uint8, int16) {
 
 // set to d an input dialog
 func dialogInsertDrumNote(d *dialog, pe *patternEditor, p *player) {
+	if p.song.MidiMode >= len(drumTargets) {
+		d.message("Unknown MIDI mode.")
+		return
+	}
 	d.getNamedInts("Pitch:", []int64{0}, drumTargets[p.song.MidiMode],
 		func(i []int64) {
 			track, _, _, _ := pe.getSelection()
@@ -694,6 +702,10 @@ func dialogInsertMidiOutput(d *dialog, pe *patternEditor, p *player) {
 
 // set d to an input dialog
 func dialogSetController(d *dialog, s *song, pe *patternEditor) {
+	if s.MidiMode >= len(ccTargets) {
+		d.message("Unknown MIDI mode.")
+		return
+	}
 	d.getNamedInts("Controller index:", []int64{0}, ccTargets[s.MidiMode],
 		func(i []int64) {
 			pe.controller = uint8(i[0])
@@ -1037,7 +1049,9 @@ func setColorSDL(c *sdl.Color, v uint32) {
 
 // send the "GM system on" sysex message
 func sendGMSystemOn(wr *writer.Writer, midiMode int) {
-	writer.SysEx(wr, systemOnBytes[midiMode])
+	if midiMode < len(systemOnBytes) {
+		writer.SysEx(wr, systemOnBytes[midiMode])
+	}
 }
 
 // replaces the suffix of a string, if present

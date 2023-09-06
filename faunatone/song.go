@@ -31,13 +31,14 @@ const (
 	numMidiChannels        = 16
 	numVirtualChannels     = 16
 	percussionChannelIndex = 9
-	numMidiModes           = 3
+	numMidiModes           = 4
 )
 
 const (
 	modeGM = iota
 	modeGS
 	modeXG
+	modeMT32
 )
 
 var standardPitchNames = []string{
@@ -53,6 +54,8 @@ func midiModeName(index int) string {
 		return "GS"
 	case modeXG:
 		return "XG"
+	case modeMT32:
+		return "MT-32"
 	}
 	return "Unknown"
 }

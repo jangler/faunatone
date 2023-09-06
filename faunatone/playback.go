@@ -170,7 +170,9 @@ func (p *player) run() {
 			p.broadcastPitchBendRPN(uint8(bendSemitones), 0)
 		case signalSendSystemOn:
 			for _, out := range p.outputs {
-				writer.SysEx(out.writer, systemOnBytes[p.song.MidiMode])
+				if p.song.MidiMode < len(systemOnBytes) {
+					writer.SysEx(out.writer, systemOnBytes[p.song.MidiMode])
+				}
 				for i := range out.channels {
 					p.virtChannels[i] = newChannelState(p.song.MidiMode)
 				}
@@ -289,7 +291,7 @@ func (p *player) playEvent(te *trackEvent) {
 		p.noteOff(i, te.Tick)
 		vcs := p.virtChannels[t.Channel]
 		var stolen bool
-		t.midiChannel, stolen = pickInactiveChannel(out.channels, vcs.midiMin, vcs.midiMax)
+		t.midiChannel, stolen = pickInactiveChannel(out.channels, vcs.midiMin, vcs.midiMax, p.song.MidiMode)
 		for j, t2 := range p.song.Tracks {
 			vcs2 := p.virtChannels[t2.Channel]
 			if t2.Channel != t.Channel &&
@@ -552,7 +554,11 @@ func newChannelState(midiMode int) *channelState {
 // return the index of the channel which has had no active notes for the
 // longest time, aside from the percussion channel; return true if voice was
 // stolen
-func pickInactiveChannel(a []*channelState, min, max uint8) (uint8, bool) {
+func pickInactiveChannel(a []*channelState, min, max uint8, midiMode int) (uint8, bool) {
+	if midiMode == modeMT32 {
+		min = clamp(min, 1, 8)
+		max = clamp(max, 1, 8)
+	}
 	bestScore, bestIndex := int64(math.MaxInt64), min
 	for i, cs := range a {
 		if i >= int(min) && i <= int(max) &&
@@ -561,4 +567,14 @@ func pickInactiveChannel(a []*channelState, min, max uint8) (uint8, bool) {
 		}
 	}
 	return bestIndex, bestScore == int64(math.MaxInt64)
+}
+
+// clamp x between min and max inclusive
+func clamp(x, min, max uint8) uint8 {
+	if x < min {
+		return min
+	} else if x > max {
+		return max
+	}
+	return x
 }
