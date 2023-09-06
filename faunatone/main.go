@@ -23,7 +23,7 @@ import (
 
 const (
 	appName      = "Faunatone"
-	appVersion   = "v0.1.0-dev"
+	appVersion   = "v1.0.0-dev"
 	fileExt      = ".faun"
 	defaultFps   = 60
 	configPath   = "config"
