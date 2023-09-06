@@ -88,12 +88,12 @@ func newPlayer(s *song, wrs []writer.ChannelWriter, realtime bool) *player {
 			channels: make([]*channelState, numMidiChannels),
 		}
 		for i := range out.channels {
-			out.channels[i] = newChannelState(s.MidiMode)
+			out.channels[i] = newChannelState(s.MidiMode, i, false)
 		}
 		p.outputs[i] = out
 	}
 	for i := range p.virtChannels {
-		p.virtChannels[i] = newChannelState(s.MidiMode)
+		p.virtChannels[i] = newChannelState(s.MidiMode, i, true)
 	}
 	return p
 }
@@ -174,15 +174,15 @@ func (p *player) run() {
 					writer.SysEx(out.writer, systemOnBytes[p.song.MidiMode])
 				}
 				for i := range out.channels {
-					p.virtChannels[i] = newChannelState(p.song.MidiMode)
+					out.channels[i] = newChannelState(p.song.MidiMode, i, false)
 				}
-				for i := range out.channels {
-					out.channels[i] = newChannelState(p.song.MidiMode)
-				}
+			}
+			for i := range p.virtChannels {
+				p.virtChannels[i] = newChannelState(p.song.MidiMode, i, true)
 			}
 		case signalResetChannels:
 			for i := range p.virtChannels {
-				p.virtChannels[i] = newChannelState(p.song.MidiMode)
+				p.virtChannels[i] = newChannelState(p.song.MidiMode, i, true)
 			}
 		case signalSongChanged:
 			p.findHorizon()
@@ -527,9 +527,15 @@ type channelState struct {
 	output      int   // device index
 }
 
+var (
+	// panning is a guess
+	mt32DefaultPrograms = []uint32{0, 68, 48, 95, 78, 41, 3, 110, 122, 0, 0, 0, 0, 0, 0, 0}
+	mt32DefaultPanning  = []uint8{64, 48, 80, 32, 96, 16, 112, 0, 127, 64, 64, 64, 64, 64, 64, 64}
+)
+
 // return an initialized channelState, using the default controller values from
 // "GM level 1 developer guidelines - second revision"
-func newChannelState(midiMode int) *channelState {
+func newChannelState(midiMode, index int, virtual bool) *channelState {
 	cs := &channelState{
 		midiMin: 0,
 		midiMax: numMidiChannels - 1,
@@ -547,6 +553,9 @@ func newChannelState(midiMode int) *channelState {
 		cs.controllers[91] = 0x28  // reverb send level
 		cs.controllers[100] = 0x7f // RPN LSB
 		cs.controllers[101] = 0x7f // RPN MSB
+	} else if midiMode == modeMT32 {
+		cs.program = mt32DefaultPrograms[index]
+		cs.controllers[10] = mt32DefaultPanning[index]
 	}
 	return cs
 }
