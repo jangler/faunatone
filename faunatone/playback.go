@@ -23,7 +23,7 @@ const (
 	signalStart
 	signalStop
 	signalEvent
-	signalSongChanged // TODO actually use this
+	signalSongChanged
 	signalSendPitchRPN
 	signalSendSystemOn
 	signalResetChannels
@@ -42,6 +42,7 @@ var systemOnBytes = [][]byte{
 	{0x7e, 0x7f, 0x09, 0x01},                               // GM
 	{0x41, 0x10, 0x42, 0x12, 0x40, 0x00, 0x7f, 0x00, 0x41}, // GS
 	{0x43, 0x10, 0x4c, 0x00, 0x00, 0x7e, 0x00},             // XG
+	{0x41, 0x10, 0x16, 0x12, 0x7f, 0x01},                   // MT-32
 }
 
 // type that writes midi events over time according to a song
@@ -88,19 +89,19 @@ func newPlayer(s *song, wrs []writer.ChannelWriter, realtime bool) *player {
 			channels: make([]*channelState, numMidiChannels),
 		}
 		for i := range out.channels {
-			out.channels[i] = newChannelState(s.MidiMode)
+			out.channels[i] = newChannelState(s.MidiMode, i, false)
 		}
 		p.outputs[i] = out
 	}
 	for i := range p.virtChannels {
-		p.virtChannels[i] = newChannelState(s.MidiMode)
+		p.virtChannels[i] = newChannelState(s.MidiMode, i, true)
 	}
 	return p
 }
 
 // start signal-handling loop
 func (p *player) run() {
-	p.broadcastPitchBendRPN(bendSemitones, 0)
+	p.broadcastPitchBendRPN(uint8(bendSemitones), 0)
 	for sig := range p.signal {
 		switch sig.typ {
 		case signalStart:
@@ -167,25 +168,25 @@ func (p *player) run() {
 		case signalEvent:
 			p.playEvent(sig.event)
 		case signalSendPitchRPN:
-			p.broadcastPitchBendRPN(bendSemitones, 0)
+			p.broadcastPitchBendRPN(uint8(bendSemitones), 0)
 		case signalSendSystemOn:
 			for _, out := range p.outputs {
-				writer.SysEx(out.writer, systemOnBytes[p.song.MidiMode])
+				sendGMSystemOn(out.writer, p.song.MidiMode)
 				for i := range out.channels {
-					p.virtChannels[i] = newChannelState(p.song.MidiMode)
+					out.channels[i] = newChannelState(p.song.MidiMode, i, false)
 				}
-				for i := range out.channels {
-					out.channels[i] = newChannelState(p.song.MidiMode)
-				}
+			}
+			for i := range p.virtChannels {
+				p.virtChannels[i] = newChannelState(p.song.MidiMode, i, true)
 			}
 		case signalResetChannels:
 			for i := range p.virtChannels {
-				p.virtChannels[i] = newChannelState(p.song.MidiMode)
+				p.virtChannels[i] = newChannelState(p.song.MidiMode, i, true)
 			}
 		case signalSongChanged:
 			p.findHorizon()
 		case signalCycleMIDIMode:
-			p.song.MidiMode = (p.song.MidiMode + 1) % len(midiModes)
+			p.song.MidiMode = (p.song.MidiMode + 1) % numMidiModes
 			go func() {
 				p.signal <- playerSignal{typ: signalSendSystemOn}
 			}()
@@ -237,7 +238,7 @@ func (p *player) findTrackHorizon(i int) {
 	}
 }
 
-// returnt he ticks until the next event
+// return the ticks until the next event
 func (p *player) ticksToHorizon() (int64, bool) {
 	horizon, ok := int64(math.MaxInt64), false
 	for _, tick := range p.horizon {
@@ -289,7 +290,7 @@ func (p *player) playEvent(te *trackEvent) {
 		p.noteOff(i, te.Tick)
 		vcs := p.virtChannels[t.Channel]
 		var stolen bool
-		t.midiChannel, stolen = pickInactiveChannel(out.channels, vcs.midiMin, vcs.midiMax)
+		t.midiChannel, stolen = pickInactiveChannel(out.channels, vcs.midiMin, vcs.midiMax, p.song.MidiMode)
 		for j, t2 := range p.song.Tracks {
 			vcs2 := p.virtChannels[t2.Channel]
 			if t2.Channel != t.Channel &&
@@ -363,7 +364,7 @@ func (p *player) playEvent(te *trackEvent) {
 	case pitchBendEvent:
 		if note := t.activeNote; note != byteNil {
 			p.lastEvtTick = te.Tick
-			bend := int16((te.FloatData - float64(note)) * 8192.0 / bendSemitones)
+			bend := int16((te.FloatData - float64(note)) * 8192.0 / float64(bendSemitones))
 			p.virtChannels[t.Channel].bend = bend
 			out.writer.SetChannel(t.midiChannel)
 			writer.Pitchbend(out.writer, bend)
@@ -446,9 +447,40 @@ func (p *player) playEvent(te *trackEvent) {
 	case midiOutputEvent:
 		vcs := p.virtChannels[t.Channel]
 		vcs.output = int(te.ByteData1)
+	case mt32ReverbEvent:
+		p.lastEvtTick = te.Tick
+		// mode, time, level
+		sysex([]byte{0x41, 0x10, 0x16, 0x12, 0x10, 0x00, 0x01, te.ByteData1},
+			out.writer, p.song.MidiMode)
+		sysex([]byte{0x41, 0x10, 0x16, 0x12, 0x10, 0x00, 0x02, te.ByteData2},
+			out.writer, p.song.MidiMode)
+		sysex([]byte{0x41, 0x10, 0x16, 0x12, 0x10, 0x00, 0x03, te.ByteData3},
+			out.writer, p.song.MidiMode)
 	default:
 		println("unhandled event type in player.playTrackEvents")
 	}
+}
+
+func sysex(data []byte, wr writer.ChannelWriter, midiMode int) {
+	b := make([]byte, len(data))
+	copy(b, data)
+	// MT-32 sysexes require checksum
+	if midiMode == modeMT32 && len(b) >= 5 {
+		b = append(b, calcRolandChecksum(b))
+	}
+	if err := writer.SysEx(wr, b); err != nil {
+		println(err.Error())
+	}
+}
+
+// calculate the checksum byte for a MT-32 sysex message
+func calcRolandChecksum(b []byte) byte {
+	sum := 0
+	for _, n := range b[4:] {
+		sum += int(n)
+	}
+	sum = (0x80 - (sum % 0x80)) % 0x80 // https://github.com/shingo45endo/sysex-checksum/blob/main/sysex_parser.js
+	return byte(sum)
 }
 
 // if a note is playing on the indexed track, play a note off
@@ -525,9 +557,15 @@ type channelState struct {
 	output      int   // device index
 }
 
+var (
+	// panning is a guess
+	mt32DefaultPrograms = []uint32{0, 68, 48, 95, 78, 41, 3, 110, 122, 0, 0, 0, 0, 0, 0, 0}
+	mt32DefaultPanning  = []uint8{64, 48, 80, 32, 96, 16, 112, 0, 127, 64, 64, 64, 64, 64, 64, 64}
+)
+
 // return an initialized channelState, using the default controller values from
 // "GM level 1 developer guidelines - second revision"
-func newChannelState(midiMode int) *channelState {
+func newChannelState(midiMode, index int, virtual bool) *channelState {
 	cs := &channelState{
 		midiMin: 0,
 		midiMax: numMidiChannels - 1,
@@ -537,7 +575,7 @@ func newChannelState(midiMode int) *channelState {
 	cs.controllers[11] = 127   // expression
 	cs.controllers[100] = 0x7f // RPN LSB
 	cs.controllers[101] = 0x7f // RPN MSB
-	if midiModes[midiMode] == "XG" {
+	if midiMode == modeXG {
 		cs.controllers[71] = 0x40  // harmonic content
 		cs.controllers[72] = 0x40  // release time
 		cs.controllers[73] = 0x40  // attack time
@@ -545,6 +583,9 @@ func newChannelState(midiMode int) *channelState {
 		cs.controllers[91] = 0x28  // reverb send level
 		cs.controllers[100] = 0x7f // RPN LSB
 		cs.controllers[101] = 0x7f // RPN MSB
+	} else if midiMode == modeMT32 {
+		cs.program = mt32DefaultPrograms[index]
+		cs.controllers[10] = mt32DefaultPanning[index]
 	}
 	return cs
 }
@@ -552,7 +593,11 @@ func newChannelState(midiMode int) *channelState {
 // return the index of the channel which has had no active notes for the
 // longest time, aside from the percussion channel; return true if voice was
 // stolen
-func pickInactiveChannel(a []*channelState, min, max uint8) (uint8, bool) {
+func pickInactiveChannel(a []*channelState, min, max uint8, midiMode int) (uint8, bool) {
+	if midiMode == modeMT32 {
+		min = clamp(min, 1, 8)
+		max = clamp(max, 1, 8)
+	}
 	bestScore, bestIndex := int64(math.MaxInt64), min
 	for i, cs := range a {
 		if i >= int(min) && i <= int(max) &&
@@ -561,4 +606,14 @@ func pickInactiveChannel(a []*channelState, min, max uint8) (uint8, bool) {
 		}
 	}
 	return bestIndex, bestScore == int64(math.MaxInt64)
+}
+
+// clamp x between min and max inclusive
+func clamp(x, min, max uint8) uint8 {
+	if x < min {
+		return min
+	} else if x > max {
+		return max
+	}
+	return x
 }

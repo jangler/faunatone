@@ -25,20 +25,41 @@ const (
 	releaseLenEvent
 	midiRangeEvent
 	midiOutputEvent
+	mt32ReverbEvent
 )
 
 const (
 	numMidiChannels        = 16
 	numVirtualChannels     = 16
 	percussionChannelIndex = 9
+	numMidiModes           = 4
 )
 
-var (
-	midiModes          = []string{"GM", "GS", "XG"}
-	standardPitchNames = []string{
-		"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B",
-	}
+const (
+	modeGM = iota
+	modeGS
+	modeXG
+	modeMT32
 )
+
+var standardPitchNames = []string{
+	"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B",
+}
+
+func midiModeName(index int) string {
+	// remember to update numMidiModes when adding to this
+	switch index {
+	case modeGM:
+		return "GM"
+	case modeGS:
+		return "GS"
+	case modeXG:
+		return "XG"
+	case modeMT32:
+		return "MT-32"
+	}
+	return "Unknown"
+}
 
 // fields in these types are exported to expose them to the JSON encoder
 
@@ -117,6 +138,7 @@ func (s *song) write(w io.Writer) error {
 func (s *song) exportSMF(path string) error {
 	return writer.WriteSMF(path, 1, func(wr *writer.SMF) error {
 		// TODO: make sure this doesn't crash things depdending on device mapping
+		wr.ConsolidateNotes(false) // prevents timing issues with 0-velocity notes
 		p := newPlayer(s, []writer.ChannelWriter{wr}, false)
 		go p.run()
 		p.sendStopping = true
@@ -265,6 +287,9 @@ func (te *trackEvent) setUiString(k *keymap) {
 		te.uiString = fmt.Sprintf("@chn %d %d", te.ByteData1+1, te.ByteData2+1)
 	case midiOutputEvent:
 		te.uiString = fmt.Sprintf("@out %d", te.ByteData1)
+	case mt32ReverbEvent:
+		te.uiString = fmt.Sprintf("rv %d %d %d",
+			te.ByteData1, te.ByteData2, te.ByteData3)
 	default:
 		te.uiString = "UNKNOWN"
 	}

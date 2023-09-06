@@ -22,22 +22,25 @@ import (
 )
 
 const (
-	appName       = "Faunatone"
-	appVersion    = "v0.4.2"
-	fileExt       = ".faun"
-	defaultFps    = 60
-	bendSemitones = 24
-	configPath    = "config"
-	assetsPath    = "assets"
-	savesPath     = "saves"
-	exportsPath   = "exports"
-	errorLogFile  = "error.txt"
+	appName      = "Faunatone"
+	appVersion   = "v0.1.0-dev"
+	fileExt      = ".faun"
+	defaultFps   = 60
+	configPath   = "config"
+	assetsPath   = "assets"
+	savesPath    = "saves"
+	exportsPath  = "exports"
+	errorLogFile = "error.txt"
+
+	mt32MinChannel = 1
+	mt32MaxChannel = 9
 )
 
 //go:embed config/*
 var embedFS embed.FS
 
 var (
+	bendSemitones     = 24
 	colorBeatArray    = make([]uint8, 4)
 	colorBg1Array     = make([]uint8, 4)
 	colorBg2Array     = make([]uint8, 4)
@@ -64,6 +67,7 @@ func must(err error) {
 
 func main() {
 	settings := loadSettings(func(s string) { println(s) })
+	bendSemitones = settings.PitchBendSemitones
 	setColorArray(colorBeatArray, settings.ColorBeat)
 	setColorArray(colorBg1Array, settings.ColorBg1)
 	setColorArray(colorBg2Array, settings.ColorBg2)
@@ -265,6 +269,10 @@ func main() {
 						dialogInsertPitchBend(dia, patedit, pl)
 					}},
 					{label: "Program change...", action: func() {
+						if pl.song.MidiMode >= len(instrumentTargets) {
+							dia.message("Unknown MIDI mode.")
+							return
+						}
 						dialogInsertUint8Event(dia, patedit, pl,
 							"Program:", programEvent, []int64{1, 0, 0},
 							instrumentTargets[pl.song.MidiMode])
@@ -296,6 +304,9 @@ func main() {
 					}},
 					{label: "MIDI output index...", action: func() {
 						dialogInsertMidiOutput(dia, patedit, pl)
+					}},
+					{label: "MT-32 global reverb...", action: func() {
+						dialogInsertMT32Reverb(dia, patedit, pl)
 					}},
 				},
 			},
@@ -417,7 +428,7 @@ func main() {
 		func() string { return fmt.Sprintf("Division: %d", patedit.division) },
 		func() string { return fmt.Sprintf("Velocity: %d", patedit.velocity) },
 		func() string { return fmt.Sprintf("Controller: %d", patedit.controller) },
-		func() string { return fmt.Sprintf("Mode: %s", midiModes[sng.MidiMode]) },
+		func() string { return fmt.Sprintf("Mode: %s", midiModeName(sng.MidiMode)) },
 		func() string { return fmt.Sprintf("Keymap: %s", sng.Keymap.Name) },
 		func() string { return conditionalString(patedit.followSong, "Follow", "") },
 		func() string { return conditionalString(keyjazz, "Keyjazz", "") },
@@ -560,12 +571,16 @@ func dialogInsertNote(d *dialog, pe *patternEditor, p *player) {
 // assuming a 2-semitone pitch bend range
 func pitchToMidi(p float64) (uint8, int16) {
 	note := uint8(math.Round(math.Max(0, math.Min(127, p))))
-	bend := int16((p - float64(note)) * 8192.0 / bendSemitones)
+	bend := int16((p - float64(note)) * 8192.0 / float64(bendSemitones))
 	return note, bend
 }
 
 // set to d an input dialog
 func dialogInsertDrumNote(d *dialog, pe *patternEditor, p *player) {
+	if p.song.MidiMode >= len(drumTargets) {
+		d.message("Unknown MIDI mode.")
+		return
+	}
 	d.getNamedInts("Pitch:", []int64{0}, drumTargets[p.song.MidiMode],
 		func(i []int64) {
 			track, _, _, _ := pe.getSelection()
@@ -691,8 +706,28 @@ func dialogInsertMidiOutput(d *dialog, pe *patternEditor, p *player) {
 	})
 }
 
+// set d to an input dialog chain
+func dialogInsertMT32Reverb(d *dialog, pe *patternEditor, p *player) {
+	d.getInt("Mode (0-3 = room, hall, plate, tap delay):", 0, 3, func(mode int64) {
+		d.getInt("Time (0-7):", 0, 7, func(time int64) {
+			d.getInt("Level (0-7):", 0, 7, func(level int64) {
+				pe.writeEvent(newTrackEvent(&trackEvent{
+					Type:      mt32ReverbEvent,
+					ByteData1: byte(mode),
+					ByteData2: byte(time),
+					ByteData3: byte(level),
+				}, nil), p)
+			})
+		})
+	})
+}
+
 // set d to an input dialog
 func dialogSetController(d *dialog, s *song, pe *patternEditor) {
+	if s.MidiMode >= len(ccTargets) {
+		d.message("Unknown MIDI mode.")
+		return
+	}
 	d.getNamedInts("Controller index:", []int64{0}, ccTargets[s.MidiMode],
 		func(i []int64) {
 			pe.controller = uint8(i[0])
@@ -1035,8 +1070,17 @@ func setColorSDL(c *sdl.Color, v uint32) {
 }
 
 // send the "GM system on" sysex message
-func sendGMSystemOn(wr *writer.Writer, midiMode int) {
-	writer.SysEx(wr, systemOnBytes[midiMode])
+func sendGMSystemOn(wr writer.ChannelWriter, midiMode int) {
+	if midiMode < len(systemOnBytes) {
+		writer.SysEx(wr, systemOnBytes[midiMode])
+	}
+	if midiMode == modeMT32 {
+		// set partial reserves for dynamic allocation
+		sysex([]byte{
+			0x41, 0x10, 0x16, 0x12, 0x10, 0x00, 0x04,
+			0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x08,
+		}, wr, midiMode)
+	}
 }
 
 // replaces the suffix of a string, if present
