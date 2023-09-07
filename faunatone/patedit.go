@@ -21,9 +21,9 @@ const (
 	defaultController = 1
 	defaultRefPitch   = 60
 
-	// widest range achievable without pitch wheel
-	minPitch = 0
-	maxPitch = 127
+	// widest range achievable with default pitch bend
+	minPitch = -24
+	maxPitch = 127 + 24
 )
 
 func init() {
