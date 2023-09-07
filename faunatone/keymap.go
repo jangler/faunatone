@@ -510,7 +510,7 @@ func (k *keymap) keyboardEvent(e *sdl.KeyboardEvent, pe *patternEditor, p *playe
 						ByteData1: pe.velocity,
 					}, k)
 				} else {
-					note, _ := pitchToMidi(pitch)
+					note, _ := pitchToMidi(pitch, p.song.MidiMode)
 					te = newTrackEvent(&trackEvent{
 						Type:      drumNoteOnEvent,
 						ByteData1: note,

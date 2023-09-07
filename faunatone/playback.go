@@ -326,7 +326,7 @@ func (p *player) playEvent(te *trackEvent) {
 			writer.Aftertouch(out.writer, vcs.pressure)
 			mcs.pressure = vcs.pressure
 		}
-		note, bend := pitchToMidi(te.FloatData)
+		note, bend := pitchToMidi(te.FloatData, p.song.MidiMode)
 		vcs.bend = bend
 		if mcs.bend != bend {
 			writer.Pitchbend(out.writer, bend)
@@ -367,7 +367,8 @@ func (p *player) playEvent(te *trackEvent) {
 	case pitchBendEvent:
 		if note := t.activeNote; note != byteNil {
 			p.lastEvtTick = te.Tick
-			bend := int16((te.FloatData - float64(note)) * 8192.0 / float64(bendSemitones))
+			bend := int16((te.FloatData - float64(note)) * 8192.0 /
+				getBendSemitones(p.song.MidiMode))
 			p.virtChannels[t.Channel].bend = bend
 			out.writer.SetChannel(t.midiChannel)
 			writer.Pitchbend(out.writer, bend)
