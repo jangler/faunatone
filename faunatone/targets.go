@@ -1193,6 +1193,25 @@ var (
 		"Percussive",
 		"Sound Effects",
 	}
+
+	mt32ProgramCategories = []string{
+		"Piano",
+		"Organ",
+		"Keyboard",
+		"Synth Brass and Bass",
+		"Synth 1",
+		"Synth 2",
+		"Strings",
+		"Strings (ct'd) and Guitar",
+		"Bass",
+		"Wind 1 and 2",
+		"Wind 2 (ct'd)",
+		"Brass",
+		"Brass (ct'd) and Mallet",
+		"Mallet (ct'd) and Special",
+		"Percussion",
+		"Percussion (ct'd) and Effects",
+	}
 )
 
 func init() {
@@ -1202,12 +1221,16 @@ func init() {
 			if err != nil {
 				panic(err)
 			}
-			if i == 0 {
+			switch i {
+			case modeGM:
 				t.display = fmt.Sprintf("%s / %s",
 					programCategories[(prog-1)/8], t.display)
-			} else {
+			case modeMT32:
 				t.display = fmt.Sprintf("%s / %s",
-					instrumentTargets[0][prog-1].display, t.display)
+					mt32ProgramCategories[(prog-1)/8], t.display)
+			default:
+				t.display = fmt.Sprintf("%s / %s",
+					instrumentTargets[modeGM][prog-1].display, t.display)
 			}
 		}
 	}
