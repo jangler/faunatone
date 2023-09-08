@@ -42,7 +42,7 @@ func (sb *statusBar) draw(pr *printer, r *sdl.Renderer, redraw chan bool) {
 	x := int32(padding)
 	y := r.GetViewport().H - pr.rect.H - padding
 	r.SetDrawColorArray(colorBg2Array...)
-	*sb.rect = sdl.Rect{x - padding, y - padding, r.GetViewport().W, pr.rect.H + padding*2}
+	*sb.rect = sdl.Rect{X: x - padding, Y: y - padding, W: r.GetViewport().W, H: pr.rect.H + padding*2}
 	r.FillRect(sb.rect)
 	for _, f := range sb.funcs {
 		s := f()
@@ -52,7 +52,7 @@ func (sb *statusBar) draw(pr *printer, r *sdl.Renderer, redraw chan bool) {
 		}
 	}
 
-	if time.Now().Sub(sb.msgTime) < sb.msgDuration {
+	if time.Since(sb.msgTime) < sb.msgDuration {
 		// draw message
 		pr.draw(r, sb.msg, r.GetViewport().W-padding-pr.rect.W*int32(len(sb.msg)), y)
 	} else {

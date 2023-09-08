@@ -252,12 +252,6 @@ func (p *player) ticksToHorizon() (int64, bool) {
 	return horizon - p.lastTick, ok
 }
 
-// return the time until the next event
-func (p *player) timeToHorizon() (time.Duration, bool) {
-	ticks, ok := p.ticksToHorizon()
-	return p.durationFromTicks(ticks), ok
-}
-
 // convert a tick count to a time.Duration
 func (p *player) durationFromTicks(t int64) time.Duration {
 	return time.Duration(int64(float64(int64(time.Minute)*t/ticksPerBeat) / p.bpm))

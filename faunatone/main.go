@@ -194,7 +194,7 @@ func main() {
 	// required for cursor blink
 	go func() {
 		c := time.Tick(time.Millisecond * inputCursorBlinkMs)
-		for _ = range c {
+		for range c {
 			if dia.shown && dia.size > 0 {
 				redrawChan <- true
 			}
@@ -450,6 +450,7 @@ func main() {
 
 	for running {
 		// process SDL events
+	sdlEvents:
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 			// if we got any event, assume redraw is needed
 			redrawChan <- true
@@ -488,12 +489,12 @@ func main() {
 				}
 			case *sdl.QuitEvent:
 				running = false
-				break
+				break sdlEvents
 			}
 		}
 
 		// process MIDI events
-	outer:
+	midiEvents:
 		for {
 			select {
 			case msg := <-midiIn:
@@ -507,7 +508,7 @@ func main() {
 					}
 				}
 			default:
-				break outer
+				break midiEvents
 			}
 		}
 
@@ -520,7 +521,7 @@ func main() {
 			renderer.Clear()
 			viewport := renderer.GetViewport()
 			y := mb.menus[0].rect.H
-			patedit.draw(renderer, &sdl.Rect{0, y, viewport.W, viewport.H - y - sb.rect.H},
+			patedit.draw(renderer, &sdl.Rect{X: 0, Y: y, W: viewport.W, H: viewport.H - y - sb.rect.H},
 				pl.lastTick)
 			sb.draw(pr, renderer, redrawChan)
 			mb.draw(pr, renderer)
@@ -1063,7 +1064,7 @@ func setColorArray(a []uint8, v uint32) {
 func setColorSDL(c *sdl.Color, v uint32) {
 	a := make([]uint8, 4)
 	setColorArray(a, v)
-	*c = sdl.Color{a[0], a[1], a[2], a[3]}
+	*c = sdl.Color{R: a[0], G: a[1], B: a[2], A: a[3]}
 }
 
 // send the "GM system on" sysex message

@@ -23,7 +23,7 @@ func newPrinter(f *ttf.Font) (*printer, error) {
 	return &printer{
 		font:     f,
 		textures: make(map[rune]*sdl.Texture),
-		rect:     &sdl.Rect{0, 0, int32(w), int32(h)},
+		rect:     &sdl.Rect{X: 0, Y: 0, W: int32(w), H: int32(h)},
 	}, nil
 }
 
@@ -41,7 +41,7 @@ func (p *printer) draw(r *sdl.Renderer, s string, x, y int32) {
 
 // like draw, but applies an alpha modifier to textures
 func (p *printer) drawAlpha(r *sdl.Renderer, s string, x, y int32, alpha uint8) {
-	dst := &sdl.Rect{x, y, p.rect.W, p.rect.H}
+	dst := &sdl.Rect{X: x, Y: y, W: p.rect.W, H: p.rect.H}
 	for _, c := range s {
 		if _, ok := p.textures[c]; !ok {
 			if err := p.prerenderGlyph(r, c); err != nil {

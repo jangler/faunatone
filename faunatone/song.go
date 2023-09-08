@@ -146,7 +146,7 @@ func (s *song) exportSMF(path string) error {
 		<-p.stopping
 		writer.EndOfTrack(wr)
 		if p.polyErrCount > 0 {
-			return fmt.Errorf("Polyphony limit exceeded by %d note(s).", p.polyErrCount)
+			return fmt.Errorf("polyphony limit exceeded by %d note(s)", p.polyErrCount)
 		}
 		return nil
 	})
@@ -189,18 +189,6 @@ func (t *track) clone() *track {
 	t2 := newTrack(t.Channel, t.index)
 	t2.Events = t.Events
 	return t2
-}
-
-// write an event to the track, overwriting any event at the same tick and
-// returning the event that was overwritten
-func (t *track) writeEvent(te *trackEvent) *trackEvent {
-	if te2 := t.getEventAtTick(te.Tick); te2 != nil {
-		te3 := te2.clone()
-		*te2 = *te
-		return te3
-	}
-	t.Events = append(t.Events, te)
-	return nil
 }
 
 // return the event at the tick in the track, if any

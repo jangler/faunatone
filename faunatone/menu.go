@@ -87,7 +87,7 @@ func (mb *menuBar) draw(p *printer, r *sdl.Renderer) {
 	if len(mb.menus) > 0 {
 		r.SetDrawColorArray(colorBg2Array...)
 		viewport := r.GetViewport()
-		r.FillRect(&sdl.Rect{0, 0, viewport.W, mb.menus[0].rect.H})
+		r.FillRect(&sdl.Rect{X: 0, Y: 0, W: viewport.W, H: mb.menus[0].rect.H})
 		for _, m := range mb.menus {
 			m.draw(p, r)
 		}
@@ -144,7 +144,7 @@ func (mb *menuBar) mouseMotion(e *sdl.MouseMotionEvent) {
 	// if a menu is being shown and we mouse over a new menu root, show that
 	// menu and hide all others
 	if mb.shown() {
-		p := sdl.Point{e.X, e.Y}
+		p := sdl.Point{X: e.X, Y: e.Y}
 		for _, m := range mb.menus {
 			if p.InRect(m.rect) {
 				for _, m := range mb.menus {
@@ -175,7 +175,7 @@ func (mb *menuBar) mouseButton(e *sdl.MouseButtonEvent) {
 	}
 
 	// if we clicked on a menu root, toggle display of that menu
-	p := sdl.Point{e.X, e.Y}
+	p := sdl.Point{X: e.X, Y: e.Y}
 	for _, m := range mb.menus {
 		if p.InRect(m.rect) {
 			m.shown = !m.shown
@@ -213,8 +213,8 @@ type menu struct {
 // returns x+w
 func (m *menu) init(p *printer, x int32) int32 {
 	w, h := p.size(m.label)
-	m.rect = &sdl.Rect{x, 0, w + padding*2, h + padding*2}
-	m.itemsRect = &sdl.Rect{x, m.rect.H, 0, 0}
+	m.rect = &sdl.Rect{X: x, Y: 0, W: w + padding*2, H: h + padding*2}
+	m.itemsRect = &sdl.Rect{X: x, Y: m.rect.H, W: 0, H: 0}
 	x2 := int32(0)
 	y := m.rect.Y + m.rect.H + padding
 	for _, mi := range m.items {
@@ -255,7 +255,7 @@ func (mi *menuItem) init(p *printer, x, y int32) (int32, int32) {
 		mi.text += " (" + strings.Join(mi.shortcuts, ", ") + ")"
 	}
 	w, h := p.size(mi.text)
-	mi.rect = &sdl.Rect{x, y, w + padding*2, h + padding}
+	mi.rect = &sdl.Rect{X: x, Y: y, W: w + padding*2, H: h + padding}
 	return mi.rect.X + mi.rect.W, mi.rect.Y + mi.rect.H
 }
 
