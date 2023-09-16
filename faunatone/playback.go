@@ -3,6 +3,7 @@ package main
 import (
 	"math"
 	"sort"
+	"sync"
 	"time"
 
 	"gitlab.com/gomidi/midi/writer"
@@ -55,6 +56,7 @@ type player struct {
 	lastTick     int64
 	lastEvtTick  int64         // tick of last event which was written
 	horizon      map[int]int64 // map of tracks to ticks
+	horizonMutex sync.Mutex
 	bpm          float64
 	signal       chan playerSignal
 	stopping     chan struct{} // player sends on this channel when stopping
@@ -229,6 +231,7 @@ func (p *player) findHorizon() {
 
 // find last horizon only for a specific track
 func (p *player) findTrackHorizon(i int) {
+	p.horizonMutex.Lock()
 	p.horizon[i] = math.MaxInt64
 	if i >= len(p.song.Tracks) {
 		return
@@ -239,16 +242,19 @@ func (p *player) findTrackHorizon(i int) {
 			p.horizon[i] = te.Tick
 		}
 	}
+	p.horizonMutex.Unlock()
 }
 
 // return the ticks until the next event
 func (p *player) ticksToHorizon() (int64, bool) {
 	horizon, ok := int64(math.MaxInt64), false
+	p.horizonMutex.Lock()
 	for _, tick := range p.horizon {
 		if tick > p.lastTick && tick < horizon {
 			horizon, ok = tick, true
 		}
 	}
+	p.horizonMutex.Unlock()
 	return horizon - p.lastTick, ok
 }
 
