@@ -914,6 +914,10 @@ func dialogOpen(d *dialog, sng *song, pe *patternEditor, p *player) {
 			p.signal <- playerSignal{typ: signalResetChannels}
 			if err := sng.read(f); err == nil {
 				pe.reset()
+
+				// needed when loading a file in a different midi mode
+				p.signal <- playerSignal{typ: signalSendSystemOn}
+
 				saveAutofill = s
 				exportAutofill = replaceSuffix(s, fileExt, ".mid")
 			} else {
