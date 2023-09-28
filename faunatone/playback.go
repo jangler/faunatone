@@ -194,6 +194,7 @@ func (p *player) run() {
 			p.song.MidiMode = (p.song.MidiMode + 1) % numMidiModes
 			go func() {
 				p.signal <- playerSignal{typ: signalSendSystemOn}
+				p.signal <- playerSignal{typ: signalSendPitchRPN}
 			}()
 		}
 
