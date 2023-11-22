@@ -23,13 +23,11 @@ default.
 
 ## Status
 
-Faunatone has been used by the author and others to write music. It is
-functional and well-documented, although speed of implementation has mostly
-been prioritized over a "friendly" user interface. To me it feels fairly
-stable, but the user base is narrow, so undiscovered bugs probably exist.
-
-Faunatone is currently under active development, with a focus on adding new
-features and improving the user interface.
+Faunatone is not currently under active development. It has been used by the
+author and others to write music. It is functional and well-documented,
+although speed of implementation has mostly been prioritized over a "friendly"
+user interface. To me it feels fairly stable, but the user base is narrow, so
+undiscovered bugs probably exist.
 
 ## Download
 
