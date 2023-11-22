@@ -249,11 +249,11 @@ func (d *dialog) draw(p *printer, r *sdl.Renderer) {
 	if inputWidth+padding > promptWidth {
 		w = inputWidth + padding*3
 	}
-	rect := &sdl.Rect{viewport.W/2 - w/2, viewport.H/2 - h/2, w, h}
+	rect := &sdl.Rect{X: viewport.W/2 - w/2, Y: viewport.H/2 - h/2, W: w, H: h}
 
 	// draw box and prompt
 	r.SetDrawColorArray(colorFgArray...)
-	r.FillRect(&sdl.Rect{rect.X - border, rect.Y - border, rect.W + border*2, rect.H + border*2})
+	r.FillRect(&sdl.Rect{X: rect.X - border, Y: rect.Y - border, W: rect.W + border*2, H: rect.H + border*2})
 	r.SetDrawColorArray(colorBg1Array...)
 	r.FillRect(rect)
 	y := rect.Y + padding
@@ -270,8 +270,8 @@ func (d *dialog) draw(p *printer, r *sdl.Renderer) {
 	// draw input
 	if d.size > 0 {
 		r.SetDrawColorArray(colorBg2Array...)
-		r.FillRect(&sdl.Rect{viewport.W/2 - inputWidth/2 - padding/2, y,
-			inputWidth + padding, p.rect.H + padding})
+		r.FillRect(&sdl.Rect{X: viewport.W/2 - inputWidth/2 - padding/2, Y: y,
+			W: inputWidth + padding, H: p.rect.H + padding})
 		s := d.input
 		if len(d.input) < d.size && (time.Now().UnixMilli()/inputCursorBlinkMs)%2 == 0 {
 			s += "_"

@@ -271,13 +271,13 @@ func keymapFromSclFile(path string) (*keymap, error) {
 					scale = make([]*pitchSrc, n+1)
 					scale[0] = newRatPitch(1, 1)
 				} else {
-					return nil, fmt.Errorf("Invalid scale file.")
+					return nil, fmt.Errorf("invalid scale file")
 				}
 			} else if i > 1 && i-2 < len(scale) {
 				if pitch, err := parseScalaPitch(line); err == nil {
 					scale[i-1] = pitch
 				} else {
-					return nil, fmt.Errorf("Invalid scale file.")
+					return nil, fmt.Errorf("invalid scale file")
 				}
 			}
 			i++
@@ -331,7 +331,7 @@ func getEdxChar(interval float64) string {
 // generate a keymap for a rank-2 temperament scale
 func genRank2Keymap(per, gen *pitchSrc, n int) (*keymap, error) {
 	if math.Mod(12, per.semitones()) != 0 {
-		return nil, fmt.Errorf("Octave must be divisible by period.")
+		return nil, fmt.Errorf("octave must be divisible by period")
 	}
 	nPeriods := int(12 / per.semitones())
 	scale := make([]*pitchSrc, n+1)
@@ -448,9 +448,7 @@ var (
 
 // convert a string to a pitch struct
 func parsePitch(s string, k *keymap) (*pitchSrc, error) {
-	if strings.HasPrefix(s, "*") {
-		s = s[1:]
-	}
+	s = strings.TrimPrefix(s, "*")
 	if m := ratioRegexp.FindAllStringSubmatch(s, 1); m != nil {
 		num, _ := strconv.ParseFloat(m[0][1], 64)
 		den, _ := strconv.ParseFloat(m[0][2], 64)
@@ -469,11 +467,11 @@ func parsePitch(s string, k *keymap) (*pitchSrc, error) {
 		if ki := k.getByKey(m[0][1]); ki != nil {
 			return ki.PitchSrc, nil
 		}
-		return nil, fmt.Errorf("No key \"%s\" in keymap.", m[0][1])
+		return nil, fmt.Errorf("no key \"%s\" in keymap", m[0][1])
 	} else if f, err := strconv.ParseFloat(s, 64); err == nil {
 		return newSemiPitch(f), nil
 	}
-	return nil, fmt.Errorf("Invalid pitch syntax.")
+	return nil, fmt.Errorf("invalid pitch syntax")
 }
 
 // return a keyInfo with a matching key, if any
@@ -510,7 +508,7 @@ func (k *keymap) keyboardEvent(e *sdl.KeyboardEvent, pe *patternEditor, p *playe
 						ByteData1: pe.velocity,
 					}, k)
 				} else {
-					note, _ := pitchToMidi(pitch)
+					note, _ := pitchToMidi(pitch, p.song.MidiMode)
 					te = newTrackEvent(&trackEvent{
 						Type:      drumNoteOnEvent,
 						ByteData1: note,

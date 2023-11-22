@@ -1,5 +1,11 @@
 package main
 
+import (
+	"fmt"
+	"strconv"
+	"strings"
+)
+
 var (
 	instrumentTargets = [][]*tabTarget{
 		// GM
@@ -802,6 +808,138 @@ var (
 			{display: "Applause", value: "127 0 0"},
 			{display: "Gunshot", value: "128 0 0"},
 		},
+
+		// MT-32
+		{
+			{value: "1 0 0", display: "Acoustic Piano 1"},
+			{value: "2 0 0", display: "Acoustic Piano 2"},
+			{value: "3 0 0", display: "Acoustic Piano 3"},
+			{value: "4 0 0", display: "Electric Piano 1"},
+			{value: "5 0 0", display: "Electric Piano 2"},
+			{value: "6 0 0", display: "Electric Piano 3"},
+			{value: "7 0 0", display: "Electric Piano 4"},
+			{value: "8 0 0", display: "Honkytonk"},
+			{value: "9 0 0", display: "Electric Organ 1"},
+			{value: "10 0 0", display: "Electric Organ 2"},
+			{value: "11 0 0", display: "Electric Organ 3"},
+			{value: "12 0 0", display: "Pipe Organ 1"},
+			{value: "13 0 0", display: "Pipe Organ 2"},
+			{value: "14 0 0", display: "Pipe Organ 3"},
+			{value: "15 0 0", display: "Pipe Organ 4"},
+			{value: "16 0 0", display: "Accordion"},
+			{value: "17 0 0", display: "Harpsichord 1"},
+			{value: "18 0 0", display: "Harpsichord 2"},
+			{value: "19 0 0", display: "Harpsichord 3"},
+			{value: "20 0 0", display: "Clavi 1"},
+			{value: "21 0 0", display: "Clavi 2"},
+			{value: "22 0 0", display: "Clavi 3"},
+			{value: "23 0 0", display: "Celesta 1"},
+			{value: "24 0 0", display: "Celesta 2"},
+			{value: "25 0 0", display: "Synth Brass 1"},
+			{value: "26 0 0", display: "Synth Brass 2"},
+			{value: "27 0 0", display: "Synth Brass 3"},
+			{value: "28 0 0", display: "Synth Brass 4"},
+			{value: "29 0 0", display: "Synth Bass 1"},
+			{value: "30 0 0", display: "Synth Bass 2"},
+			{value: "31 0 0", display: "Synth Bass 3"},
+			{value: "32 0 0", display: "Synth Bass 4"},
+			{value: "33 0 0", display: "Fantasy"},
+			{value: "34 0 0", display: "Harmonic Pan"},
+			{value: "35 0 0", display: "Chorale"},
+			{value: "36 0 0", display: "Glasses"},
+			{value: "37 0 0", display: "Soundtrack"},
+			{value: "38 0 0", display: "Atmosphere"},
+			{value: "39 0 0", display: "Warm Bells"},
+			{value: "40 0 0", display: "Funny Vox"},
+			{value: "41 0 0", display: "Echo Bell"},
+			{value: "42 0 0", display: "Ice Rain"},
+			{value: "43 0 0", display: "Oboe 2001"},
+			{value: "44 0 0", display: "Echo Pan"},
+			{value: "45 0 0", display: "Doctor Solo"},
+			{value: "46 0 0", display: "Schooldaze"},
+			{value: "47 0 0", display: "Bellsinger"},
+			{value: "48 0 0", display: "Square Wave"},
+			{value: "49 0 0", display: "String Section 1"},
+			{value: "50 0 0", display: "String Section 2"},
+			{value: "51 0 0", display: "String Section 3"},
+			{value: "52 0 0", display: "Pizzicato"},
+			{value: "53 0 0", display: "Violin 1"},
+			{value: "54 0 0", display: "Violin 2"},
+			{value: "55 0 0", display: "Cello 1"},
+			{value: "56 0 0", display: "Cello 2"},
+			{value: "57 0 0", display: "Contrabass"},
+			{value: "58 0 0", display: "Harp 1"},
+			{value: "59 0 0", display: "Harp 2"},
+			{value: "60 0 0", display: "Guitar 1"},
+			{value: "61 0 0", display: "Guitar 2"},
+			{value: "62 0 0", display: "Electric Guitar 1"},
+			{value: "63 0 0", display: "Electric Guitar 2"},
+			{value: "64 0 0", display: "Sitar"},
+			{value: "65 0 0", display: "Acoustic Bass 1"},
+			{value: "66 0 0", display: "Acoustic Bass 2"},
+			{value: "67 0 0", display: "Electric Bass 1"},
+			{value: "68 0 0", display: "Electric Bass 2"},
+			{value: "69 0 0", display: "Slap Bass 1"},
+			{value: "70 0 0", display: "Slap Bass 2"},
+			{value: "71 0 0", display: "Fretless 1"},
+			{value: "72 0 0", display: "Fretless 2"},
+			{value: "73 0 0", display: "Flute 1"},
+			{value: "74 0 0", display: "Flute 2"},
+			{value: "75 0 0", display: "Piccolo 1"},
+			{value: "76 0 0", display: "Piccolo 2"},
+			{value: "77 0 0", display: "Recorder"},
+			{value: "78 0 0", display: "Pan Pipes"},
+			{value: "79 0 0", display: "Saxophone 1"},
+			{value: "80 0 0", display: "Saxophone 2"},
+			{value: "81 0 0", display: "Saxophone 3"},
+			{value: "82 0 0", display: "Saxophone 4"},
+			{value: "83 0 0", display: "Clarinet 1"},
+			{value: "84 0 0", display: "Clarinet 2"},
+			{value: "85 0 0", display: "Oboe"},
+			{value: "86 0 0", display: "English Horn"},
+			{value: "87 0 0", display: "Bassoon"},
+			{value: "88 0 0", display: "Harmonica"},
+			{value: "89 0 0", display: "Trumpet 1"},
+			{value: "90 0 0", display: "Trumpet 2"},
+			{value: "91 0 0", display: "Trombone 1"},
+			{value: "92 0 0", display: "Trombone 2"},
+			{value: "93 0 0", display: "French Horn 1"},
+			{value: "94 0 0", display: "French Horn 2"},
+			{value: "95 0 0", display: "Tuba"},
+			{value: "96 0 0", display: "Brass Section 1"},
+			{value: "97 0 0", display: "Brass Section 2"},
+			{value: "98 0 0", display: "Vibraphone 1"},
+			{value: "99 0 0", display: "Vibraphone 2"},
+			{value: "100 0 0", display: "Synth Mallet"},
+			{value: "101 0 0", display: "Wind Bell"},
+			{value: "102 0 0", display: "Glockenspiel"},
+			{value: "103 0 0", display: "Tube Bell"},
+			{value: "104 0 0", display: "Xylophone"},
+			{value: "105 0 0", display: "Marimba"},
+			{value: "106 0 0", display: "Koto"},
+			{value: "107 0 0", display: "Sho"},
+			{value: "108 0 0", display: "Shakuhachi"},
+			{value: "109 0 0", display: "Whistle 1"},
+			{value: "110 0 0", display: "Whistle 2"},
+			{value: "111 0 0", display: "Bottleblow"},
+			{value: "112 0 0", display: "Breathpipe"},
+			{value: "113 0 0", display: "Timpani"},
+			{value: "114 0 0", display: "Melodic Tom"},
+			{value: "115 0 0", display: "Deep Snare"},
+			{value: "116 0 0", display: "Electric Percussion 1"},
+			{value: "117 0 0", display: "Electric Percussion 2"},
+			{value: "118 0 0", display: "Taiko"},
+			{value: "119 0 0", display: "Taiko Rim"},
+			{value: "120 0 0", display: "Cymbal"},
+			{value: "121 0 0", display: "Castanet"},
+			{value: "122 0 0", display: "Triangle"},
+			{value: "123 0 0", display: "Orchestra Hit"},
+			{value: "124 0 0", display: "Telephone"},
+			{value: "125 0 0", display: "Bird Tweet"},
+			{value: "126 0 0", display: "One Note Jam"},
+			{value: "127 0 0", display: "Water Bells"},
+			{value: "128 0 0", display: "Jungle Tune"},
+		},
 	}
 
 	ccTargets = [][]*tabTarget{
@@ -874,6 +1012,18 @@ var (
 			{display: "OMNI On", value: "125"},
 			{display: "MONO", value: "126"},
 			{display: "POLY", value: "127"},
+		},
+		// MT-32
+		{
+			{display: "Modulation", value: "1"},
+			{display: "Data Entry", value: "6"},
+			{display: "Volume", value: "7"},
+			{display: "Pan", value: "10"},
+			{display: "Expression", value: "11"},
+			{display: "Sustain", value: "64"},
+			{display: "RPN MSB", value: "100"},
+			{display: "RPN LSB", value: "101"},
+			{display: "Reset All Controllers", value: "121"},
 		},
 	}
 
@@ -989,5 +1139,99 @@ var (
 			{value: "83", display: "Jingle Bell"},
 			{value: "84", display: "Bell Tree"},
 		}...),
+
+		// MT-32
+		{
+			{value: "35", display: "Bass Drum"},
+			{value: "37", display: "Side Stick"},
+			{value: "38", display: "Acoustic Snare"},
+			{value: "39", display: "Hand Clap"},
+			{value: "40", display: "Electric Snare"},
+			{value: "41", display: "Floor Tom"},
+			{value: "42", display: "Closed Hi-Hat"},
+			{value: "44", display: "Pedal Hi-hat"},
+			{value: "45", display: "Mid Tom"},
+			{value: "46", display: "Open Hi-hat"},
+			{value: "48", display: "High Tom"},
+			{value: "49", display: "Crash Cymbal"},
+			{value: "51", display: "Ride Cymbal"},
+			{value: "54", display: "Tambourine"},
+			{value: "56", display: "Cowbell"},
+			{value: "60", display: "High Bongo"},
+			{value: "61", display: "Low Bongo"},
+			{value: "62", display: "Mute High Conga"},
+			{value: "63", display: "Open High Conga"},
+			{value: "64", display: "Low Conga"},
+			{value: "65", display: "High Timbale"},
+			{value: "66", display: "Low Timbale"},
+			{value: "67", display: "High Agogô"},
+			{value: "68", display: "Low Agogô"},
+			{value: "69", display: "Cabasa"},
+			{value: "70", display: "Maracas"},
+			{value: "71", display: "Short Whistle"},
+			{value: "72", display: "Long Whistle"},
+			{value: "73", display: "Vibraslap"},
+			{value: "75", display: "Claves"},
+		},
+	}
+
+	programCategories = []string{
+		"Piano",
+		"Chromatic Percussion",
+		"Organ",
+		"Guitar",
+		"Bass",
+		"Strings",
+		"Ensemble",
+		"Brass",
+		"Reed",
+		"Pipe",
+		"Synth Lead",
+		"Synth Pad",
+		"Synth Effects",
+		"Ethnic", // lol...
+		"Percussive",
+		"Sound Effects",
+	}
+
+	mt32ProgramCategories = []string{
+		"Piano",
+		"Organ",
+		"Keyboard",
+		"Synth Brass and Bass",
+		"Synth 1",
+		"Synth 2",
+		"Strings",
+		"Strings (ct'd) and Guitar",
+		"Bass",
+		"Wind 1 and 2",
+		"Wind 2 (ct'd)",
+		"Brass",
+		"Brass (ct'd) and Mallet",
+		"Mallet (ct'd) and Special",
+		"Percussion",
+		"Percussion (ct'd) and Effects",
 	}
 )
+
+func init() {
+	for i, ts := range instrumentTargets {
+		for _, t := range ts {
+			prog, err := strconv.Atoi(strings.Split(t.value, " ")[0])
+			if err != nil {
+				panic(err)
+			}
+			switch i {
+			case modeGM:
+				t.display = fmt.Sprintf("%s / %s",
+					programCategories[(prog-1)/8], t.display)
+			case modeMT32:
+				t.display = fmt.Sprintf("%s / %s",
+					mt32ProgramCategories[(prog-1)/8], t.display)
+			default:
+				t.display = fmt.Sprintf("%s / %s",
+					instrumentTargets[modeGM][prog-1].display, t.display)
+			}
+		}
+	}
+}

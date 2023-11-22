@@ -21,9 +21,9 @@ const (
 	defaultController = 1
 	defaultRefPitch   = 60
 
-	// widest range achievable with pitch wheel
-	minPitch = -bendSemitones
-	maxPitch = 127 + bendSemitones
+	// widest range achievable with default pitch bend
+	minPitch = -24
+	maxPitch = 127 + 24
 )
 
 func init() {
@@ -109,7 +109,7 @@ func reverseTickShift(ts *tickShift) *tickShift {
 // draw all components of the pattern editor interface
 // TODO all the modification to the dst viewport rect is kind of messy
 func (pe *patternEditor) draw(r *sdl.Renderer, dst *sdl.Rect, playPos int64) {
-	pe.viewport = &sdl.Rect{dst.X, dst.Y, dst.W, dst.H}
+	pe.viewport = &sdl.Rect{X: dst.X, Y: dst.Y, W: dst.W, H: dst.H}
 	pe.headerHeight = pe.printer.rect.H + padding*2
 	pe.beatWidth = pe.printer.rect.W*beatDigits + padding*2
 	pe.beatHeight = (pe.printer.rect.H + padding) * rowsPerBeat
@@ -127,7 +127,7 @@ func (pe *patternEditor) draw(r *sdl.Renderer, dst *sdl.Rect, playPos int64) {
 	dst.Y -= pe.headerHeight
 	dst.H += pe.headerHeight
 	r.SetDrawColorArray(colorBg1Array...)
-	r.FillRect(&sdl.Rect{dst.X, dst.Y, pe.beatWidth, dst.H})
+	r.FillRect(&sdl.Rect{X: dst.X, Y: dst.Y, W: pe.beatWidth, H: dst.H})
 
 	// draw play position
 	dst.Y += pe.headerHeight
@@ -137,7 +137,7 @@ func (pe *patternEditor) draw(r *sdl.Renderer, dst *sdl.Rect, playPos int64) {
 	if y+h > dst.Y && y < dst.Y+dst.H {
 		r.SetDrawBlendMode(sdl.BLENDMODE_BLEND)
 		r.SetDrawColorArray(colorPlayPosArray...)
-		r.FillRect(&sdl.Rect{0, y, pe.viewport.W, h})
+		r.FillRect(&sdl.Rect{X: 0, Y: y, W: pe.viewport.W, H: h})
 		r.SetDrawBlendMode(sdl.BLENDMODE_NONE)
 	}
 	dst.Y -= pe.headerHeight
@@ -172,7 +172,7 @@ func (pe *patternEditor) draw(r *sdl.Renderer, dst *sdl.Rect, playPos int64) {
 		y+h > dst.Y && y < dst.Y+dst.H {
 		r.SetDrawBlendMode(sdl.BLENDMODE_BLEND)
 		r.SetDrawColorArray(colorSelectArray...)
-		r.FillRect(&sdl.Rect{x, y, w, h})
+		r.FillRect(&sdl.Rect{X: x, Y: y, W: w, H: h})
 		r.SetDrawBlendMode(sdl.BLENDMODE_NONE)
 	}
 	dst.Y -= pe.headerHeight
@@ -183,7 +183,7 @@ func (pe *patternEditor) draw(r *sdl.Renderer, dst *sdl.Rect, playPos int64) {
 	// draw track headers
 	x = dst.X + pe.beatWidth - pe.scrollX
 	r.SetDrawColorArray(colorBg1Array...)
-	r.FillRect(&sdl.Rect{dst.X, dst.Y, dst.W, pe.headerHeight})
+	r.FillRect(&sdl.Rect{X: dst.X, Y: dst.Y, W: dst.W, H: pe.headerHeight})
 	for _, t := range pe.song.Tracks {
 		if x+pe.trackWidth > dst.X && x < dst.X+dst.W {
 			pe.printer.draw(r, "channel "+strconv.Itoa(int(t.Channel)+1), x, dst.Y+padding)
@@ -233,7 +233,7 @@ func (pe *patternEditor) mouseMotion(e *sdl.MouseMotionEvent) {
 	if e.State&sdl.BUTTON_LEFT == 0 {
 		return
 	}
-	if !(&sdl.Point{e.X, e.Y}).InRect(pe.viewport) {
+	if !(&sdl.Point{X: e.X, Y: e.Y}).InRect(pe.viewport) {
 		return
 	}
 	pe.cursorTrackDrag, pe.cursorTickDrag = pe.convertMouseCoords(e.X, e.Y)
@@ -245,7 +245,7 @@ func (pe *patternEditor) mouseButton(e *sdl.MouseButtonEvent) {
 	if e.Type != sdl.MOUSEBUTTONDOWN {
 		return
 	}
-	if !(&sdl.Point{e.X, e.Y}).InRect(pe.viewport) {
+	if !(&sdl.Point{X: e.X, Y: e.Y}).InRect(pe.viewport) {
 		return
 	}
 	x, y := pe.convertMouseCoords(e.X, e.Y)
@@ -689,17 +689,6 @@ func interpolateValue(pos, start, end int64, a, b float64, round bool) float64 {
 func eventDataEqual(e1, e2 *trackEvent) bool {
 	return e1.FloatData == e2.FloatData && e1.ByteData1 == e2.ByteData1 &&
 		e1.ByteData2 == e2.ByteData2
-}
-
-// play note offs for selected tracks
-func (pe *patternEditor) playSelectionNoteOff(p *player) {
-	trackMin, trackMax, _, _ := pe.getSelection()
-	for i := trackMin; i <= trackMax; i++ {
-		p.signal <- playerSignal{typ: signalEvent, event: &trackEvent{
-			Type:  noteOffEvent,
-			track: i,
-		}}
-	}
 }
 
 // return the first tick in the current view
