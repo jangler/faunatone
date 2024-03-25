@@ -1,19 +1,17 @@
-name: Build
+name: Test
 
-# Run only when a new tag is pushed.
 on:
   push:
-    tags:
-    - '*'
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
 
 jobs:
 
-  build-linux:
+  test:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    # Fetch names for `git describe`.
-    - run: git fetch --prune --unshallow --tags
 
     - name: Set up Go
       uses: actions/setup-go@v4
@@ -25,12 +23,3 @@ jobs:
 
     - name: Test
       run: go test -v ./...
-  
-    - name: Build
-      run: GOOS=linux bash misc/mkdist.sh
-
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: linux
-        path: dist/faunatone-*
