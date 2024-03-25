@@ -4,6 +4,8 @@
 # requires dos2unix and either util-linux rename or perl rename.
 # cross-compilation not currently supported.
 
+set -euo pipefail
+
 if [ "$(basename $(pwd))" == misc ]; then
 	echo "error: run this script from the parent directory."
 	exit 1
