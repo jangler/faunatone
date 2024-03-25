@@ -75,3 +75,9 @@ Faunatone save files (\*.faun) are zlib-compressed JSON.
   other configuration files
 - [building.md](https://github.com/jangler/faunatone/blob/master/docs/building.md):
   building from source
+
+## Music written in Faunatone
+
+- [jangler - acrylic warp](https://jangler.bandcamp.com/album/acrylic-warp)
+- [jangler - web world / nonexclusivity](https://soundcloud.com/janglerr/sets/web-world-nonexclusivity)
+- [Chimeratio & jangler - tunnel7_r35b](https://sexytoadsandfrogsfriendcircle.bandcamp.com/track/tunnel7-r35b)
