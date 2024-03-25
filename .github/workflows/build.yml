@@ -1,0 +1,35 @@
+name: Build
+
+on:
+  push:
+    # TODO: Change this to master!
+    branches: [ "actions" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.20'
+
+    - name: Install dependencies
+      run: sudo apt install rename lib{asound2,x11,xext,xcursor,xinerama,xi,xrandr,xss,xxf86vm,sdl2,sdl2-ttf}-dev
+
+    - name: Test
+      run: go test -v ./...
+  
+    - name: Build
+      run: GOOS=linux bash misc/mkdist.sh
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux
+        path: dist/faunatone-*
