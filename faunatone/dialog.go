@@ -195,7 +195,7 @@ func (d *dialog) getPath(
 		action(s)
 	})
 	d.dir, d.ext = joinTreePath(dir), ext
-	d.targets = pathTargets(dir, ext)
+	d.targets = pathTargets(d.dir, ext)
 	d.curTargets = d.targets
 }
 
