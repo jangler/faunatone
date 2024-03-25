@@ -10,6 +10,8 @@ Management of individual output MIDI channels by the user is not required;
 Faunatone operates in terms of virtual channels which it maps dynamically by
 default.
 
+![Screenshot](screenshot.png?raw=true)
+
 ## Features
 
 - First-class support for various approaches to microtonality
