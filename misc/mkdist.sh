@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 
 # puts together a release folder for a target GOOS.
-# requires dos2unix and either util-linux rename or perl rename.
+# requires dos2unix.
 # cross-compilation not currently supported.
 
 set -euo pipefail
+IFS=$'\t\n'
 
 if [ "$(basename $(pwd))" == misc ]; then
 	echo "error: run this script from the parent directory."
@@ -34,13 +35,12 @@ mkdir -p "$dir"
 mv ftone* "$dir"
 cp -r assets docs faunatone/config README.md "$dir"
 cd "$dir"
-if [[ $(rename --version) == *util-linux* ]]; then
-	rename ftone faunatone ftone*
-	rename .md .txt *.md docs/*.md
-else
-	rename s/ftone/faunatone/ ftone*
-	rename s/.md/.txt/ *.md docs/*.md
-fi
+for f in ftone*; do
+	mv "$f" "${f/ftone/faunatone}"
+done
+for f in *.md docs/*.md; do
+	mv "$f" "${f%.md}.txt"
+done
 if [ "$GOOS" == windows ]; then
 	unix2dos *.txt docs/*.txt config/* config/keymaps/*
 fi
