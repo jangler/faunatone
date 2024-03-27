@@ -12,6 +12,10 @@ if [ "$(basename $(pwd))" == misc ]; then
 	exit 1
 fi
 
+if [ "$#" -gt 0 ]; then
+	GOOS="$1"
+fi
+
 case "$GOOS" in
 	linux)
 		go build -tags static -ldflags "-s -w" -o ftone ./faunatone/
