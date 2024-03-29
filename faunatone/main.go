@@ -5,7 +5,6 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"os"
 	"path/filepath"
@@ -57,7 +56,7 @@ var (
 func must(err error) {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
-		ioutil.WriteFile(errorLogFile, []byte(err.Error()+"\n"), 0644)
+		os.WriteFile(errorLogFile, []byte(err.Error()+"\n"), 0644)
 		os.Exit(1)
 	}
 }
