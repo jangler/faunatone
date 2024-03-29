@@ -448,6 +448,7 @@ var (
 
 // convert a string to a pitch struct
 func parsePitch(s string, k *keymap) (*pitchSrc, error) {
+	s = strings.Trim(s, " \r")
 	s = strings.TrimPrefix(s, "*")
 	if m := ratioRegexp.FindAllStringSubmatch(s, 1); m != nil {
 		num, _ := strconv.ParseFloat(m[0][1], 64)
