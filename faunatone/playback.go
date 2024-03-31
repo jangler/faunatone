@@ -306,7 +306,7 @@ func (p *player) playEvent(te *trackEvent) {
 				t2.midiChannel = byteNil
 			}
 		}
-		if stolen {
+		if stolen && !vcs.isPercussionChannel() {
 			p.polyErrCount++
 		}
 		out.writer.SetChannel(t.midiChannel)
@@ -593,6 +593,10 @@ func newChannelState(midiMode, index int, virtual bool) *channelState {
 		cs.controllers[10] = mt32DefaultPanning[index]
 	}
 	return cs
+}
+
+func (cs *channelState) isPercussionChannel() bool {
+	return cs.midiMin == percussionChannelIndex && cs.midiMax == percussionChannelIndex
 }
 
 // return the index of the channel which has had no active notes for the
