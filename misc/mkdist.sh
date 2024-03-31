@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 
-# puts together a release folder for a target GOOS.
+# puts together a release folder for the host OS.
 # requires dos2unix.
-# cross-compilation not currently supported.
 
 set -euo pipefail
 IFS=$'\t\n'
@@ -12,21 +11,19 @@ if [ "$(basename $(pwd))" == misc ]; then
 	exit 1
 fi
 
-case "$GOOS" in
-	linux)
+case $(uname) in
+	Darwin)
+		echo "error: macOS build not implemented"
+		exit 1
+		;;
+	Linux)
+	    GOOS=linux
 		go build -tags static -ldflags "-s -w" -o ftone ./faunatone/
 		;;
-	windows)
-		 CGO_LDFLAGS="-static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread -Wl,-Bdynamic -mwindows" \
-		 	go build -tags static -ldflags "-s -w -H windowsgui" -o ftone.exe ./faunatone/
-		;;
-	"")
-		echo "error: GOOS not set"
-		exit 1
-		;;
 	*)
-		echo "error: unsupported GOOS: $GOOS"
-		exit 1
+		GOOS=windows
+		CGO_LDFLAGS="-static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread -Wl,-Bdynamic -mwindows" \
+		 	go build -tags static -ldflags "-s -w -H windowsgui" -o ftone.exe ./faunatone/
 		;;
 esac
 
