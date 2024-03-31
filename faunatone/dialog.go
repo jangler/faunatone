@@ -31,15 +31,16 @@ type tabTarget struct {
 
 // modal dialog that displays a message or prompts for input
 type dialog struct {
-	prompt []string
-	input  string
-	size   int          // text box will have room for this many chars
-	action func(string) // run if dialog is closed with K_RETURN
-	shown  bool
-	accept bool // accept input
-	mode   inputMode
-	dir    string // base dir for path input, used for tab complete
-	ext    string // extension for path input completion if non-empty
+	prompt      []string
+	input       string
+	size        int          // text box will have room for this many chars
+	action      func(string) // run if dialog is closed with K_RETURN
+	shown       bool
+	accept      bool // accept input
+	mode        inputMode
+	dir         string // base dir for path input, used for tab complete
+	ext         string // extension for path input completion if non-empty
+	rejectEmpty bool
 
 	// for display and tab completion
 	targets    []*tabTarget // all possible targets
@@ -197,6 +198,7 @@ func (d *dialog) getPath(
 	d.dir, d.ext = joinTreePath(dir), ext
 	d.targets = pathTargets(d.dir, ext)
 	d.curTargets = d.targets
+	d.rejectEmpty = true
 }
 
 // return path targets for the given directory and filename extension
@@ -328,9 +330,11 @@ func (d *dialog) keyboardEvent(e *sdl.KeyboardEvent) {
 		case sdl.K_ESCAPE:
 			d.shown = false
 		case sdl.K_RETURN:
-			d.shown = false
-			if d.action != nil {
-				d.action(d.input)
+			if !(d.rejectEmpty && d.input == "") {
+				d.shown = false
+				if d.action != nil {
+					d.action(d.input)
+				}
 			}
 		case sdl.K_TAB:
 			if d.curTargets != nil {
