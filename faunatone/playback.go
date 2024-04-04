@@ -2,6 +2,7 @@ package main
 
 import (
 	"math"
+	"math/rand"
 	"sort"
 	"sync"
 	"time"
@@ -65,6 +66,8 @@ type player struct {
 	virtChannels []*channelState
 	redrawChan   chan bool // send true on this when a signal is received
 	polyErrCount int       // # of times polyphony limit was exceeded
+
+	velocityHumanizeLevel byte
 
 	// ignore signalContinue messages with world < this.
 	// increment world when signalStop and signalStart are sent.
@@ -337,7 +340,7 @@ func (p *player) playEvent(te *trackEvent) {
 			writer.PolyAftertouch(out.writer, note, t.pressure)
 			mcs.keyPressure[note] = t.pressure
 		}
-		writer.NoteOn(out.writer, note, te.ByteData1)
+		writer.NoteOn(out.writer, note, humanizeVelocity(te.ByteData1, p.velocityHumanizeLevel))
 		t.activeNote = note
 		mcs.lastNoteOff = -1
 	case drumNoteOnEvent:
@@ -350,7 +353,7 @@ func (p *player) playEvent(te *trackEvent) {
 		if mcs.program != vcs.program {
 			writer.ProgramChange(out.writer, uint8(vcs.program))
 		}
-		writer.NoteOn(out.writer, te.ByteData1, te.ByteData2)
+		writer.NoteOn(out.writer, te.ByteData1, humanizeVelocity(te.ByteData2, p.velocityHumanizeLevel))
 		t.activeNote = te.ByteData1
 		mcs.lastNoteOff = -1
 	case noteOffEvent:
@@ -461,6 +464,8 @@ func (p *player) playEvent(te *trackEvent) {
 			out.writer, p.song.MidiMode)
 		sysex([]byte{0x41, 0x10, 0x16, 0x12, 0x10, 0x00, 0x03, te.ByteData3},
 			out.writer, p.song.MidiMode)
+	case velocityHumanizeEvent:
+		p.velocityHumanizeLevel = te.ByteData1
 	default:
 		println("unhandled event type in player.playTrackEvents")
 	}
@@ -625,4 +630,17 @@ func clamp(x, min, max uint8) uint8 {
 		return max
 	}
 	return x
+}
+
+func humanizeVelocity(velocity, level byte) byte {
+	if level == 0 {
+		return velocity
+	}
+	v := int(velocity) + rand.Intn(int(level)*2) - int(level)
+	if v < 0 {
+		return 0
+	} else if v > 127 {
+		return 127
+	}
+	return byte(v)
 }

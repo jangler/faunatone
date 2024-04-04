@@ -304,6 +304,9 @@ func main() {
 					{label: "MT-32 global reverb...", action: func() {
 						dialogInsertMT32Reverb(dia, patedit, pl)
 					}},
+					{label: "Global velocity humanize...", action: func() {
+						dialogInsertVelocityHumanize(dia, patedit, pl)
+					}},
 				},
 			},
 			{
@@ -716,6 +719,16 @@ func dialogInsertMT32Reverb(d *dialog, pe *patternEditor, p *player) {
 				}, nil), p)
 			})
 		})
+	})
+}
+
+// set d to an input dialog chain
+func dialogInsertVelocityHumanize(d *dialog, pe *patternEditor, p *player) {
+	d.getInt("Level (0-128):", 0, 128, func(level int64) {
+		pe.writeEvent(newTrackEvent(&trackEvent{
+			Type:      velocityHumanizeEvent,
+			ByteData1: byte(level),
+		}, nil), p)
 	})
 }
 
