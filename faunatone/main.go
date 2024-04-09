@@ -608,10 +608,16 @@ func dialogInsertPitchBend(d *dialog, pe *patternEditor, p *player) {
 // set d to an input dialog
 func dialogInsertTempoChange(d *dialog, pe *patternEditor, p *player) {
 	// using 0.01 here since the error msg only displays 2 decimal places
-	d.getFloat("Tempo (BPM):", 0.01, posInf, func(f float64) {
+	d.getTempo("Tempo (BPM):", 0.01, posInf, func(f float64) {
 		pe.writeEvent(newTrackEvent(&trackEvent{
 			Type:      tempoEvent,
 			FloatData: f,
+		}, nil), p)
+	}, func(n, d uint64) {
+		pe.writeEvent(newTrackEvent(&trackEvent{
+			Type:      tempoEvent,
+			ByteData1: byte(n),
+			ByteData2: byte(d),
 		}, nil), p)
 	})
 }

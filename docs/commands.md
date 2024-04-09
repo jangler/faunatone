@@ -63,7 +63,8 @@ first place.
 range 1 to 128. Also sets bank MSB and LSB in GS and XG modes.
 
 **Tempo change...** - Insert a tempo change meta-event. Tempos are specified in
-beats per minute. The default is 120.
+beats per minute. The default is 120. Tempos can also be specified as ratios,
+in which case they multiply the previous tempo.
 
 **Controller change...** - Insert a control change event for the current
 controller (set by **Status -> Set controller...**), value range 0 to 127. Most

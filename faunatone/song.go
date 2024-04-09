@@ -262,7 +262,11 @@ func (te *trackEvent) setUiString(k *keymap) {
 		te.uiString = fmt.Sprintf("prog %d %d %d",
 			te.ByteData1+1, te.ByteData2, te.ByteData3)
 	case tempoEvent:
-		te.uiString = fmt.Sprintf("tempo %.2f", te.FloatData)
+		if te.FloatData != 0 {
+			te.uiString = fmt.Sprintf("tempo %.2f", te.FloatData)
+		} else {
+			te.uiString = fmt.Sprintf("tempo %d:%d", te.ByteData1, te.ByteData2)
+		}
 	case textEvent:
 		label := "UNKNOWN"
 		if te.ByteData1 >= 1 && int(te.ByteData1) < len(textEventLabels) {

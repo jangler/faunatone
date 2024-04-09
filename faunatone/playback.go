@@ -408,10 +408,14 @@ func (p *player) playEvent(te *trackEvent) {
 			}
 		}
 	case tempoEvent:
-		p.bpm = te.FloatData
+		if te.FloatData != 0 {
+			p.bpm = te.FloatData
+		} else {
+			p.bpm *= float64(te.ByteData1) / float64(te.ByteData2)
+		}
 		if wr, ok := out.writer.(*writer.SMF); ok {
 			p.lastEvtTick = te.Tick
-			writer.TempoBPM(wr, te.FloatData)
+			writer.TempoBPM(wr, p.bpm)
 		}
 	case textEvent:
 		if wr, ok := out.writer.(*writer.SMF); ok {
@@ -535,7 +539,11 @@ func (p *player) determineVirtualChannelStates(tick int64) {
 				uint32(te.ByteData2)<<8 +
 				uint32(te.ByteData3)<<16
 		case tempoEvent:
-			p.bpm = te.FloatData
+			if te.FloatData != 0 {
+				p.bpm = te.FloatData
+			} else {
+				p.bpm *= float64(te.ByteData1) / float64(te.ByteData2)
+			}
 		}
 	}
 }
