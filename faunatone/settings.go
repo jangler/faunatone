@@ -57,6 +57,14 @@ func (s *settings) applyRecords(records [][]string, warn func(string)) {
 		if len(rec) == 2 {
 			if field := v.FieldByName(rec[0]); field.IsValid() {
 				switch field.Kind() {
+				case reflect.Bool:
+					if rec[1] == "true" {
+						field.SetBool(true)
+						success = true
+					} else if rec[1] == "false" {
+						field.SetBool(false)
+						success = true
+					}
 				case reflect.Uint32:
 					if len(rec[1]) > 1 {
 						if i, err := strconv.ParseUint(rec[1][1:], 16, 32); err == nil {

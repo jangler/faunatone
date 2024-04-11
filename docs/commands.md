@@ -199,4 +199,4 @@ startup will need this to interpret pitches correctly.
 or MT-32 defaults. (And then sends the pitch bend sensitivity RPN.) This also
 resets the virtual channel states.
 
-**Cycle mode** - Cycle between GM, GS, XG, and MT-32 modes.
+**Cycle mode** - Cycle between GM, GS, XG, MT-32, and MPE modes.

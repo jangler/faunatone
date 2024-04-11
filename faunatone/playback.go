@@ -311,33 +311,38 @@ func (p *player) playEvent(te *trackEvent) {
 		}
 		out.writer.SetChannel(t.midiChannel)
 		mcs := out.channels[t.midiChannel]
-		for i, v := range vcs.controllers {
-			if mcs.controllers[i] != v {
-				writer.ControlChange(out.writer, uint8(i), v)
-				mcs.controllers[i] = v
-			}
-		}
-		if mcs.program != vcs.program {
-			writer.ControlChange(out.writer, ccBankMSB, uint8(vcs.program>>8))
-			writer.ControlChange(out.writer, ccBankLSB, uint8(vcs.program>>16))
-			writer.ProgramChange(out.writer, uint8(vcs.program))
-			mcs.program = vcs.program
-		}
-		if mcs.pressure != vcs.pressure {
-			writer.Aftertouch(out.writer, vcs.pressure)
-			mcs.pressure = vcs.pressure
-		}
 		note, bend := pitchToMidi(te.FloatData, p.song.MidiMode)
 		vcs.bend = bend
-		if mcs.bend != bend {
+		if p.song.MidiMode == modeMPE {
+			writer.NoteOn(out.writer, note, te.ByteData1)
 			writer.Pitchbend(out.writer, bend)
-			mcs.bend = bend
+		} else {
+			for i, v := range vcs.controllers {
+				if mcs.controllers[i] != v {
+					writer.ControlChange(out.writer, uint8(i), v)
+					mcs.controllers[i] = v
+				}
+			}
+			if mcs.program != vcs.program {
+				writer.ControlChange(out.writer, ccBankMSB, uint8(vcs.program>>8))
+				writer.ControlChange(out.writer, ccBankLSB, uint8(vcs.program>>16))
+				writer.ProgramChange(out.writer, uint8(vcs.program))
+				mcs.program = vcs.program
+			}
+			if mcs.pressure != vcs.pressure {
+				writer.Aftertouch(out.writer, vcs.pressure)
+				mcs.pressure = vcs.pressure
+			}
+			if mcs.bend != bend {
+				writer.Pitchbend(out.writer, bend)
+				mcs.bend = bend
+			}
+			if mcs.keyPressure[note] != t.pressure {
+				writer.PolyAftertouch(out.writer, note, t.pressure)
+				mcs.keyPressure[note] = t.pressure
+			}
+			writer.NoteOn(out.writer, note, te.ByteData1)
 		}
-		if mcs.keyPressure[note] != t.pressure {
-			writer.PolyAftertouch(out.writer, note, t.pressure)
-			mcs.keyPressure[note] = t.pressure
-		}
-		writer.NoteOn(out.writer, note, te.ByteData1)
 		t.activeNote = note
 		mcs.lastNoteOff = -1
 	case drumNoteOnEvent:

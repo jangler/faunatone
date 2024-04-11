@@ -32,7 +32,7 @@ const (
 	numMidiChannels        = 16
 	numVirtualChannels     = 16
 	percussionChannelIndex = 9
-	numMidiModes           = 4
+	numMidiModes           = 5
 )
 
 const (
@@ -40,6 +40,7 @@ const (
 	modeGS
 	modeXG
 	modeMT32
+	modeMPE
 )
 
 var standardPitchNames = []string{
@@ -57,6 +58,8 @@ func midiModeName(index int) string {
 		return "XG"
 	case modeMT32:
 		return "MT-32"
+	case modeMPE:
+		return "MPE"
 	}
 	return "Unknown"
 }
