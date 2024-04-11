@@ -1082,12 +1082,19 @@ func sendGMSystemOn(wr writer.ChannelWriter, midiMode int) {
 	if midiMode < len(systemOnBytes) {
 		writer.SysEx(wr, systemOnBytes[midiMode])
 	}
-	if midiMode == modeMT32 {
+	switch midiMode {
+	case modeMT32:
 		// set partial reserves for dynamic allocation
 		sysex([]byte{
 			0x41, 0x10, 0x16, 0x12, 0x10, 0x00, 0x04,
 			0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x08,
 		}, wr, midiMode)
+	case modeMPE:
+		// send MPE configuration message
+		// assign all channels to lower zone
+		wr.SetChannel(0)
+		writer.RPN(wr, 0x00, 0x06, 0xf, 0)
+		// should maybe also send CC#120 and/or CC#127?
 	}
 }
 
