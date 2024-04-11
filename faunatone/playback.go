@@ -327,7 +327,6 @@ func (p *player) playEvent(te *trackEvent) {
 			// ...then write again for synths that don't support pre-writing!
 			writer.Pitchbend(out.writer, bend)
 			writer.Aftertouch(out.writer, vcs.pressure)
-			writer.ControlChange(out.writer, ccTimbre, vcs.controllers[ccTimbre])
 			// TODO: master channel CCs
 		} else {
 			for i, v := range vcs.controllers {
