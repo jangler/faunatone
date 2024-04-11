@@ -1090,11 +1090,12 @@ func sendGMSystemOn(wr writer.ChannelWriter, midiMode int) {
 			0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x08,
 		}, wr, midiMode)
 	case modeMPE:
+		wr.SetChannel(0)
+		writer.CcOff(wr, ccResetAllControllers)
+		writer.CcOff(wr, ccAllNotesOff)
 		// send MPE configuration message
 		// assign all channels to lower zone
-		wr.SetChannel(0)
 		writer.RPN(wr, 0x00, 0x06, 0xf, 0)
-		// should maybe also send CC#120 and/or CC#127?
 	}
 }
 

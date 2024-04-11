@@ -35,9 +35,11 @@ const (
 	defaultBPM = 120
 	byteNil    = 0xff
 
-	ccBankMSB = 0
-	ccBankLSB = 32
-	ccTimbre  = 74
+	ccBankMSB             = 0
+	ccBankLSB             = 32
+	ccTimbre              = 74
+	ccResetAllControllers = 121
+	ccAllNotesOff         = 123
 
 	mt32MinChannel = 1
 	mt32MaxChannel = 8
