@@ -37,9 +37,12 @@ const (
 
 	ccBankMSB = 0
 	ccBankLSB = 32
+	ccTimbre  = 74
 
 	mt32MinChannel = 1
 	mt32MaxChannel = 8
+	mpeMinChannel  = 1
+	mpeMaxChannel  = 15
 )
 
 var systemOnBytes = [][]byte{
@@ -314,8 +317,16 @@ func (p *player) playEvent(te *trackEvent) {
 		note, bend := pitchToMidi(te.FloatData, p.song.MidiMode)
 		vcs.bend = bend
 		if p.song.MidiMode == modeMPE {
-			writer.NoteOn(out.writer, note, te.ByteData1)
+			// pre-write to avoid "swooping"...
 			writer.Pitchbend(out.writer, bend)
+			writer.Aftertouch(out.writer, 0) // the MPE spec says so
+			writer.ControlChange(out.writer, ccTimbre, vcs.controllers[ccTimbre])
+			writer.NoteOn(out.writer, note, te.ByteData1)
+			// ...then write again for synths that don't support pre-writing!
+			writer.Pitchbend(out.writer, bend)
+			writer.Aftertouch(out.writer, vcs.pressure)
+			writer.ControlChange(out.writer, ccTimbre, vcs.controllers[ccTimbre])
+			// TODO: master channel CCs
 		} else {
 			for i, v := range vcs.controllers {
 				if mcs.controllers[i] != v {
@@ -504,6 +515,9 @@ func (p *player) noteOff(i int, tick int64) {
 		p.lastEvtTick = tick
 		out := p.trackOutput(t)
 		out.writer.SetChannel(t.midiChannel)
+		if p.song.MidiMode == modeMPE {
+			writer.Aftertouch(out.writer, 0) // the MPE spec says so
+		}
 		writer.NoteOff(out.writer, activeNote)
 		t.activeNote = byteNil
 		out.channels[t.midiChannel].lastNoteOff = tick + p.virtChannels[t.Channel].releaseLen
@@ -593,7 +607,8 @@ func newChannelState(midiMode, index int, virtual bool) *channelState {
 	cs.controllers[11] = 127   // expression
 	cs.controllers[100] = 0x7f // RPN LSB
 	cs.controllers[101] = 0x7f // RPN MSB
-	if midiMode == modeXG {
+	switch midiMode {
+	case modeXG:
 		cs.controllers[71] = 0x40  // harmonic content
 		cs.controllers[72] = 0x40  // release time
 		cs.controllers[73] = 0x40  // attack time
@@ -601,9 +616,12 @@ func newChannelState(midiMode, index int, virtual bool) *channelState {
 		cs.controllers[91] = 0x28  // reverb send level
 		cs.controllers[100] = 0x7f // RPN LSB
 		cs.controllers[101] = 0x7f // RPN MSB
-	} else if midiMode == modeMT32 {
+	case modeMT32:
 		cs.program = mt32DefaultPrograms[index]
 		cs.controllers[10] = mt32DefaultPanning[index]
+	case modeMPE:
+		cs.pressure = 64
+		cs.controllers[ccTimbre] = 64
 	}
 	return cs
 }
@@ -616,9 +634,13 @@ func (cs *channelState) isPercussionChannel() bool {
 // longest time, aside from the percussion channel; return true if voice was
 // stolen
 func pickInactiveChannel(a []*channelState, min, max uint8, midiMode int) (uint8, bool) {
-	if midiMode == modeMT32 {
+	switch midiMode {
+	case modeMT32:
 		min = clamp(min, mt32MinChannel, mt32MaxChannel)
 		max = clamp(max, mt32MinChannel, mt32MaxChannel)
+	case modeMPE:
+		min = clamp(min, mpeMinChannel, mpeMaxChannel)
+		max = clamp(max, mpeMinChannel, mpeMaxChannel)
 	}
 	bestScore, bestIndex := int64(math.MaxInt64), min
 	for i, cs := range a {

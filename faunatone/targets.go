@@ -940,6 +940,9 @@ var (
 			{value: "127 0 0", display: "Water Bells"},
 			{value: "128 0 0", display: "Jungle Tune"},
 		},
+
+		// MPE
+		{},
 	}
 
 	ccTargets = [][]*tabTarget{
@@ -1024,6 +1027,10 @@ var (
 			{display: "RPN MSB", value: "100"},
 			{display: "RPN LSB", value: "101"},
 			{display: "Reset All Controllers", value: "121"},
+		},
+		// MPE
+		{
+			{display: "Timbre", value: "74"},
 		},
 	}
 
@@ -1173,6 +1180,9 @@ var (
 			{value: "73", display: "Vibraslap"},
 			{value: "75", display: "Claves"},
 		},
+
+		// MPE
+		commomDrumTargets,
 	}
 
 	programCategories = []string{
