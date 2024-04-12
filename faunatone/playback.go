@@ -374,12 +374,19 @@ func (p *player) playEvent(te *trackEvent) {
 		p.noteOff(i, te.Tick)
 	case controllerEvent:
 		p.virtChannels[t.Channel].controllers[te.ByteData1] = te.ByteData2
-		for _, t2 := range p.song.Tracks {
-			if t2.Channel == t.Channel && t2.midiChannel != byteNil {
-				p.lastEvtTick = te.Tick
-				out.writer.SetChannel(t2.midiChannel)
-				writer.ControlChange(out.writer, te.ByteData1, te.ByteData2)
-				out.channels[t2.midiChannel].controllers[te.ByteData1] = te.ByteData2
+		if p.song.MidiMode == modeMPE && te.ByteData1 != ccTimbre {
+			p.lastEvtTick = te.Tick
+			out.writer.SetChannel(0)
+			writer.ControlChange(out.writer, te.ByteData1, te.ByteData2)
+			out.channels[0].controllers[te.ByteData1] = te.ByteData2
+		} else {
+			for _, t2 := range p.song.Tracks {
+				if t2.Channel == t.Channel && t2.midiChannel != byteNil {
+					p.lastEvtTick = te.Tick
+					out.writer.SetChannel(t2.midiChannel)
+					writer.ControlChange(out.writer, te.ByteData1, te.ByteData2)
+					out.channels[t2.midiChannel].controllers[te.ByteData1] = te.ByteData2
+				}
 			}
 		}
 	case pitchBendEvent:
