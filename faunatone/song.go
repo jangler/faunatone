@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"path/filepath"
+	"slices"
+	"strings"
 
 	"gitlab.com/gomidi/midi/writer"
 )
@@ -137,22 +140,53 @@ func (s *song) write(w io.Writer) error {
 	return comp.Close()
 }
 
+func (s *song) usedOutputs() []int {
+	var outputs []int
+	for _, track := range s.Tracks {
+		for _, event := range track.Events {
+			if event.Type == midiOutputEvent && !slices.Contains(outputs, int(event.ByteData1)) {
+				outputs = append(outputs, int(event.ByteData1))
+			}
+		}
+	}
+	return outputs
+}
+
+// appendToFilename returns `path` with `append` inserted before the file
+// extension.
+func appendToFilename(append, path string) string {
+	ext := filepath.Ext(path)
+	return strings.TrimSuffix(path, ext) + append + ext
+}
+
 // export to MIDI
 func (s *song) exportSMF(path string) error {
-	return writer.WriteSMF(path, 1, func(wr *writer.SMF) error {
-		// TODO: make sure this doesn't crash things depdending on device mapping
-		wr.ConsolidateNotes(false) // prevents timing issues with 0-velocity notes
-		p := newPlayer(s, []writer.ChannelWriter{wr}, false)
-		go p.run()
-		p.sendStopping = true
-		p.signal <- playerSignal{typ: signalStart}
-		<-p.stopping
-		writer.EndOfTrack(wr)
-		if p.polyErrCount > 0 {
-			return fmt.Errorf("polyphony limit exceeded by %d note(s)", p.polyErrCount)
+	usedOutputs := s.usedOutputs()
+	for _, output := range usedOutputs {
+		thisPath := path
+		if len(usedOutputs) > 1 {
+			thisPath = appendToFilename(fmt.Sprintf("_%d", output), path)
 		}
-		return nil
-	})
+		err := writer.WriteSMF(thisPath, 1, func(wr *writer.SMF) error {
+			// TODO: make sure this doesn't crash things depending on device mapping
+			wr.ConsolidateNotes(false) // prevents timing issues with 0-velocity notes
+			p := newPlayer(s, []writer.ChannelWriter{wr}, false)
+			p.exportOutput = &output
+			go p.run()
+			p.sendStopping = true
+			p.signal <- playerSignal{typ: signalStart}
+			<-p.stopping
+			writer.EndOfTrack(wr)
+			if p.polyErrCount > 0 {
+				return fmt.Errorf("polyphony limit exceeded by %d note(s)", p.polyErrCount)
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // change UI strings for notes based on keymap

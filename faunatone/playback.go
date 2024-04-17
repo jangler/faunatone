@@ -70,6 +70,7 @@ type player struct {
 	virtChannels []*channelState
 	redrawChan   chan bool // send true on this when a signal is received
 	polyErrCount int       // # of times polyphony limit was exceeded
+	exportOutput *int
 
 	// ignore signalContinue messages with world < this.
 	// increment world when signalStop and signalStart are sent.
@@ -293,6 +294,9 @@ func (p *player) playEvent(te *trackEvent) {
 	i := te.track
 	t := p.song.Tracks[i]
 	out := p.trackOutput(t)
+	if te.Type != midiOutputEvent && !p.trackOutputEnabled(t) {
+		return
+	}
 	switch te.Type {
 	case noteOnEvent:
 		p.lastEvtTick = te.Tick
@@ -516,12 +520,19 @@ func calcRolandChecksum(b []byte) byte {
 	return byte(sum)
 }
 
+func (p *player) trackOutputEnabled(t *track) bool {
+	return p.exportOutput == nil || p.virtChannels[t.Channel].output == *p.exportOutput
+}
+
 // if a note is playing on the indexed track, play a note off
 func (p *player) noteOff(i int, tick int64) {
 	t := p.song.Tracks[i]
 	if activeNote := t.activeNote; activeNote != byteNil {
 		p.lastEvtTick = tick
 		out := p.trackOutput(t)
+		if !p.trackOutputEnabled(t) {
+			return
+		}
 		out.writer.SetChannel(t.midiChannel)
 		if p.song.MidiMode == modeMPE {
 			writer.Aftertouch(out.writer, 0) // the MPE spec says so
