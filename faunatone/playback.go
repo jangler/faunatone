@@ -425,14 +425,23 @@ func (p *player) playEvent(te *trackEvent) {
 		p.virtChannels[t.Channel].program = uint32(te.ByteData1) +
 			uint32(te.ByteData2)<<8 +
 			uint32(te.ByteData3)<<16
-		for _, t2 := range p.song.Tracks {
-			if t2.Channel == t.Channel && t2.midiChannel != byteNil {
-				p.lastEvtTick = te.Tick
-				out.writer.SetChannel(t2.midiChannel)
-				writer.ControlChange(out.writer, ccBankMSB, te.ByteData2)
-				writer.ControlChange(out.writer, ccBankLSB, te.ByteData3)
-				writer.ProgramChange(out.writer, te.ByteData1)
-				out.channels[t2.midiChannel].program = p.virtChannels[t.Channel].program
+		if p.song.MidiMode == modeMPE {
+			p.lastEvtTick = te.Tick
+			out.writer.SetChannel(0)
+			writer.ControlChange(out.writer, ccBankMSB, te.ByteData2)
+			writer.ControlChange(out.writer, ccBankLSB, te.ByteData3)
+			writer.ProgramChange(out.writer, te.ByteData1)
+			out.channels[0].program = p.virtChannels[t.Channel].program
+		} else {
+			for _, t2 := range p.song.Tracks {
+				if t2.Channel == t.Channel && t2.midiChannel != byteNil {
+					p.lastEvtTick = te.Tick
+					out.writer.SetChannel(t2.midiChannel)
+					writer.ControlChange(out.writer, ccBankMSB, te.ByteData2)
+					writer.ControlChange(out.writer, ccBankLSB, te.ByteData3)
+					writer.ProgramChange(out.writer, te.ByteData1)
+					out.channels[t2.midiChannel].program = p.virtChannels[t.Channel].program
+				}
 			}
 		}
 	case tempoEvent:
