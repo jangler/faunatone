@@ -521,6 +521,9 @@ func (p *player) playEvent(te *trackEvent) {
 		output := p.outputs[outputIndex]
 		output.midiMode = mode
 		sendSystemOn(output.writer, mode)
+		for i := range output.channels {
+			output.channels[i] = newChannelState(mode, i, false)
+		}
 		output.sendPitchBendRPN(uint8(getBendSemitones(mode)), 0)
 	default:
 		println("unhandled event type in player.playTrackEvents")
