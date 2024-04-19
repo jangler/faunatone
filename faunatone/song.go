@@ -128,6 +128,8 @@ func (s *song) read(r io.Reader) error {
 	s.Keymap.keySig = make(map[float64]*pitchSrc)
 	for i, t := range s.Tracks {
 		t.index = i
+		t.activeNote = byteNil
+		t.midiChannel = byteNil
 		for _, te := range t.Events {
 			te.track = i
 			te.setUiString(s.Keymap)
@@ -217,7 +219,7 @@ type track struct {
 	// only used by player
 	activeNote  uint8
 	midiChannel uint8
-	pressure    uint8
+	pressure    uint8 // for polyphonic aftertouch
 }
 
 // initialize a new track
