@@ -121,7 +121,7 @@ func newPlayer(s *song, wrs []writer.ChannelWriter, realtime bool) *player {
 
 // start signal-handling loop
 func (p *player) run() {
-	p.broadcastPitchBendRPN(uint8(bendSemitones), 0)
+	p.broadcastPitchBendRPN()
 	for sig := range p.signal {
 		switch sig.typ {
 		case signalStart:
@@ -188,7 +188,7 @@ func (p *player) run() {
 		case signalEvent:
 			p.playEvent(sig.event)
 		case signalSendPitchRPN:
-			p.broadcastPitchBendRPN(uint8(bendSemitones), 0)
+			p.broadcastPitchBendRPN()
 		case signalSendSystemOn:
 			for _, out := range p.outputs {
 				sendSystemOn(out.writer, p.song.MidiMode)
@@ -225,13 +225,13 @@ func (p *player) cleanup() {
 	for i := range p.song.Tracks {
 		p.noteOff(i, p.lastTick)
 	}
-	p.broadcastPitchBendRPN(2, 0)
+	p.broadcastPitchBendRPN()
 }
 
 // send the "pitch bend sensitivity" RPN to every channel
-func (p *player) broadcastPitchBendRPN(semitones, cents uint8) {
+func (p *player) broadcastPitchBendRPN() {
 	for _, out := range p.outputs {
-		out.sendPitchBendRPN(semitones, cents)
+		out.sendPitchBendRPN(uint8(getBendSemitones(out.midiMode)), 0)
 	}
 }
 
@@ -510,13 +510,18 @@ func (p *player) playEvent(te *trackEvent) {
 		sysex([]byte{0x41, 0x10, 0x16, 0x12, 0x10, 0x00, 0x03, te.ByteData3},
 			out.writer, modeMT32)
 	case midiModeEvent:
-		output := p.virtChannels[t.Channel].output
-		for _, vcs := range p.virtChannels {
-			if vcs.output == output {
-				vcs.setMidiMode(int(te.ByteData1), int(t.Channel))
+		mode := int(te.ByteData1)
+		outputIndex := p.virtChannels[t.Channel].output
+		for i, vcs := range p.virtChannels {
+			if vcs.output == outputIndex {
+				p.virtChannels[i] = newChannelState(mode, int(t.Channel), true)
+				p.virtChannels[i].output = vcs.output
 			}
 		}
-		sendSystemOn(p.outputs[output].writer, int(te.ByteData1))
+		output := p.outputs[outputIndex]
+		output.midiMode = mode
+		sendSystemOn(output.writer, mode)
+		output.sendPitchBendRPN(uint8(getBendSemitones(mode)), 0)
 	default:
 		println("unhandled event type in player.playTrackEvents")
 	}
@@ -651,11 +656,7 @@ func newChannelState(midiMode, index int, virtual bool) *channelState {
 	cs.controllers[11] = 127   // expression
 	cs.controllers[100] = 0x7f // RPN LSB
 	cs.controllers[101] = 0x7f // RPN MSB
-	cs.setMidiMode(midiMode, index)
-	return cs
-}
-
-func (cs *channelState) setMidiMode(midiMode, index int) {
+	cs.midiMode = midiMode
 	switch midiMode {
 	case modeXG:
 		cs.controllers[71] = 0x40  // harmonic content
@@ -672,6 +673,7 @@ func (cs *channelState) setMidiMode(midiMode, index int) {
 		cs.pressure = 64
 		cs.controllers[ccTimbre] = 64
 	}
+	return cs
 }
 
 func (cs *channelState) isPercussionChannel() bool {

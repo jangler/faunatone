@@ -573,8 +573,7 @@ func dialogInsertNote(d *dialog, pe *patternEditor, p *player) {
 	})
 }
 
-// return note and pitch wheel values required to play a pitch in MIDI,
-// assuming a 2-semitone pitch bend range
+// return note and pitch wheel values required to play a pitch in MIDI
 func pitchToMidi(p float64, midiMode int) (uint8, int16) {
 	note := uint8(math.Round(math.Max(0, math.Min(127, p))))
 	bend := int16((p - float64(note)) * 8192.0 / getBendSemitones(midiMode))
