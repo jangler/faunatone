@@ -518,13 +518,12 @@ func (p *player) playEvent(te *trackEvent) {
 				p.virtChannels[i].output = vcs.output
 			}
 		}
-		output := p.outputs[outputIndex]
-		output.midiMode = mode
-		sendSystemOn(output.writer, mode)
-		for i := range output.channels {
-			output.channels[i] = newChannelState(mode, i, false)
+		out.midiMode = mode
+		sendSystemOn(out.writer, mode)
+		for i := range out.channels {
+			out.channels[i] = newChannelState(mode, i, false)
 		}
-		output.sendPitchBendRPN(uint8(getBendSemitones(mode)), 0)
+		out.sendPitchBendRPN(uint8(getBendSemitones(mode)), 0)
 	default:
 		println("unhandled event type in player.playTrackEvents")
 	}

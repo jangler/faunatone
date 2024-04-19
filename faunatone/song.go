@@ -152,7 +152,7 @@ func (s *song) write(w io.Writer) error {
 }
 
 func (s *song) usedOutputs() []int {
-	var outputs []int
+	outputs := []int{0}
 	for _, track := range s.Tracks {
 		for _, event := range track.Events {
 			if event.Type == midiOutputEvent && !slices.Contains(outputs, int(event.ByteData1)) {
