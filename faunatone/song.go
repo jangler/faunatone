@@ -29,6 +29,7 @@ const (
 	midiRangeEvent
 	midiOutputEvent
 	mt32ReverbEvent
+	midiModeEvent
 )
 
 const (
@@ -65,6 +66,14 @@ func midiModeName(index int) string {
 		return "MPE"
 	}
 	return "Unknown"
+}
+
+func midiModeTargets() []*tabTarget {
+	var ts []*tabTarget
+	for i := 0; midiModeName(i) != "Unknown"; i++ {
+		ts = append(ts, &tabTarget{display: midiModeName(i), value: fmt.Sprintf("%d", i)})
+	}
+	return ts
 }
 
 // fields in these types are exported to expose them to the JSON encoder
@@ -319,6 +328,8 @@ func (te *trackEvent) setUiString(k *keymap) {
 	case mt32ReverbEvent:
 		te.uiString = fmt.Sprintf("rv %d %d %d",
 			te.ByteData1, te.ByteData2, te.ByteData3)
+	case midiModeEvent:
+		te.uiString = fmt.Sprintf("@mode %s", midiModeName(int(te.ByteData1)))
 	default:
 		te.uiString = "UNKNOWN"
 	}

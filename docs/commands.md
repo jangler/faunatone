@@ -92,6 +92,9 @@ channel will use. Note that this is the index of the device in the list
 provided for `MidiOutPortNumber` in `config.settings.csv`, *not* the port
 number itself.
 
+**MIDI mode...** - Insert a directive to change the MIDI mode used by this
+track's output.
+
 ## Edit
 
 **Go to beat...** - Scroll to a given beat (integers not required) without

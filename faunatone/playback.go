@@ -80,6 +80,14 @@ type player struct {
 type midiOutput struct {
 	writer   writer.ChannelWriter
 	channels []*channelState
+	midiMode int
+}
+
+func (out *midiOutput) sendPitchBendRPN(semitones, cents uint8) {
+	for i := uint8(0); i < numMidiChannels; i++ {
+		out.writer.SetChannel(i)
+		writer.RPN(out.writer, 0, 0, semitones, cents)
+	}
 }
 
 // create a new player
@@ -98,6 +106,7 @@ func newPlayer(s *song, wrs []writer.ChannelWriter, realtime bool) *player {
 		out := &midiOutput{
 			writer:   wr,
 			channels: make([]*channelState, numMidiChannels),
+			midiMode: s.MidiMode,
 		}
 		for i := range out.channels {
 			out.channels[i] = newChannelState(s.MidiMode, i, false)
@@ -182,7 +191,7 @@ func (p *player) run() {
 			p.broadcastPitchBendRPN(uint8(bendSemitones), 0)
 		case signalSendSystemOn:
 			for _, out := range p.outputs {
-				sendGMSystemOn(out.writer, p.song.MidiMode)
+				sendSystemOn(out.writer, p.song.MidiMode)
 				for i := range out.channels {
 					out.channels[i] = newChannelState(p.song.MidiMode, i, false)
 				}
@@ -191,8 +200,8 @@ func (p *player) run() {
 				p.virtChannels[i] = newChannelState(p.song.MidiMode, i, true)
 			}
 		case signalResetChannels:
-			for i := range p.virtChannels {
-				p.virtChannels[i] = newChannelState(p.song.MidiMode, i, true)
+			for i, c := range p.virtChannels {
+				p.virtChannels[i] = newChannelState(c.midiMode, i, true)
 			}
 		case signalSongChanged:
 			p.findHorizon()
@@ -222,10 +231,7 @@ func (p *player) cleanup() {
 // send the "pitch bend sensitivity" RPN to every channel
 func (p *player) broadcastPitchBendRPN(semitones, cents uint8) {
 	for _, out := range p.outputs {
-		for i := uint8(0); i < numMidiChannels; i++ {
-			out.writer.SetChannel(i)
-			writer.RPN(out.writer, 0, 0, semitones, cents)
-		}
+		out.sendPitchBendRPN(semitones, cents)
 	}
 }
 
@@ -303,7 +309,7 @@ func (p *player) playEvent(te *trackEvent) {
 		p.noteOff(i, te.Tick)
 		vcs := p.virtChannels[t.Channel]
 		var stolen bool
-		t.midiChannel, stolen = pickInactiveChannel(out.channels, vcs.midiMin, vcs.midiMax, p.song.MidiMode)
+		t.midiChannel, stolen = pickInactiveChannel(out.channels, vcs.midiMin, vcs.midiMax, vcs.midiMode)
 		for j, t2 := range p.song.Tracks {
 			vcs2 := p.virtChannels[t2.Channel]
 			if t2.Channel != t.Channel &&
@@ -320,9 +326,9 @@ func (p *player) playEvent(te *trackEvent) {
 		}
 		out.writer.SetChannel(t.midiChannel)
 		mcs := out.channels[t.midiChannel]
-		note, bend := pitchToMidi(te.FloatData, p.song.MidiMode)
+		note, bend := pitchToMidi(te.FloatData, vcs.midiMode)
 		vcs.bend = bend
-		if p.song.MidiMode == modeMPE {
+		if vcs.midiMode == modeMPE {
 			// pre-write to avoid "swooping"...
 			writer.Pitchbend(out.writer, bend)
 			writer.Aftertouch(out.writer, 0) // the MPE spec says so
@@ -377,8 +383,9 @@ func (p *player) playEvent(te *trackEvent) {
 	case noteOffEvent:
 		p.noteOff(i, te.Tick)
 	case controllerEvent:
-		p.virtChannels[t.Channel].controllers[te.ByteData1] = te.ByteData2
-		if p.song.MidiMode == modeMPE && te.ByteData1 != ccTimbre {
+		vcs := p.virtChannels[t.Channel]
+		vcs.controllers[te.ByteData1] = te.ByteData2
+		if vcs.midiMode == modeMPE && te.ByteData1 != ccTimbre {
 			p.lastEvtTick = te.Tick
 			out.writer.SetChannel(0)
 			writer.ControlChange(out.writer, te.ByteData1, te.ByteData2)
@@ -397,7 +404,7 @@ func (p *player) playEvent(te *trackEvent) {
 		if note := t.activeNote; note != byteNil {
 			p.lastEvtTick = te.Tick
 			bend := int16((te.FloatData - float64(note)) * 8192.0 /
-				getBendSemitones(p.song.MidiMode))
+				getBendSemitones(p.virtChannels[t.Channel].midiMode))
 			p.virtChannels[t.Channel].bend = bend
 			out.writer.SetChannel(t.midiChannel)
 			writer.Pitchbend(out.writer, bend)
@@ -425,7 +432,7 @@ func (p *player) playEvent(te *trackEvent) {
 		p.virtChannels[t.Channel].program = uint32(te.ByteData1) +
 			uint32(te.ByteData2)<<8 +
 			uint32(te.ByteData3)<<16
-		if p.song.MidiMode == modeMPE {
+		if p.virtChannels[t.Channel].midiMode == modeMPE {
 			p.lastEvtTick = te.Tick
 			out.writer.SetChannel(0)
 			writer.ControlChange(out.writer, ccBankMSB, te.ByteData2)
@@ -497,11 +504,19 @@ func (p *player) playEvent(te *trackEvent) {
 		p.lastEvtTick = te.Tick
 		// mode, time, level
 		sysex([]byte{0x41, 0x10, 0x16, 0x12, 0x10, 0x00, 0x01, te.ByteData1},
-			out.writer, p.song.MidiMode)
+			out.writer, modeMT32)
 		sysex([]byte{0x41, 0x10, 0x16, 0x12, 0x10, 0x00, 0x02, te.ByteData2},
-			out.writer, p.song.MidiMode)
+			out.writer, modeMT32)
 		sysex([]byte{0x41, 0x10, 0x16, 0x12, 0x10, 0x00, 0x03, te.ByteData3},
-			out.writer, p.song.MidiMode)
+			out.writer, modeMT32)
+	case midiModeEvent:
+		output := p.virtChannels[t.Channel].output
+		for _, vcs := range p.virtChannels {
+			if vcs.output == output {
+				vcs.setMidiMode(int(te.ByteData1), int(t.Channel))
+			}
+		}
+		sendSystemOn(p.outputs[output].writer, int(te.ByteData1))
 	default:
 		println("unhandled event type in player.playTrackEvents")
 	}
@@ -543,7 +558,7 @@ func (p *player) noteOff(i int, tick int64) {
 			return
 		}
 		out.writer.SetChannel(t.midiChannel)
-		if p.song.MidiMode == modeMPE {
+		if out.midiMode == modeMPE {
 			writer.Aftertouch(out.writer, 0) // the MPE spec says so
 		}
 		writer.NoteOff(out.writer, activeNote)
@@ -615,6 +630,7 @@ type channelState struct {
 	midiMin     uint8 // only used by virtual channels
 	midiMax     uint8 // ^
 	output      int   // device index
+	midiMode    int
 }
 
 var (
@@ -635,6 +651,11 @@ func newChannelState(midiMode, index int, virtual bool) *channelState {
 	cs.controllers[11] = 127   // expression
 	cs.controllers[100] = 0x7f // RPN LSB
 	cs.controllers[101] = 0x7f // RPN MSB
+	cs.setMidiMode(midiMode, index)
+	return cs
+}
+
+func (cs *channelState) setMidiMode(midiMode, index int) {
 	switch midiMode {
 	case modeXG:
 		cs.controllers[71] = 0x40  // harmonic content
@@ -651,7 +672,6 @@ func newChannelState(midiMode, index int, virtual bool) *channelState {
 		cs.pressure = 64
 		cs.controllers[ccTimbre] = 64
 	}
-	return cs
 }
 
 func (cs *channelState) isPercussionChannel() bool {

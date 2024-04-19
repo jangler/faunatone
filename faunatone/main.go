@@ -117,7 +117,7 @@ func main() {
 				must(out.Open())
 				defer out.Close()
 				wr := writer.New(out)
-				sendGMSystemOn(wr, 0)
+				sendSystemOn(wr, 0)
 				wrs = append(wrs, wr)
 			} else {
 				dia.message(fmt.Sprintf("MIDI output port index %d out of range [%d, %d].",
@@ -265,13 +265,14 @@ func main() {
 						dialogInsertPitchBend(dia, patedit, pl)
 					}},
 					{label: "Program change...", action: func() {
-						if pl.song.MidiMode >= len(instrumentTargets) {
+						mode := cursorMidiMode(patedit, pl)
+						if mode >= len(instrumentTargets) {
 							dia.message("Unknown MIDI mode.")
 							return
 						}
 						dialogInsertUint8Event(dia, patedit, pl,
 							"Program:", programEvent, []int64{1, 0, 0},
-							instrumentTargets[pl.song.MidiMode])
+							instrumentTargets[mode])
 					}},
 					{label: "Tempo change...", action: func() {
 						dialogInsertTempoChange(dia, patedit, pl)
@@ -300,6 +301,9 @@ func main() {
 					}},
 					{label: "MIDI output index...", action: func() {
 						dialogInsertMidiOutput(dia, patedit, pl)
+					}},
+					{label: "MIDI mode...", action: func() {
+						dialogInsertMidiMode(dia, patedit, pl)
 					}},
 					{label: "MT-32 global reverb...", action: func() {
 						dialogInsertMT32Reverb(dia, patedit, pl)
@@ -340,7 +344,7 @@ func main() {
 					{label: "Capture root pitch", action: func() { patedit.captureRefPitch() }},
 					{label: "Set velocity...", action: func() { dialogSetVelocity(dia, patedit) }},
 					{label: "Set controller...", action: func() {
-						dialogSetController(dia, sng, patedit)
+						dialogSetController(dia, sng, patedit, pl)
 					}},
 					{label: "Set division...", action: func() { dialogSetDivision(dia, patedit) }},
 					{label: "Decrease division", action: func() { patedit.addDivision(-1) },
@@ -531,6 +535,11 @@ func main() {
 	}
 }
 
+func cursorMidiMode(patedit *patternEditor, pl *player) int {
+	i := patedit.song.Tracks[patedit.cursorTrackClick].Channel
+	return pl.virtChannels[i].midiMode
+}
+
 // return a if cond, else b
 func conditionalString(cond bool, a, b string) string {
 	if cond {
@@ -574,11 +583,12 @@ func pitchToMidi(p float64, midiMode int) (uint8, int16) {
 
 // set to d an input dialog
 func dialogInsertDrumNote(d *dialog, pe *patternEditor, p *player) {
-	if p.song.MidiMode >= len(drumTargets) {
+	mode := cursorMidiMode(pe, p)
+	if mode >= len(drumTargets) {
 		d.message("Unknown MIDI mode.")
 		return
 	}
-	d.getNamedInts("Pitch:", []int64{0}, drumTargets[p.song.MidiMode],
+	d.getNamedInts("Pitch:", []int64{0}, drumTargets[mode],
 		func(i []int64) {
 			track, _, _, _ := pe.getSelection()
 			pe.writeEvent(newTrackEvent(&trackEvent{
@@ -709,6 +719,16 @@ func dialogInsertMidiOutput(d *dialog, pe *patternEditor, p *player) {
 	})
 }
 
+// set d to an input dialog
+func dialogInsertMidiMode(d *dialog, pe *patternEditor, p *player) {
+	d.getNamedInts("MIDI mode:", []int64{0}, midiModeTargets(), func(xs []int64) {
+		pe.writeEvent(newTrackEvent(&trackEvent{
+			Type:      midiModeEvent,
+			ByteData1: byte(xs[0]),
+		}, nil), p)
+	})
+}
+
 // set d to an input dialog chain
 func dialogInsertMT32Reverb(d *dialog, pe *patternEditor, p *player) {
 	d.getInt("Mode (0-3 = room, hall, plate, tap delay):", 0, 3, func(mode int64) {
@@ -726,12 +746,13 @@ func dialogInsertMT32Reverb(d *dialog, pe *patternEditor, p *player) {
 }
 
 // set d to an input dialog
-func dialogSetController(d *dialog, s *song, pe *patternEditor) {
-	if s.MidiMode >= len(ccTargets) {
+func dialogSetController(d *dialog, s *song, pe *patternEditor, pl *player) {
+	mode := cursorMidiMode(pe, pl)
+	if mode >= len(ccTargets) {
 		d.message("Unknown MIDI mode.")
 		return
 	}
-	d.getNamedInts("Controller index:", []int64{0}, ccTargets[s.MidiMode],
+	d.getNamedInts("Controller index:", []int64{0}, ccTargets[mode],
 		func(i []int64) {
 			pe.controller = uint8(i[0])
 		})
@@ -1078,7 +1099,7 @@ func setColorSDL(c *sdl.Color, v uint32) {
 }
 
 // send the "GM system on" sysex message
-func sendGMSystemOn(wr writer.ChannelWriter, midiMode int) {
+func sendSystemOn(wr writer.ChannelWriter, midiMode int) {
 	if midiMode < len(systemOnBytes) {
 		writer.SysEx(wr, systemOnBytes[midiMode])
 	}
