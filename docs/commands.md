@@ -63,7 +63,8 @@ first place.
 range 1 to 128. Also sets bank MSB and LSB in GS and XG modes.
 
 **Tempo change...** - Insert a tempo change meta-event. Tempos are specified in
-beats per minute. The default is 120.
+beats per minute. The default is 120. Tempos can also be specified as ratios,
+in which case they multiply the previous tempo.
 
 **Controller change...** - Insert a control change event for the current
 controller (set by **Status -> Set controller...**), value range 0 to 127. Most
@@ -90,6 +91,9 @@ specifies the zero-based index of the MIDI output device that this virtual
 channel will use. Note that this is the index of the device in the list
 provided for `MidiOutPortNumber` in `config.settings.csv`, *not* the port
 number itself.
+
+**MIDI mode...** - Insert a directive to change the MIDI mode used by this
+track's output.
 
 ## Edit
 
@@ -198,4 +202,4 @@ startup will need this to interpret pitches correctly.
 or MT-32 defaults. (And then sends the pitch bend sensitivity RPN.) This also
 resets the virtual channel states.
 
-**Cycle mode** - Cycle between GM, GS, XG, and MT-32 modes.
+**Cycle mode** - Cycle between GM, GS, XG, MT-32, and MPE modes.

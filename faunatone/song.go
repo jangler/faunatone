@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"path/filepath"
+	"slices"
+	"strings"
 
 	"gitlab.com/gomidi/midi/writer"
 )
@@ -26,13 +29,14 @@ const (
 	midiRangeEvent
 	midiOutputEvent
 	mt32ReverbEvent
+	midiModeEvent
 )
 
 const (
 	numMidiChannels        = 16
 	numVirtualChannels     = 16
 	percussionChannelIndex = 9
-	numMidiModes           = 4
+	numMidiModes           = 5
 )
 
 const (
@@ -40,6 +44,7 @@ const (
 	modeGS
 	modeXG
 	modeMT32
+	modeMPE
 )
 
 var standardPitchNames = []string{
@@ -57,8 +62,18 @@ func midiModeName(index int) string {
 		return "XG"
 	case modeMT32:
 		return "MT-32"
+	case modeMPE:
+		return "MPE"
 	}
 	return "Unknown"
+}
+
+func midiModeTargets() []*tabTarget {
+	var ts []*tabTarget
+	for i := 0; midiModeName(i) != "Unknown"; i++ {
+		ts = append(ts, &tabTarget{display: midiModeName(i), value: fmt.Sprintf("%d", i)})
+	}
+	return ts
 }
 
 // fields in these types are exported to expose them to the JSON encoder
@@ -113,6 +128,8 @@ func (s *song) read(r io.Reader) error {
 	s.Keymap.keySig = make(map[float64]*pitchSrc)
 	for i, t := range s.Tracks {
 		t.index = i
+		t.activeNote = byteNil
+		t.midiChannel = byteNil
 		for _, te := range t.Events {
 			te.track = i
 			te.setUiString(s.Keymap)
@@ -134,22 +151,53 @@ func (s *song) write(w io.Writer) error {
 	return comp.Close()
 }
 
+func (s *song) usedOutputs() []int {
+	outputs := []int{0}
+	for _, track := range s.Tracks {
+		for _, event := range track.Events {
+			if event.Type == midiOutputEvent && !slices.Contains(outputs, int(event.ByteData1)) {
+				outputs = append(outputs, int(event.ByteData1))
+			}
+		}
+	}
+	return outputs
+}
+
+// appendToFilename returns `path` with `append` inserted before the file
+// extension.
+func appendToFilename(append, path string) string {
+	ext := filepath.Ext(path)
+	return strings.TrimSuffix(path, ext) + append + ext
+}
+
 // export to MIDI
 func (s *song) exportSMF(path string) error {
-	return writer.WriteSMF(path, 1, func(wr *writer.SMF) error {
-		// TODO: make sure this doesn't crash things depdending on device mapping
-		wr.ConsolidateNotes(false) // prevents timing issues with 0-velocity notes
-		p := newPlayer(s, []writer.ChannelWriter{wr}, false)
-		go p.run()
-		p.sendStopping = true
-		p.signal <- playerSignal{typ: signalStart}
-		<-p.stopping
-		writer.EndOfTrack(wr)
-		if p.polyErrCount > 0 {
-			return fmt.Errorf("polyphony limit exceeded by %d note(s)", p.polyErrCount)
+	usedOutputs := s.usedOutputs()
+	for _, output := range usedOutputs {
+		thisPath := path
+		if len(usedOutputs) > 1 {
+			thisPath = appendToFilename(fmt.Sprintf("_%d", output), path)
 		}
-		return nil
-	})
+		err := writer.WriteSMF(thisPath, 1, func(wr *writer.SMF) error {
+			// TODO: make sure this doesn't crash things depending on device mapping
+			wr.ConsolidateNotes(false) // prevents timing issues with 0-velocity notes
+			p := newPlayer(s, []writer.ChannelWriter{wr}, false)
+			p.exportOutput = &output
+			go p.run()
+			p.sendStopping = true
+			p.signal <- playerSignal{typ: signalStart}
+			<-p.stopping
+			writer.EndOfTrack(wr)
+			if p.polyErrCount > 0 {
+				return fmt.Errorf("polyphony limit exceeded by %d note(s)", p.polyErrCount)
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // change UI strings for notes based on keymap
@@ -171,7 +219,7 @@ type track struct {
 	// only used by player
 	activeNote  uint8
 	midiChannel uint8
-	pressure    uint8
+	pressure    uint8 // for polyphonic aftertouch
 }
 
 // initialize a new track
@@ -262,7 +310,11 @@ func (te *trackEvent) setUiString(k *keymap) {
 		te.uiString = fmt.Sprintf("prog %d %d %d",
 			te.ByteData1+1, te.ByteData2, te.ByteData3)
 	case tempoEvent:
-		te.uiString = fmt.Sprintf("tempo %.2f", te.FloatData)
+		if te.FloatData != 0 {
+			te.uiString = fmt.Sprintf("tempo %.2f", te.FloatData)
+		} else {
+			te.uiString = fmt.Sprintf("tempo %d:%d", te.ByteData1, te.ByteData2)
+		}
 	case textEvent:
 		label := "UNKNOWN"
 		if te.ByteData1 >= 1 && int(te.ByteData1) < len(textEventLabels) {
@@ -278,6 +330,8 @@ func (te *trackEvent) setUiString(k *keymap) {
 	case mt32ReverbEvent:
 		te.uiString = fmt.Sprintf("rv %d %d %d",
 			te.ByteData1, te.ByteData2, te.ByteData3)
+	case midiModeEvent:
+		te.uiString = fmt.Sprintf("@mode %s", midiModeName(int(te.ByteData1)))
 	default:
 		te.uiString = "UNKNOWN"
 	}

@@ -175,6 +175,39 @@ func (d *dialog) getFloat(prompt string, min, max float64, action func(float64))
 	})
 }
 
+var tempoRatioRegexp = regexp.MustCompile(`(\d+)[:/](\d+)`)
+
+func parseRatio(s string) (n, d uint64, err error) {
+	matches := tempoRatioRegexp.FindStringSubmatch(s)
+	if matches == nil {
+		err = fmt.Errorf("could not parse ratio %q", s)
+	} else {
+		n, err = strconv.ParseUint(matches[1], 10, 64)
+		if err != nil {
+			return
+		}
+		d, err = strconv.ParseUint(matches[2], 10, 64)
+	}
+	return
+}
+
+// set d to a dialog that accepts a decimal or an integer ratio
+func (d *dialog) getTempo(prompt string, min, max float64, floatAction func(float64), ratioAction func(n, d uint64)) {
+	*d = *newDialog(prompt, 8, func(s string) {
+		if f, err := strconv.ParseFloat(s, 64); err == nil && f >= min && f <= max {
+			floatAction(f)
+		} else if num, den, err := parseRatio(s); err == nil {
+			ratioAction(num, den)
+		} else if err != nil && errors.Is(err, strconv.ErrSyntax) {
+			d.message("Invalid syntax.")
+		} else if f < min || f > max || errors.Is(err, strconv.ErrRange) {
+			d.message(fmt.Sprintf("Value must be in range [%.2f, %.2f].", min, max))
+		} else {
+			d.message(err.Error())
+		}
+	})
+}
+
 // set d to an interval dialog that checks for syntax errors
 func (d *dialog) getInterval(prompt string, k *keymap, action func(*pitchSrc)) {
 	*d = *newDialog(prompt, 10, func(s string) {
