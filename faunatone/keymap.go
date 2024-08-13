@@ -532,10 +532,14 @@ func (k *keymap) keyboardEvent(e *sdl.KeyboardEvent, pe *patternEditor, p *playe
 
 // respond to midi input events
 func (k *keymap) midiEvent(msg []byte, pe *patternEditor, p *player, keyjazz bool) {
+	var octaveOffset byte
+	if midiChannelBehavior == midiChannelOctaves {
+		octaveOffset = msg[0] & 0xf
+	}
 	if msg[0]&0xf0 == 0x90 && msg[2] > 0 { // note on
 		var te *trackEvent
 		if sdl.GetModState()&sdl.KMOD_SHIFT == 0 {
-			pitch := k.adjustPerKeySig(k.midimap[msg[1]]) + pe.refPitch
+			pitch := k.adjustPerKeySig(k.midimap[msg[1]]) + pe.refPitch + float64(octaveOffset)*12
 			te = newTrackEvent(&trackEvent{
 				Type:      noteOnEvent,
 				FloatData: pitch,
@@ -544,7 +548,7 @@ func (k *keymap) midiEvent(msg []byte, pe *patternEditor, p *player, keyjazz boo
 		} else {
 			te = newTrackEvent(&trackEvent{
 				Type:      drumNoteOnEvent,
-				ByteData1: msg[1],
+				ByteData1: msg[1] + octaveOffset*12,
 				ByteData2: msg[2],
 			}, k)
 		}

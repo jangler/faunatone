@@ -32,6 +32,13 @@ const (
 	errorLogFile = "error.txt"
 )
 
+const (
+	midiChannelIgnore int = iota
+	midiChannelOctaves
+)
+
+var midiChannelBehavior int
+
 //go:embed config/*
 var embedFS embed.FS
 
@@ -62,6 +69,8 @@ func must(err error) {
 }
 
 func main() {
+	dia := &dialog{}
+
 	settings := loadSettings(func(s string) { println(s) })
 	bendSemitones = settings.PitchBendSemitones
 	setColorArray(colorBeatArray, settings.ColorBeat)
@@ -71,9 +80,15 @@ func main() {
 	setColorSDL(&colorFg, settings.ColorFg)
 	setColorArray(colorPlayPosArray, settings.ColorPlayPos)
 	setColorArray(colorSelectArray, settings.ColorSelect)
+	switch settings.MidiInputChannels {
+	case "ignore":
+		midiChannelBehavior = midiChannelIgnore
+	case "octaves":
+		midiChannelBehavior = midiChannelOctaves
+	default:
+		dia.message(fmt.Sprintf("Invalid MidiInputChannels setting: %q", settings.MidiInputChannels))
+	}
 	padding = int32(settings.FontSize) / 2
-
-	dia := &dialog{}
 
 	drv, err := driver.New()
 	must(err)

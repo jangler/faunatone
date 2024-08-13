@@ -10,6 +10,7 @@ Font, RobotoMono-Regular.ttf
 FontSize, 12
 MessageDuration, 3
 MidiInPortNumber, -1
+MidiInputChannels, ignore
 MidiOutPortNumber, 0
 OffDivisionAlpha, 64
 PitchBendSemitones, 24
