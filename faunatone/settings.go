@@ -24,6 +24,7 @@ type settings struct {
 	FontSize           int
 	MessageDuration    int
 	MidiInPortNumber   int
+	MidiInputChannels  string
 	MidiOutPortNumber  string
 	OffDivisionAlpha   int
 	PitchBendSemitones int

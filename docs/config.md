@@ -41,6 +41,11 @@ folder.
 
 **MidiInPortNumber** - The index of the MIDI input port used. -1 means none.
 
+**MidiInputChannels** - How to interpret input from different MIDI channels.
+`ignore` means that all input channels are identical. `octaves` means that
+channel 1 is mapped to the base octave, channel 2 is mapped an octave higher,
+and so on.
+
 **MidiOutPortNumber** - The index of the MIDI output port used. -1 means none.
 Can use multiple port numbers, separated by spaces; in this case, the first
 port is the default.
