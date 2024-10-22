@@ -329,6 +329,8 @@ func main() {
 				label: "Edit",
 				items: []*menuItem{
 					{label: "Go to beat...", action: func() { dialogGoToBeat(dia, patedit) }},
+					{label: "Go to start", action: func() { patedit.goToBeat(1) }},
+					{label: "Go to end", action: func() { patedit.goToEnd() }},
 					{label: "Delete events", action: func() {
 						patedit.deleteSelectedEvents()
 					}},

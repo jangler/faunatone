@@ -293,11 +293,24 @@ func (pe *patternEditor) mouseWheel(e *sdl.MouseWheelEvent) {
 	}
 }
 
-// move scroll to a specific beat number
+// scroll to a specific beat number
 func (pe *patternEditor) goToBeat(beat float64) {
 	tick := pe.roundTickToDivision(int64(math.Round((beat - 1) * ticksPerBeat)))
 	if tick < 0 {
 		tick = 0
+	}
+	pe.scrollToTick(tick)
+}
+
+// scroll to the end of the song
+func (pe *patternEditor) goToEnd() {
+	var tick int64
+	for _, track := range pe.song.Tracks {
+		for _, evt := range track.Events {
+			if evt.Tick > tick {
+				tick = evt.Tick
+			}
+		}
 	}
 	pe.scrollToTick(tick)
 }
